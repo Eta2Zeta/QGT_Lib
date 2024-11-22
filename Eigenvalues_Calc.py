@@ -29,30 +29,42 @@ z_limit = 5
 Hamiltonian = SquareLatticeHamiltonian(omega = 1e10)
 dim = Hamiltonian.dim
 
+UseExisting = True
+
+
 # File paths for saving and loading data
 eigenvalues_file = "eigenvalues.npy"
 eigenfunctions_file = "eigenfunctions.npy"
 phasefactors_file = "phasefactors.npy"
 
-# Initialize arrays to store eigenfunctions and eigenvalues with NaNs
-eigenfunctions = np.full((mesh_spacing, mesh_spacing, dim, dim), np.nan, dtype=complex)
-eigenvalues = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
-phasefactors = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
-overall_neighbor_phase_array = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
+if UseExisting: 
+    # Load the eigenvalues and eigenfunctions from files
+    if os.path.exists(eigenvalues_file) and os.path.exists(eigenfunctions_file):
+        eigenvalues = np.load(eigenvalues_file)
+        eigenfunctions = np.load(eigenfunctions_file)
+        print("Loaded eigenvalues and eigenfunctions from files.")
+    else:
+        print("Eigenvalues or eigenfunctions files not found. Please ensure they are available at the specified paths.")
+        sys.exit(1)
+else: 
+    # Initialize arrays to store eigenfunctions and eigenvalues with NaNs
+    eigenfunctions = np.full((mesh_spacing, mesh_spacing, dim, dim), np.nan, dtype=complex)
+    eigenvalues = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
+    phasefactors = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
+    overall_neighbor_phase_array = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
 
-# Calculate the eigenvalues and eigenfunctions
-# eigenvalues, eigenfunctions, phasefactors, overall_neighbor_phase_array = spiral_eigenvalues_eigenfunctions(H_THF, kx, ky, mesh_spacing, dim=dim)
-eigenvalues, eigenfunctions, phasefactors, overall_neighbor_phase_array = spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim=dim, phase_correction=False)
-# eigenvalues, eigenfunctions = grid_eigenvalues_eigenfunctions(H_Square_Lattice, kx, ky, mesh_spacing, dim=dim)
+    # Calculate the eigenvalues and eigenfunctions
+    # eigenvalues, eigenfunctions, phasefactors, overall_neighbor_phase_array = spiral_eigenvalues_eigenfunctions(H_THF, kx, ky, mesh_spacing, dim=dim)
+    eigenvalues, eigenfunctions, phasefactors, overall_neighbor_phase_array = spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim=dim, phase_correction=False)
+    # eigenvalues, eigenfunctions = grid_eigenvalues_eigenfunctions(H_Square_Lattice, kx, ky, mesh_spacing, dim=dim)
 
-# Save the data to files
-np.save(eigenvalues_file, eigenvalues)
-np.save(eigenfunctions_file, eigenfunctions)
-np.save(phasefactors_file, phasefactors)
-np.save('neighbor_phase_array.npy', overall_neighbor_phase_array)
-print("Saved eigenvalues, eigenfunctions, phasefactors, and neighbor phase array to files.")
-
-
+    # Save the data to files
+    np.save(eigenvalues_file, eigenvalues)
+    np.save(eigenfunctions_file, eigenfunctions)
+    np.save(phasefactors_file, phasefactors)
+    np.save('neighbor_phase_array.npy', overall_neighbor_phase_array)
+    print("Saved eigenvalues, eigenfunctions, phasefactors, and neighbor phase array to files.")
+    
 def experiment():
     # Experiment Changing the phase of one zone
     num_zones = 4
