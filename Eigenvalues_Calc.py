@@ -86,10 +86,10 @@ def experiment():
 
 eigenvalues = capping_eigenvalues(eigenvalues=eigenvalues, z_limit=z_limit)
 
-plot_eigenvalues_surface(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, color_maps="bwr")
+# plot_eigenvalues_surface(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, color_maps="bwr")
 
 
-plot_eigenfunction_components(kx, ky, eigenfunctions, band_index=0, components_to_plot=[0])
+# plot_eigenfunction_components(kx, ky, eigenfunctions, band_index=0, components_to_plot=[0])
 
 
 
