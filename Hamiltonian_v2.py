@@ -6,8 +6,12 @@ class Hamiltonian:
     """
     Base class for defining Hamiltonians.
     """
-    def __init__(self, dim):
+    def __init__(self, dim, omega):
+        """
+        Initialize the Hamiltonian with its dimension and driving frequency (omega).
+        """
         self.dim = dim  # Dimension of the Hamiltonian matrix
+        self.omega = omega  # Driving frequency
     
     def compute(self, kx, ky):
         """
@@ -24,28 +28,28 @@ class Hamiltonian:
         H2_k = H2.compute(kx, ky)
         return np.dot(H1_k, H2_k) - np.dot(H2_k, H1_k)
     
-    def numerical_fourier_component(self, n, kx, ky, omega):
+    def numerical_fourier_component(self, n, kx, ky):
         """
         Compute the nth Fourier component of the time-dependent Hamiltonian.
         """
-        integral = quad_vec(lambda t: self.compute(kx, ky) * np.exp(-1j * n * omega * t), 
-                            0, 2 * np.pi / omega, epsrel=1e-8)
+        integral = quad_vec(lambda t: self.compute(kx, ky) * np.exp(-1j * n * self.omega * t), 
+                            0, 2 * np.pi / self.omega, epsrel=1e-8)
         return integral[0]
     
-    def magnus_first_term(self, kx, ky, omega):
+    def magnus_first_term(self, kx, ky):
         """
         Compute the first term of the Magnus expansion:
         (1/omega) * [H1, H-1]
         """
         # Compute H1 and H-1 Fourier components
-        H1 = self.numerical_fourier_component(1, kx, ky, omega)
-        Hm1 = self.numerical_fourier_component(-1, kx, ky, omega)
+        H1 = self.numerical_fourier_component(1, kx, ky)
+        Hm1 = self.numerical_fourier_component(-1, kx, ky)
         
         # Compute the commutator [H1, H-1]
         comm = self.commutator_static(H1, Hm1)
         
         # Return the first Magnus term
-        return (1 / omega) * comm
+        return (1 / self.omega) * comm
 
     @staticmethod
     def commutator_static(H1, H2):
@@ -54,7 +58,7 @@ class Hamiltonian:
         """
         return np.dot(H1, H2) - np.dot(H2, H1)
 
-    def effective_hamiltonian(self, kx, ky, omega):
+    def effective_hamiltonian(self, kx, ky):
         """
         Compute the total effective Hamiltonian:
         H_eff = H_0 + (1/omega) * [H1, H-1]
@@ -63,17 +67,18 @@ class Hamiltonian:
         H_0 = self.compute(kx, ky)
         
         # First Magnus term
-        magnus_term = self.magnus_first_term(kx, ky, omega)
+        magnus_term = self.magnus_first_term(kx, ky)
         
         # Effective Hamiltonian
         H_eff = H_0 + magnus_term
         return H_eff
-    
+
 
     
 class THF_Hamiltonian(Hamiltonian):
     """
-    Hamiltonian for the THF model.
+    Hamiltonian for the THF model. This is not optimized for the Magnus expansion yet and it is 
+    with the frequency term included as G. 
     """
     def __init__(self, nu_star=-50, nu_star_prime=13.0, gamma=-25.0, M=5, G=0.001):
         super().__init__(dim=6)  # THF model has a 6x6 matrix
@@ -103,8 +108,8 @@ class SquareLatticeHamiltonian(Hamiltonian):
     """
     Hamiltonian for a square lattice model.
     """
-    def __init__(self, t1=1, t2=1/np.sqrt(2), t5=-0.1):
-        super().__init__(dim=2)  # Square lattice model has a 2x2 matrix
+    def __init__(self, t1=1, t2=1/np.sqrt(2), t5=-0.1, omega=2 * np.pi):
+        super().__init__(dim=2, omega=omega)  # Pass omega to the base class
         self.t1 = t1
         self.t2 = t2
         self.t5 = t5
@@ -123,9 +128,10 @@ class SquareLatticeHamiltonian(Hamiltonian):
         return H_k
 
 
+
 class SquareLattice1Hamiltonian(Hamiltonian):
     """
-    Hamiltonian for the modified square lattice model (Equation 3 from PhysRevLett.106.236804).
+    Hamiltonian for the modified square lattice model (Equation 3 from PhysRevLett.106.236804). Not used anymore
     """
     def __init__(self, t1=1, t2=1/np.sqrt(2)):
         super().__init__(dim=2)  # Square lattice model has a 2x2 matrix

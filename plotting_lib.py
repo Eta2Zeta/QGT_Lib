@@ -142,7 +142,7 @@ def plot_eigenfunction_components(kx, ky, eigenfunctions, band_index=None, compo
             Z_magnitude = np.real(Z_eigenfunction)  # Use the real part for magnitude
 
             # Plot a 3D scatter plot
-            sc = ax.scatter(kx_strided.flatten(), ky_strided.flatten(), Z_magnitude, c=Z_magnitude, cmap='viridis', s=3)
+            sc = ax.scatter(kx_strided.flatten(), ky_strided.flatten(), Z_magnitude, c=Z_magnitude, cmap='viridis', s=1)
 
             ax.set_title(f'Component {component + 1}')
             ax.set_xlabel('kx')

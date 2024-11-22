@@ -407,6 +407,11 @@ class Eigenvectors:
 # * Basic getting eigenvalues and eigenvectors 
 
 def get_eigenvalues_and_eigenvectors(Hamiltonian):
+    """
+    Hamiltonian is any Matrix
+
+    This solves the Hamiltonian for its spectrum and Eigenstates
+    """
     eigenvalues, eigenvectors = np.linalg.eig(Hamiltonian)
     eigenvectors = np.transpose(eigenvectors)
     return eigenvalues, eigenvectors
@@ -436,8 +441,8 @@ def eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, eigenvector
 
     Parameters:
     - Hamiltonian: A function that returns the Hamiltonian matrix given kx and ky.
-    - kx: The kx value for which to calculate the eigenvalues and eigenvectors.
-    - ky: The ky value for which to calculate the eigenvalues and eigenvectors.
+    - kx: Just a number. The kx value for which to calculate the eigenvalues and eigenvectors.
+    - ky: Just a number. The ky value for which to calculate the eigenvalues and eigenvectors.
     - eigenvector: An optional Eigenvector object for phase correction.
     - zone_num: An optional integer specifying the zone number. If odd, the 3rd and 4th eigenvalues/eigenvectors are swapped.
 
@@ -445,7 +450,8 @@ def eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, eigenvector
     - eigenvalues: The sorted eigenvalues.
     - eigenvectors: The sorted and possibly reordered eigenvectors.
     """
-    H_k = Hamiltonian(kx, ky)
+    # H_k = Hamiltonian(kx, ky)
+    H_k = Hamiltonian.effective_hamiltonian(kx, ky)
     
     eigenvalues, eigenvectors = get_eigenvalues_and_eigenvectors(H_k)
 
@@ -465,6 +471,8 @@ def eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, eigenvector
         eigenvectors = eigenvector.set_eigenvectors_eigenvalue_preordered(eigenvectors, eigenvalues, kx, ky, ignore_small_phase_diff=False)
     
     return eigenvalues, eigenvectors
+
+
 
 # & Calculations in an anglee line
 
@@ -528,7 +536,7 @@ def grid_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim):
             
     return eigenvalues, eigenfunctions
 
-def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim):
+def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, phase_correction = True):
     # Initialize arrays to store eigenfunctions and eigenvalues
     eigenfunctions = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
     eigenvalues = np.zeros((mesh_spacing, mesh_spacing, dim), dtype=float)
@@ -541,9 +549,10 @@ def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim):
     for i in range(mesh_spacing):
         for j in range(mesh_spacing):
             k,l = spiral_indices[i,j]
-            # ! This lines is important
-            # vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx[k, l], ky[k, l], eigenvector=eigenvector)
-            vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx[k, l], ky[k, l], eigenvector=None)
+            if phase_correction: 
+                vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx[k, l], ky[k, l], eigenvector=eigenvector)
+            else:
+                vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx[k, l], ky[k, l], eigenvector=None)
             phase_factors = eigenvector.get_phase_factors()
             
             eigenfunctions[k, l] = vecs

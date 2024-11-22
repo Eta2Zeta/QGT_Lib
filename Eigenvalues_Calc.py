@@ -24,9 +24,10 @@ ky = np.linspace(-k_max, k_max, mesh_spacing)
 kx, ky = np.meshgrid(kx, ky)
 z_limit = 5
 
-dim = 6
 
 
+Hamiltonian = SquareLatticeHamiltonian(omega = 1e10)
+dim = Hamiltonian.dim
 
 # File paths for saving and loading data
 eigenvalues_file = "eigenvalues.npy"
@@ -40,8 +41,10 @@ phasefactors = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
 overall_neighbor_phase_array = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
 
 # Calculate the eigenvalues and eigenfunctions
-eigenvalues, eigenfunctions, phasefactors, overall_neighbor_phase_array = spiral_eigenvalues_eigenfunctions(H_THF, kx, ky, mesh_spacing, dim=dim)
+# eigenvalues, eigenfunctions, phasefactors, overall_neighbor_phase_array = spiral_eigenvalues_eigenfunctions(H_THF, kx, ky, mesh_spacing, dim=dim)
+eigenvalues, eigenfunctions, phasefactors, overall_neighbor_phase_array = spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim=dim, phase_correction=False)
 # eigenvalues, eigenfunctions = grid_eigenvalues_eigenfunctions(H_Square_Lattice, kx, ky, mesh_spacing, dim=dim)
+
 # Save the data to files
 np.save(eigenvalues_file, eigenvalues)
 np.save(eigenfunctions_file, eigenfunctions)
