@@ -161,7 +161,6 @@ def plot_eigenfunction_components(kx, ky, eigenfunctions, band_index=None, compo
         plt.close()
 
 
-# Other functions (plot_eigenvalues_surface, plot_individual_eigenvalues, plot_eigenfunction_components)...
 
 def plot_phases(kx, ky, phasefactors, dim=6, z_limit=(-2, 2), color_maps='default'):
     """
@@ -258,9 +257,55 @@ def plot_neighbor_phases(kx, ky, overall_neighbor_phase_array, dim=6, z_limit=(-
     plt.show()
     plt.close()
 
+def plot_QGT_components_3d(kx, ky, g_xx_array, g_xy_array, g_yx_array, g_yy_array, stride_size=3):
+    """
+    Plot g_xx, g_xy, g_yx, and g_yy arrays as 3D surface plots in a single figure.
+
+    Parameters:
+    - kx, ky: 2D arrays for the k-space grid.
+    - g_xx_array, g_xy_array, g_yx_array, g_yy_array: 2D arrays to be plotted as surfaces.
+    - stride_size: Controls the density of points in the surface plot.
+    """
+    fig = plt.figure(figsize=(24, 6))
+
+    # Plot g_xx_array
+    ax1 = fig.add_subplot(141, projection='3d')
+    ax1.plot_surface(kx, ky, g_xx_array, cmap='plasma', rstride=stride_size, cstride=stride_size)
+    ax1.set_title('Numerical $g_{xx}$ (real part)')
+    ax1.set_xlabel('kx')
+    ax1.set_ylabel('ky')
+    ax1.set_zlabel('$g_{xx}$')
+
+    # Plot g_xy_array
+    ax2 = fig.add_subplot(142, projection='3d')
+    ax2.plot_surface(kx, ky, g_xy_array, cmap='plasma', rstride=stride_size, cstride=stride_size)
+    ax2.set_title('Numerical $g_{xy}$ (real part)')
+    ax2.set_xlabel('kx')
+    ax2.set_ylabel('ky')
+    ax2.set_zlabel('$g_{xy}$')
+
+    # Plot g_yx_array
+    ax3 = fig.add_subplot(143, projection='3d')
+    ax3.plot_surface(kx, ky, g_yx_array, cmap='plasma', rstride=stride_size, cstride=stride_size)
+    ax3.set_title('Numerical $g_{yx}$ (real part)')
+    ax3.set_xlabel('kx')
+    ax3.set_ylabel('ky')
+    ax3.set_zlabel('$g_{yx}$')
+
+    # Plot g_yy_array
+    ax4 = fig.add_subplot(144, projection='3d')
+    ax4.plot_surface(kx, ky, g_yy_array, cmap='plasma', rstride=stride_size, cstride=stride_size)
+    ax4.set_title('Numerical $g_{yy}$ (real part)')
+    ax4.set_xlabel('kx')
+    ax4.set_ylabel('ky')
+    ax4.set_zlabel('$g_{yy}$')
+
+    plt.tight_layout()
+    plt.show()
+    plt.close()
 
 
-def plot_g_components_3d(kx, ky, g_xx_array, g_yy_array, trace_array, stride_size=3):
+def plot_QMT_wtrace_3d(kx, ky, g_xx_array, g_yy_array, trace_array, stride_size=3):
     """
     Plot g_xx, g_yy, and trace arrays as 3D surface plots in a single figure.
 
@@ -300,7 +345,7 @@ def plot_g_components_3d(kx, ky, g_xx_array, g_yy_array, trace_array, stride_siz
     plt.close()
 
 
-def plot_g_components_2d(kx, ky, g_xx_array, g_yy_array, trace_array, k_max=10):
+def plot_g_components_2d(g_xx_array, g_yy_array, trace_array, k_max=10):
     """
     Plot g_xx, g_yy, and trace arrays as 2D heatmaps in a single figure.
 

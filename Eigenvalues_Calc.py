@@ -15,36 +15,42 @@ from Hamiltonian_v2 import *
 # Brillouin zone vectors
 
 # Define parameters
-mesh_spacing = 200
+mesh_spacing = 100
 k_max = 1 * (np.pi)  # Maximum k value for the first Brillouin zone
 
 # Create kx and ky arrays
 kx = np.linspace(-k_max, k_max, mesh_spacing)
+# ky = np.linspace(-(3/2)*k_max, k_max/2, mesh_spacing)
 ky = np.linspace(-k_max, k_max, mesh_spacing)
 kx, ky = np.meshgrid(kx, ky)
 z_limit = 5
 
 
 
-Hamiltonian = SquareLatticeHamiltonian(omega = 1e10)
-dim = Hamiltonian.dim
+Hamiltonian_Obj = TwoOrbitalSpinfulHamiltonian(zeta=0.2, A0=0)
+dim = Hamiltonian_Obj.dim
 
-UseExisting = True
+UseExisting = False
 
 
 # File paths for saving and loading data
 eigenvalues_file = "eigenvalues.npy"
 eigenfunctions_file = "eigenfunctions.npy"
 phasefactors_file = "phasefactors.npy"
+meta_info_file = "meta_info.npy"  # New file for meta information
 
 if UseExisting: 
     # Load the eigenvalues and eigenfunctions from files
-    if os.path.exists(eigenvalues_file) and os.path.exists(eigenfunctions_file):
+    if os.path.exists(eigenvalues_file) and os.path.exists(eigenfunctions_file) and os.path.exists(meta_info_file):
         eigenvalues = np.load(eigenvalues_file)
         eigenfunctions = np.load(eigenfunctions_file)
-        print("Loaded eigenvalues and eigenfunctions from files.")
+        meta_info = np.load(meta_info_file, allow_pickle=True).item()
+        kx = meta_info["kx"]
+        ky = meta_info["ky"]
+        mesh_spacing = meta_info["mesh_spacing"]
+        print("Loaded eigenvalues, eigenfunctions, and meta information from files.")
     else:
-        print("Eigenvalues or eigenfunctions files not found. Please ensure they are available at the specified paths.")
+        print("Required files not found. Please ensure eigenvalues, eigenfunctions, and meta information are available.")
         sys.exit(1)
 else: 
     # Initialize arrays to store eigenfunctions and eigenvalues with NaNs
@@ -54,17 +60,25 @@ else:
     overall_neighbor_phase_array = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
 
     # Calculate the eigenvalues and eigenfunctions
-    # eigenvalues, eigenfunctions, phasefactors, overall_neighbor_phase_array = spiral_eigenvalues_eigenfunctions(H_THF, kx, ky, mesh_spacing, dim=dim)
-    eigenvalues, eigenfunctions, phasefactors, overall_neighbor_phase_array = spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim=dim, phase_correction=False)
-    # eigenvalues, eigenfunctions = grid_eigenvalues_eigenfunctions(H_Square_Lattice, kx, ky, mesh_spacing, dim=dim)
+    eigenvalues, eigenfunctions, phasefactors, overall_neighbor_phase_array = spiral_eigenvalues_eigenfunctions(
+        Hamiltonian_Obj, kx, ky, mesh_spacing, dim=dim, phase_correction=False
+    )
 
     # Save the data to files
     np.save(eigenvalues_file, eigenvalues)
     np.save(eigenfunctions_file, eigenfunctions)
     np.save(phasefactors_file, phasefactors)
     np.save('neighbor_phase_array.npy', overall_neighbor_phase_array)
-    print("Saved eigenvalues, eigenfunctions, phasefactors, and neighbor phase array to files.")
-    
+
+    # Save meta information
+    meta_info = {
+        "kx": kx,
+        "ky": ky,
+        "mesh_spacing": mesh_spacing
+    }
+    np.save(meta_info_file, meta_info)
+    print("Saved eigenvalues, eigenfunctions, phasefactors, neighbor phase array, and meta information to files.")
+
 def experiment():
     # Experiment Changing the phase of one zone
     num_zones = 4
@@ -86,7 +100,7 @@ def experiment():
 
 eigenvalues = capping_eigenvalues(eigenvalues=eigenvalues, z_limit=z_limit)
 
-# plot_eigenvalues_surface(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, color_maps="bwr")
+plot_eigenvalues_surface(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, color_maps="bwr")
 
 
 # plot_eigenfunction_components(kx, ky, eigenfunctions, band_index=0, components_to_plot=[0])

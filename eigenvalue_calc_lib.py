@@ -2,6 +2,7 @@ import numpy as np
 from indexing_lib import get_spiral_indices, order_grid_points_masked, plot_ordered_grid_3d, plot_ordered_grid_histogram, plot_ordered_grid_2d, unordered_grid_masked, order_grid_points_start_end
 import matplotlib.pyplot as plt
 from itertools import permutations
+from Hamiltonian_v2 import Hamiltonian_Obj
 
 # * Checkers
 def check_eigen_solution(Hamiltonian, kx, ky, eigenvalues, eigenvectors, tolerance=1e-6):
@@ -433,14 +434,14 @@ def eigenvalues_and_vectors_eigenvector_ordering(Hamiltonian, kx, ky, eigenvecto
     
     return eigenvalues, eigenvectors
 
-def eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, eigenvector: 'Eigenvectors' =None, zone_num=None):
+def eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, eigenvector: 'Eigenvectors' = None, zone_num=None):
     """
     Calculate eigenvalues and eigenvectors, with optional reordering based on the zone number.
-    
+
     If the zone number is odd, the order between the 3rd and 4th eigenvalues and eigenvectors is reversed.
 
     Parameters:
-    - Hamiltonian: A function that returns the Hamiltonian matrix given kx and ky.
+    - Hamiltonian: A function, a numpy array, or a Hamiltonian class object that returns the Hamiltonian matrix for a given kx and ky.
     - kx: Just a number. The kx value for which to calculate the eigenvalues and eigenvectors.
     - ky: Just a number. The ky value for which to calculate the eigenvalues and eigenvectors.
     - eigenvector: An optional Eigenvector object for phase correction.
@@ -450,9 +451,17 @@ def eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, eigenvector
     - eigenvalues: The sorted eigenvalues.
     - eigenvectors: The sorted and possibly reordered eigenvectors.
     """
-    # H_k = Hamiltonian(kx, ky)
-    H_k = Hamiltonian.effective_hamiltonian(kx, ky)
+    # Determine how to compute the Hamiltonian matrix
+    if isinstance(Hamiltonian, Hamiltonian_Obj):  # Check if it's a Hamiltonian class object
+        H_k = Hamiltonian.effective_hamiltonian(kx, ky)
+    elif callable(Hamiltonian):  # If it's a callable function
+        H_k = Hamiltonian(kx, ky)
+    elif isinstance(Hamiltonian, np.ndarray):  # If it's a static numpy array
+        H_k = Hamiltonian  # Use it directly
+    else:
+        raise ValueError("Invalid Hamiltonian type. Must be a callable, a numpy array, or a Hamiltonian class object.")
     
+    # Calculate eigenvalues and eigenvectors
     eigenvalues, eigenvectors = get_eigenvalues_and_eigenvectors(H_k)
 
     # Sort the eigenvalues and eigenvectors in descending order
@@ -476,7 +485,7 @@ def eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, eigenvector
 
 # & Calculations in an anglee line
 
-def line_eigenvalues_eigenfunctions(Hamiltonian, k_line, k_angle, dim):
+def line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, dim):
     """
     Calculate eigenvalues and eigenvectors along a line in the kx-ky plane.
 
@@ -491,12 +500,9 @@ def line_eigenvalues_eigenfunctions(Hamiltonian, k_line, k_angle, dim):
     - eigenfunctions: 3D array of eigenfunctions, shape (num_points, dim, dim).
     - phase_factors_array: 2D array of phase factors, shape (num_points, dim).
     """
-    # Define kx and ky along the line
-    line_kx = k_line * np.cos(k_angle)
-    line_ky = k_line * np.sin(k_angle)
-    
+
     # Initialize arrays to store results
-    num_points = len(k_line)
+    num_points = len(line_kx)
     eigenvalues = np.zeros((num_points, dim), dtype=float)
     eigenfunctions = np.zeros((num_points, dim, dim), dtype=complex)
     phase_factors_array = np.zeros((num_points, dim), dtype=float)

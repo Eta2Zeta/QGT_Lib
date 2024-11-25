@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from eigenvalue_calc_lib import spiral_eigenvalues_eigenfunctions
 from QMT_lib import *
-from Hamiltonian import H_THF
+from Hamiltonian_v1 import H_THF
 
 
 

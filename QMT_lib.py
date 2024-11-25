@@ -249,7 +249,7 @@ def QGT_grid(
     return g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array
 
 
-def QGT_line(Hamiltonian, k_line, k_angle, delta_k, dim, band_index):
+def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, dim, band_index):
     """
     Calculate the Quantum Geometric Tensor (QGT) along a line in the kx-ky plane.
 
@@ -269,20 +269,17 @@ def QGT_line(Hamiltonian, k_line, k_angle, delta_k, dim, band_index):
     - trace_values: Array of trace components (g_xx + g_yy) along the line.
     """
     # Step 1: Get eigenvalues and eigenfunctions along the line
-    eigenvalues, eigenfunctions, _ = line_eigenvalues_eigenfunctions(Hamiltonian, k_line, k_angle, dim)
+    eigenvalues, eigenfunctions, _ = line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, dim)
 
-    # Step 2: Define kx and ky along the line
-    line_kx = k_line * np.cos(k_angle)
-    line_ky = k_line * np.sin(k_angle)
 
-    # Step 3: Initialize arrays to store QGT components
+    # Step 2: Initialize arrays to store QGT components
     g_xx_values = []
     g_xy_real_values = []
     g_xy_imag_values = []
     g_yy_values = []
     trace_values = []
 
-    # Step 4: Calculate QGT components at each point along the line
+    # Step 3: Calculate QGT components at each point along the line
     for i, (kx, ky) in enumerate(zip(line_kx, line_ky)):
         eigenvalue = eigenvalues[i]
         eigenfunction = eigenfunctions[i]
