@@ -1,8 +1,8 @@
 import numpy as np
-from indexing_lib import get_spiral_indices, order_grid_points_masked, plot_ordered_grid_3d, plot_ordered_grid_histogram, plot_ordered_grid_2d, unordered_grid_masked, order_grid_points_start_end
 import matplotlib.pyplot as plt
 from itertools import permutations
-from Hamiltonian_v2 import Hamiltonian_Obj
+from .indexing_lib import *
+from .Hamiltonian_v2 import Hamiltonian_Obj
 
 # * Checkers
 def check_eigen_solution(Hamiltonian, kx, ky, eigenvalues, eigenvectors, tolerance=1e-6):

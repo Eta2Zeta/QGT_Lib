@@ -2,7 +2,11 @@
  This library does the essential Caulations for the Quantum Geometric Tensor
 
 
+## How to use it
 
+1. Define your Hamiltonian in Hamiltonian_v2.py in Library
+2. Run Eigenvalues_Calc.py with your Hamiltonian as the Hamiltonian Obj
+3. Run QGT_Calc.py
 
 ## Naming conventions for the QGT calculations on the kx ky grid
 
@@ -24,3 +28,8 @@ max1e2 is the maximum omega value
 
 linear means we are plotting the omega values seperated linearly
 
+
+
+## To Do Next
+Berry Curvature Calculation -> Chern Number
+Polarization changing Asinwt to -Asinwt

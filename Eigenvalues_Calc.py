@@ -1,18 +1,15 @@
 import sys
 import os
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from plotting_lib import *
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
-from Hamiltonian_v1 import *
-from eigenvalue_calc_lib import *
-from Geometry.zones import ZoneDivider
-from Hamiltonian_v2 import * 
+
+# from Library import * 
+from Library.plotting_lib import *
+from Library.Hamiltonian_v1 import *
+from Library.Hamiltonian_v2 import * 
+from Library.eigenvalue_calc_lib import *
+from Library.Geometry.zones import ZoneDivider
 
 
-# Brillouin zone vectors
 
 # Define parameters
 mesh_spacing = 100
@@ -25,19 +22,25 @@ ky = np.linspace(-k_max, k_max, mesh_spacing)
 kx, ky = np.meshgrid(kx, ky)
 z_limit = 5
 
-
-
-Hamiltonian_Obj = TwoOrbitalSpinfulHamiltonian(zeta=0.2, A0=0)
+# Hamiltonian_Obj = THF_Hamiltonian(A0=0)
+Hamiltonian_Obj = TwoOrbitalUnspinfulHamiltonian(zeta=0, A0=0)
 dim = Hamiltonian_Obj.dim
 
 UseExisting = False
 
 
+# Define the temp directory for storing .npy files
+temp_dir = os.path.join(os.getcwd(), "temp")
+
+# Create the temp directory if it doesn't exist
+os.makedirs(temp_dir, exist_ok=True)
+
 # File paths for saving and loading data
-eigenvalues_file = "eigenvalues.npy"
-eigenfunctions_file = "eigenfunctions.npy"
-phasefactors_file = "phasefactors.npy"
-meta_info_file = "meta_info.npy"  # New file for meta information
+eigenvalues_file = os.path.join(temp_dir, "eigenvalues.npy")
+eigenfunctions_file = os.path.join(temp_dir, "eigenfunctions.npy")
+phasefactors_file = os.path.join(temp_dir, "phasefactors.npy")
+meta_info_file = os.path.join(temp_dir, "meta_info.npy")  # New file for meta information
+neighbor_phase_array_file = os.path.join(temp_dir, "neighbor_phase_array.npy")
 
 if UseExisting: 
     # Load the eigenvalues and eigenfunctions from files
@@ -50,7 +53,7 @@ if UseExisting:
         mesh_spacing = meta_info["mesh_spacing"]
         print("Loaded eigenvalues, eigenfunctions, and meta information from files.")
     else:
-        print("Required files not found. Please ensure eigenvalues, eigenfunctions, and meta information are available.")
+        print("Required files not found. Please ensure eigenvalues, eigenfunctions, and meta information are available in the 'temp' directory.")
         sys.exit(1)
 else: 
     # Initialize arrays to store eigenfunctions and eigenvalues with NaNs
@@ -68,7 +71,7 @@ else:
     np.save(eigenvalues_file, eigenvalues)
     np.save(eigenfunctions_file, eigenfunctions)
     np.save(phasefactors_file, phasefactors)
-    np.save('neighbor_phase_array.npy', overall_neighbor_phase_array)
+    np.save(neighbor_phase_array_file, overall_neighbor_phase_array)
 
     # Save meta information
     meta_info = {
@@ -77,7 +80,9 @@ else:
         "mesh_spacing": mesh_spacing
     }
     np.save(meta_info_file, meta_info)
-    print("Saved eigenvalues, eigenfunctions, phasefactors, neighbor phase array, and meta information to files.")
+    print(f"Saved eigenvalues, eigenfunctions, phasefactors, neighbor phase array, and meta information to '{temp_dir}'.")
+
+
 
 def experiment():
     # Experiment Changing the phase of one zone
@@ -100,13 +105,9 @@ def experiment():
 
 eigenvalues = capping_eigenvalues(eigenvalues=eigenvalues, z_limit=z_limit)
 
-plot_eigenvalues_surface(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, color_maps="bwr")
-
+plot_eigenvalues_surface(kx, ky, eigenvalues, dim=dim, z_limit=z_limit)
 
 # plot_eigenfunction_components(kx, ky, eigenfunctions, band_index=0, components_to_plot=[0])
-
-
-
 
 # plot_phases(kx, ky, phasefactors, dim=2)
 

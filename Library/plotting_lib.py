@@ -1,9 +1,8 @@
-# plot_eigenvalues.py
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import math
-from utilities import replace_zeros_with_nan
+from .utilities import replace_zeros_with_nan
 
 
 def plot_eigenvalues_surface(kx, ky, eigenvalues, dim=6, z_limit=300, stride_size=3, color_maps='default'):

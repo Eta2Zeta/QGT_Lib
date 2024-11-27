@@ -88,7 +88,7 @@ class Hamiltonian_Obj:
 
 class TwoOrbitalSpinfulHamiltonian(Hamiltonian_Obj):
     """
-    Hamiltonian for the two-orbital spinful model.
+    Hamiltonian for the two-orbital spinful model. From PRL 130, 226001 eq (1)
     """
     def __init__(self, t=1, mu=0, zeta=0, a=1, omega = np.pi/2, A0 = 0):
         """
@@ -160,12 +160,52 @@ class SquareLatticeHamiltonian(Hamiltonian_Obj):
         return H_k
 
 
+class TwoOrbitalUnspinfulHamiltonian(Hamiltonian_Obj):
+    """
+    Hamiltonian for the two-orbital unspinful model. Modified from PRL 130, 226001 eq (1) ignoring the spin DOF. 
+    """
+    def __init__(self, t=1, mu=0, zeta=0, a=1, omega=np.pi/2, A0=0):
+        """
+        Initialize the two-orbital unspinful Hamiltonian.
+        Parameters:
+        - t: Hopping parameter
+        - mu: Chemical potential
+        - zeta: Parameter for alpha_k
+        - a: Lattice spacing
+        - omega: Driving frequency
+        - A0: Driving amplitude
+        """
+        super().__init__(dim=2, omega=omega, A0=A0)
+        self.t = t
+        self.mu = mu
+        self.zeta = zeta
+        self.a = a
+
+    def compute_static(self, kx, ky):
+        """
+        Compute the static Hamiltonian for the two-orbital unspinful model.
+        """
+        # Compute alpha_k
+        alpha_k = self.zeta * (np.cos(kx * self.a) + np.cos(ky * self.a))
+        
+        # Compute trigonometric terms
+        sin_alpha = np.sin(alpha_k)
+        cos_alpha = np.cos(alpha_k)
+        
+        # Define Hamiltonian matrix
+        H = np.zeros((2, 2), dtype=complex)
+        H[0, 0] = -self.t * self.mu
+        H[1, 1] = -self.t * self.mu
+        H[0, 1] = -self.t * (sin_alpha - 1j * cos_alpha)
+        H[1, 0] = -self.t * (sin_alpha + 1j * cos_alpha)
+        
+        return H
 
     
 class THF_Hamiltonian(Hamiltonian_Obj):
     """
     Hamiltonian for the THF model. This is not optimized for the Magnus expansion yet and it is 
-    with the frequency term included as G. 
+    with the frequency term included as G = A0^2/omega. 
     """
     def __init__(self, nu_star=-50, nu_star_prime=13.0, gamma=-25.0, M=5, G=0.001, omega = np.pi, A0 = 0):
         super().__init__(dim=6, omega=omega, A0=A0)  # THF model has a 6x6 matrix
@@ -175,7 +215,7 @@ class THF_Hamiltonian(Hamiltonian_Obj):
         self.M = M
         self.G = G
     
-    def compute(self, kx, ky):
+    def compute_static(self, kx, ky):
         k = np.sqrt(kx**2 + ky**2)
         theta = np.arctan2(ky, kx)
         
