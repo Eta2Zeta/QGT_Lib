@@ -1,6 +1,7 @@
 import sys
 import os
 import numpy as np
+import pickle
 
 # from Library import * 
 from Library.plotting_lib import *
@@ -26,8 +27,9 @@ z_limit = 5
 Hamiltonian_Obj = TwoOrbitalUnspinfulHamiltonian(zeta=0, A0=0)
 dim = Hamiltonian_Obj.dim
 
-UseExisting = False
 
+
+UseExisting = False
 
 # Define the temp directory for storing .npy files
 temp_dir = os.path.join(os.getcwd(), "temp")
@@ -42,15 +44,18 @@ phasefactors_file = os.path.join(temp_dir, "phasefactors.npy")
 meta_info_file = os.path.join(temp_dir, "meta_info.npy")  # New file for meta information
 neighbor_phase_array_file = os.path.join(temp_dir, "neighbor_phase_array.npy")
 
+
 if UseExisting: 
     # Load the eigenvalues and eigenfunctions from files
     if os.path.exists(eigenvalues_file) and os.path.exists(eigenfunctions_file) and os.path.exists(meta_info_file):
         eigenvalues = np.load(eigenvalues_file)
         eigenfunctions = np.load(eigenfunctions_file)
-        meta_info = np.load(meta_info_file, allow_pickle=True).item()
-        kx = meta_info["kx"]
-        ky = meta_info["ky"]
-        mesh_spacing = meta_info["mesh_spacing"]
+        with open(meta_info_file, "rb") as meta_file:
+            meta_info = pickle.load(meta_file)
+            kx = meta_info["kx"]
+            ky = meta_info["ky"]
+            mesh_spacing = meta_info["mesh_spacing"]
+            Hamiltonian_Obj = meta_info["Hamiltonian_Obj"]
         print("Loaded eigenvalues, eigenfunctions, and meta information from files.")
     else:
         print("Required files not found. Please ensure eigenvalues, eigenfunctions, and meta information are available in the 'temp' directory.")
@@ -77,10 +82,15 @@ else:
     meta_info = {
         "kx": kx,
         "ky": ky,
-        "mesh_spacing": mesh_spacing
+        "mesh_spacing": mesh_spacing,
+        "Hamiltonian_Obj": Hamiltonian_Obj  # Include the Hamiltonian object
     }
-    np.save(meta_info_file, meta_info)
+
+    # Save the metadata using pickle
+    with open(meta_info_file, "wb") as meta_file:
+        pickle.dump(meta_info, meta_file)
     print(f"Saved eigenvalues, eigenfunctions, phasefactors, neighbor phase array, and meta information to '{temp_dir}'.")
+
 
 
 

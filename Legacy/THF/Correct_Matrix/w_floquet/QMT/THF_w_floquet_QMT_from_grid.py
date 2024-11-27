@@ -6,7 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from eigenvalue_calc_lib import spiral_eigenvalues_eigenfunctions
-from QMT_lib import *
+from QGT_lib import *
 
 # Modify dpsi_dx_num and dpsi_dy_num to select the appropriate band for the finite difference calculation
 def dpsi_dx_num_from_grid(eigenfunctions, i, j, delta_k, band_index):

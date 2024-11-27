@@ -193,13 +193,17 @@ class TwoOrbitalUnspinfulHamiltonian(Hamiltonian_Obj):
         cos_alpha = np.cos(alpha_k)
         
         # Define Hamiltonian matrix
-        H = np.zeros((2, 2), dtype=complex)
-        H[0, 0] = -self.t * self.mu
-        H[1, 1] = -self.t * self.mu
-        H[0, 1] = -self.t * (sin_alpha - 1j * cos_alpha)
-        H[1, 0] = -self.t * (sin_alpha + 1j * cos_alpha)
+        H11 = -self.t * self.mu
+        H22 = -self.t * self.mu
+        H12 = -self.t * (sin_alpha - 1j * cos_alpha)
+        H21 = -self.t * (sin_alpha + 1j * cos_alpha)
+
+        H_k = np.array([
+            [H11, H12],
+            [H21, H22]
+        ], dtype=complex)
         
-        return H
+        return H_k
 
     
 class THF_Hamiltonian(Hamiltonian_Obj):

@@ -1,39 +1,40 @@
 import sys
 import os
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from eigenvalue_calc_lib import spiral_eigenvalues_eigenfunctions
-from QMT_lib import *
-from Hamiltonian_v1 import *
-from plotting_lib import *
-from Hamiltonian_v2 import * 
+import pickle
+
+
+# from Library import * 
+from Library.plotting_lib import *
+from Library.Hamiltonian_v1 import *
+from Library.Hamiltonian_v2 import * 
+from Library.eigenvalue_calc_lib import *
+from Library.QGT_lib import *
 
 
 # Define parameters
-band = 3 # Which band to calculate your QMT on
+band = 0 # Which band to calculate your QMT on, starting from 0
 z_cutoff = 1e1 #where to cutoff the plot for the z axis when singularties occur
 
-# Hamiltonian_Obj = TwoOrbitalSpinfulHamiltonian(zeta=0.2, A0=0)
-Hamiltonian_Obj = THF_Hamiltonian()
-dim = Hamiltonian_Obj.dim
 
+# Define the temp directory for storing .npy files
+temp_dir = os.path.join(os.getcwd(), "temp")
 
 # File paths for loading the data
-eigenvalues_file = "eigenvalues.npy"
-eigenfunctions_file = "eigenfunctions.npy"
-meta_info_file = "meta_info.npy"
+eigenvalues_file = os.path.join(temp_dir, "eigenvalues.npy")
+eigenfunctions_file = os.path.join(temp_dir, "eigenfunctions.npy")
+meta_info_file = os.path.join(temp_dir, "meta_info.npy")  # New file for meta information
 
 # Load the eigenvalues and eigenfunctions from files
-if os.path.exists(eigenvalues_file) and os.path.exists(eigenfunctions_file):
+if os.path.exists(eigenvalues_file) and os.path.exists(eigenfunctions_file) and os.path.exists(meta_info_file):
     eigenvalues = np.load(eigenvalues_file)
     eigenfunctions = np.load(eigenfunctions_file)
-    meta_info = np.load(meta_info_file, allow_pickle=True).item()
-    kx = meta_info["kx"]
-    ky = meta_info["ky"]
-    mesh_spacing = meta_info["mesh_spacing"]
+    with open(meta_info_file, "rb") as meta_file:
+        meta_info = pickle.load(meta_file)
+        kx = meta_info["kx"]
+        ky = meta_info["ky"]
+        mesh_spacing = meta_info["mesh_spacing"]
+        Hamiltonian_Obj = meta_info["Hamiltonian_Obj"]
     print("Loaded eigenvalues, eigenfunctions, and meta information from files.")
 else:
     print("Eigenvalues or eigenfunctions files not found. Please ensure they are available at the specified paths.")
@@ -51,16 +52,17 @@ delta_k = max_grid_spacing(kx, ky)
 
 
 # Calculate QGT components
-# g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = QGT_grid(
-#     kx, ky, eigenvalues, eigenfunctions, quantum_geometric_tensor_num, 
-#     Hamiltonian_Obj, delta_k, dim, band_index=band, z_cutoff=z_cutoff
-# )
+g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = QGT_grid(
+    kx, ky, eigenvalues, eigenfunctions, quantum_geometric_tensor_num, 
+    Hamiltonian_Obj, delta_k, band_index=band, z_cutoff=z_cutoff
+)
 
 
 
 
-# plot_QGT_components_3d(kx, ky, g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array)
-# plot_g_components_2d(g_xx_array, g_yy_array, trace_array, k_max=k_max)
+plot_QGT_components_3d(kx, ky, g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array)
+
+# # plot_g_components_2d(g_xx_array, g_yy_array, trace_array, k_max=k_max)
 
 # plot_trace_w_eigenvalue(kx, ky, g_xx_array, g_yy_array, eigenvalues, trace_array, eigenvalue_band=band)
 
@@ -127,7 +129,7 @@ def range_of_G(spacing='log', G_min=1e-6, G_max=0.02, num_points=100):
     np.save(file_name, g_results)
     print(f"Results saved to {file_name}")
 
-range_of_G()
+# range_of_G()
 
 
 # Define the line parameters
