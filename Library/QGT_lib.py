@@ -1,24 +1,11 @@
 import numpy as np
-from eigenvalue_calc_lib import Eigenvector, Eigenvectors, eigenvalues_and_vectors_eigenvalue_ordering, line_eigenvalues_eigenfunctions
-    
+from .eigenvalue_calc_lib import *    
+from .utilities import sign_check
 
-# Sign checker
-def sign_check(vec1, vec2): 
-    if np.dot(vec1, vec2) < 0: 
-        return vec1, -vec2
-    else: 
-        return vec1, vec2
-    
-def get_eigenvalues_and_eigenvectors(Hamiltonian):
-    eigenvalues, eigenvectors = np.linalg.eig(Hamiltonian)
-    eigenvectors = np.transpose(eigenvectors)
-    return eigenvalues, eigenvectors
-
-
+# & Calculation with analytical eigenfunctions
 # Projection operator
 def projection_operator(psi):
     return np.outer(psi, np.conj(psi))
-
 
 # Numerical derivative w.r.t. kx
 def dpsi_dx(psi, kx, ky, delta_k):
@@ -47,65 +34,38 @@ def quantum_geometric_tensor(psi, I, kx, ky, delta_k):
     
     return g_xx, g_xy_real, g_xy_imag, g_yy
 
-# # Numerical derivative w.r.t. kx
-# def dpsi_dx_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction):
-#     eigenvector = Eigenvector(len(eigenfunction))
-#     eigenvector.set_eigenvectors(eigenfunction)
-
-#     Hamiltonian_plus = Hamiltonian(kx + delta_k, ky)
-#     eigenvalues_plus, psi_plus = get_eigenvalues_and_eigenvectors(Hamiltonian_plus)
-#     i_eigenvalue = min(range(len(eigenvalues_plus)), key=lambda i: abs(eigenvalues_plus[i] - eigenvalue))
-#     psi_plus = eigenvector.set_eigenvectors(psi_plus[i_eigenvalue,:])
-
-
-
-#     Hamiltonian_minus = Hamiltonian(kx - delta_k, ky)
-#     eigenvalues_minus, psi_minus = get_eigenvalues_and_eigenvectors(Hamiltonian_minus)
-#     eigenvalues_minus, psi_minus = get_eigenvalues_and_eigenvectors(Hamiltonian_minus)
-#     i_eigenvalue = min(range(len(eigenvalues_minus)), key=lambda i: abs(eigenvalues_minus[i] - eigenvalue))
-#     psi_minus = eigenvector.set_eigenvectors(psi_minus[i_eigenvalue,:])
-
-#     return (psi_plus - psi_minus) / (2 * delta_k)
-
-# # Numerical derivative w.r.t. ky
-# def dpsi_dy_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction):
-#     eigenvector = Eigenvector(len(eigenfunction))
-#     eigenvector.set_eigenvectors(eigenfunction)
-
-#     Hamiltonian_plus = Hamiltonian(kx, ky + delta_k)
-#     eigenvalues_plus, psi_plus = get_eigenvalues_and_eigenvectors(Hamiltonian_plus)
-#     i_eigenvalue = min(range(len(eigenvalues_plus)), key=lambda i: abs(eigenvalues_plus[i] - eigenvalue))
-#     psi_plus = eigenvector.set_eigenvectors(psi_plus[i_eigenvalue,:])
-
-
-#     Hamiltonian_minus = Hamiltonian(kx, ky - delta_k)
-#     eigenvalues_minus, psi_minus = get_eigenvalues_and_eigenvectors(Hamiltonian_minus)
-#     eigenvalues_minus, psi_minus = get_eigenvalues_and_eigenvectors(Hamiltonian_minus)
-#     i_eigenvalue = min(range(len(eigenvalues_minus)), key=lambda i: abs(eigenvalues_minus[i] - eigenvalue))
-#     psi_minus = eigenvector.set_eigenvectors(psi_minus[i_eigenvalue,:])
+# & sanity checks
+# Calculate the quantum geometric tensor components
+def quantum_geometric_tensor_term1(psi, I, kx, ky, delta_k):
+    dpsi_dx_val = dpsi_dx(psi, kx, ky, delta_k)
+    dpsi_dy_val = dpsi_dy(psi, kx, ky, delta_k)
+    dpsi_dx_val, dpsi_dy_val = sign_check(dpsi_dx_val, dpsi_dy_val)
+    g_xx = np.vdot(dpsi_dx_val, I @ dpsi_dx_val).real
+    g_xy_real = np.vdot(dpsi_dx_val, I @ dpsi_dy_val).real
+    g_xy_imag = np.vdot(dpsi_dx_val, I @ dpsi_dy_val).imag
+    g_yy = np.vdot(dpsi_dy_val, I @ dpsi_dy_val).real
     
+    return g_xx, g_xy_real, g_xy_imag, g_yy
 
-#     return (psi_plus - psi_minus) / (2 * delta_k)
 
-# # Quantum geometric tensor components calculation using numerically obtained eigenfunctions
-# def quantum_geometric_tensor_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, dim):
-#     dpsi_dx_val = dpsi_dx_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction)
-#     dpsi_dy_val = dpsi_dy_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction)
-#     psi_val = eigenfunction
+# Calculate the quantum geometric tensor components
+def quantum_geometric_tensor_term2(psi, kx, ky, delta_k):
+    dpsi_dx_val = dpsi_dx(psi, kx, ky, delta_k)
+    dpsi_dy_val = dpsi_dy(psi, kx, ky, delta_k)
+    dpsi_dx_val, dpsi_dy_val = sign_check(dpsi_dx_val, dpsi_dy_val)
+    psi_val = psi(kx, ky)
 
-#     I = np.eye(dim)
-#     P = projection_operator(psi_val)
+    P = projection_operator(psi_val)
     
-#     g_xx = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dx_val).real
-#     g_xy_real = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dy_val).real
-#     g_xy_imag = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dy_val).imag
-#     g_yy = np.vdot(dpsi_dy_val, (I - P) @ dpsi_dy_val).real
+    g_xx = np.vdot(dpsi_dx_val, P @ dpsi_dx_val).real
+    g_xy_real = np.vdot(dpsi_dx_val, P @ dpsi_dy_val).real
+    g_xy_imag = np.vdot(dpsi_dx_val, P @ dpsi_dy_val).imag
+    g_yy = np.vdot(dpsi_dy_val, P @ dpsi_dy_val).real
     
-#     return g_xx, g_xy_real, g_xy_imag, g_yy
+    return g_xx, g_xy_real, g_xy_imag, g_yy
 
 
-
-# * Code above have been outdated, this is the new method to defferenciate by setting the neighboring eigenvectors correctly
+# & Calculation with numerical eigenfunctions
 # Numerical derivative w.r.t. kx
 def dpsi_dx_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index):
     eigenvector_plus = Eigenvectors(len(eigenfunction))
@@ -143,11 +103,12 @@ def dpsi_dy_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_in
     return (psi_plus_ordered[band_index] - psi_minus_ordered[band_index]) / (2 * delta_k)
 
 # Quantum geometric tensor components calculation using numerically obtained eigenfunctions
-def quantum_geometric_tensor_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, dim, band_index):
+def quantum_geometric_tensor_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index):
     dpsi_dx_val = dpsi_dx_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index)
     dpsi_dy_val = dpsi_dy_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index)
     psi_val = eigenfunction[band_index]
 
+    dim = Hamiltonian.dim
     I = np.eye(dim)
     P = projection_operator(psi_val)
     
@@ -159,45 +120,13 @@ def quantum_geometric_tensor_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigen
     return g_xx, g_xy_real, g_xy_imag, g_yy
 
 
-
-
-
-# Calculate the quantum geometric tensor components
-def quantum_geometric_tensor_term1(psi, I, kx, ky, delta_k):
-    dpsi_dx_val = dpsi_dx(psi, kx, ky, delta_k)
-    dpsi_dy_val = dpsi_dy(psi, kx, ky, delta_k)
-    dpsi_dx_val, dpsi_dy_val = sign_check(dpsi_dx_val, dpsi_dy_val)
-    g_xx = np.vdot(dpsi_dx_val, I @ dpsi_dx_val).real
-    g_xy_real = np.vdot(dpsi_dx_val, I @ dpsi_dy_val).real
-    g_xy_imag = np.vdot(dpsi_dx_val, I @ dpsi_dy_val).imag
-    g_yy = np.vdot(dpsi_dy_val, I @ dpsi_dy_val).real
-    
-    return g_xx, g_xy_real, g_xy_imag, g_yy
-
-
-# Calculate the quantum geometric tensor components
-def quantum_geometric_tensor_term2(psi, kx, ky, delta_k):
-    dpsi_dx_val = dpsi_dx(psi, kx, ky, delta_k)
-    dpsi_dy_val = dpsi_dy(psi, kx, ky, delta_k)
-    dpsi_dx_val, dpsi_dy_val = sign_check(dpsi_dx_val, dpsi_dy_val)
-    psi_val = psi(kx, ky)
-
-    P = projection_operator(psi_val)
-    
-    g_xx = np.vdot(dpsi_dx_val, P @ dpsi_dx_val).real
-    g_xy_real = np.vdot(dpsi_dx_val, P @ dpsi_dy_val).real
-    g_xy_imag = np.vdot(dpsi_dx_val, P @ dpsi_dy_val).imag
-    g_yy = np.vdot(dpsi_dy_val, P @ dpsi_dy_val).real
-    
-    return g_xx, g_xy_real, g_xy_imag, g_yy
-
-
 def QGT_grid(
     kx, ky, eigenvalues, eigenfunctions, quantum_geometric_tensor_func, 
-    hamiltonian, delta_k, dim, band_index, z_cutoff=None
+    hamiltonian, delta_k, band_index, z_cutoff=None
 ):
     """
     Calculate the quantum geometric tensor (QGT) components for a kx-ky grid.
+    Order of the calculation is simply row-major order.
 
     Parameters:
     - kx, ky: 2D arrays defining the k-space grid.
@@ -230,7 +159,7 @@ def QGT_grid(
             eigenfunction = eigenfunctions[i, j]
             eigenvalue = eigenvalues[i, j]
             g_xx, g_xy_real, g_xy_imag, g_yy = quantum_geometric_tensor_func(
-                hamiltonian, kx[i, j], ky[i, j], delta_k, eigenvalue, eigenfunction, dim, band_index
+                hamiltonian, kx[i, j], ky[i, j], delta_k, eigenvalue, eigenfunction, band_index
             )
             g_xx_array[i, j] = g_xx
             g_xy_real_array[i, j] = g_xy_real
