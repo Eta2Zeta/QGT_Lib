@@ -48,7 +48,7 @@ def dynamic_THF():
 
     plt.show()
 
-dynamic_THF()
+# dynamic_THF()
 
 def dynamic(g_results_filename):
     k_max = 1 * (np.pi)  # Maximum k value for the first Brillouin zone
@@ -97,4 +97,4 @@ def dynamic(g_results_filename):
     plt.show()
 
 
-# dynamic(g_results_filename="g_results_linear.npy")
+dynamic(g_results_filename="square_lattice_45deg_0x_npio2y_300p_min5e0_max1e2_g_results_linear.npy")
