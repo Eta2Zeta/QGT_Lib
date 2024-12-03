@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from scipy.integrate import quad_vec
 
 
@@ -6,14 +7,15 @@ class Hamiltonian_Obj:
     """
     Base class for defining time-dependent Hamiltonians with driven terms.
     """
-    def __init__(self, dim, omega, A0):
+    def __init__(self, dim, omega, A0=0, polarization='left'):
         """
         Initialize the Hamiltonian with its dimension, driving frequency (omega), and driving amplitude (A0).
         """
         self.dim = dim  # Dimension of the Hamiltonian matrix
         self.omega = omega  # Driving frequency
         self.A0 = A0  # Driving amplitude
-    
+        self.polarization = polarization.lower()  # Polarization type ('left', 'right', or 'custom')
+
     def compute_static(self, kx, ky):
         """
         Compute the static Hamiltonian matrix for a given (kx, ky).
@@ -21,14 +23,21 @@ class Hamiltonian_Obj:
         """
         raise NotImplementedError("Subclasses must implement the 'compute_static' method.")
     
-    def compute_time_dependent(self, t, kx, ky):
+    def compute_driven(self, t, kx, ky):
         """
-        Compute the time-dependent Hamiltonian matrix for a given time t and (kx, ky).
-        Default implementation assumes driving terms are applied to kx and ky.
+        Compute the time-dependent Hamiltonian matrix for a given time t and (kx, ky),
+        based on the polarization type.
         """
-        # Apply the driven terms to kx and ky
-        kx_t = kx + self.A0 * np.cos(self.omega * t)
-        ky_t = ky + self.A0 * np.sin(self.omega * t)
+        if self.polarization == 'left':
+            # Apply left-hand polarized driving
+            kx_t = kx + self.A0 * np.cos(self.omega * t)
+            ky_t = ky + self.A0 * np.sin(self.omega * t)
+        elif self.polarization == 'right':
+            # Apply right-hand polarized driving
+            kx_t = kx + self.A0 * np.cos(self.omega * t)
+            ky_t = ky - self.A0 * np.sin(self.omega * t)
+        else:
+            raise ValueError("Invalid polarization type. Choose 'left' or 'right'.")
         
         # Return the static Hamiltonian evaluated at the transformed kx, ky
         return self.compute_static(kx_t, ky_t)
@@ -37,11 +46,15 @@ class Hamiltonian_Obj:
         """
         Compute the nth Fourier component of the time-dependent Hamiltonian.
         """
+        # start = time.time()
         integral = quad_vec(
-            lambda t: self.compute_time_dependent(t, kx, ky) * np.exp(-1j * n * self.omega * t), 
+            lambda t: self.compute_driven(t, kx, ky) * np.exp(-1j * n * self.omega * t), 
             0, 2 * np.pi / self.omega, 
-            epsrel=1e-8
+            epsrel=1e-7
         )
+        # end = time.time()
+        # print("time is", end - start)
+        # exit()
         return integral[0]
     
     def magnus_first_term(self, kx, ky):
@@ -72,6 +85,7 @@ class Hamiltonian_Obj:
         H_eff = H_0 + (1/omega) * [H1, H-1]
         If A0 = 0, return H_0 directly as the effective Hamiltonian.
         """
+        # start = time.time()
         # Original static Hamiltonian (H_0)
         H_0 = self.compute_static(kx, ky)
         
@@ -84,7 +98,11 @@ class Hamiltonian_Obj:
         
         # Effective Hamiltonian
         H_eff = H_0 + magnus_term
+        # end = time.time()
+        # print("time is", end - start)
+        # exit()
         return H_eff
+
 
 class TwoOrbitalSpinfulHamiltonian(Hamiltonian_Obj):
     """
@@ -137,7 +155,7 @@ class SquareLatticeHamiltonian(Hamiltonian_Obj):
     """
     Hamiltonian for a square lattice model.
     """
-    def __init__(self, t1=1, t2=1/np.sqrt(2), t5=-0.1, omega=2 * np.pi, A0=1.0):
+    def __init__(self, t1=1, t2=1/np.sqrt(2), t5=-0.1, omega=2 * np.pi, A0=0):
         super().__init__(dim=2, omega=omega, A0=A0)  # Pass omega and A0 to the base class
         self.t1 = t1
         self.t2 = t2
@@ -164,7 +182,7 @@ class TwoOrbitalUnspinfulHamiltonian(Hamiltonian_Obj):
     """
     Hamiltonian for the two-orbital unspinful model. Modified from PRL 130, 226001 eq (1) ignoring the spin DOF. 
     """
-    def __init__(self, t=1, mu=0, zeta=0, a=1, omega=np.pi/2, A0=0):
+    def __init__(self, t=1, mu=0, zeta=0, a=1, omega=np.pi/2, A0 = 0):
         """
         Initialize the two-orbital unspinful Hamiltonian.
         Parameters:
@@ -175,7 +193,7 @@ class TwoOrbitalUnspinfulHamiltonian(Hamiltonian_Obj):
         - omega: Driving frequency
         - A0: Driving amplitude
         """
-        super().__init__(dim=2, omega=omega, A0=A0)
+        super().__init__(dim=2, omega=omega, A0 = A0)
         self.t = t
         self.mu = mu
         self.zeta = zeta
@@ -272,7 +290,7 @@ class RashbaHamiltonian(Hamiltonian_Obj):
 
 
 
-class SquareLattice1Hamiltonian(Hamiltonian_Obj):
+class SquareLatticeHamiltonianMod(Hamiltonian_Obj):
     """
     Hamiltonian for the modified square lattice model (Equation 3 from PhysRevLett.106.236804). Not used anymore
     """

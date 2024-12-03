@@ -13,7 +13,7 @@ from Library.Geometry.zones import ZoneDivider
 
 
 # Define parameters
-mesh_spacing = 100
+mesh_spacing = 150
 k_max = 1 * (np.pi)  # Maximum k value for the first Brillouin zone
 
 # Create kx and ky arrays
@@ -21,10 +21,13 @@ kx = np.linspace(-k_max, k_max, mesh_spacing)
 # ky = np.linspace(-(3/2)*k_max, k_max/2, mesh_spacing)
 ky = np.linspace(-k_max, k_max, mesh_spacing)
 kx, ky = np.meshgrid(kx, ky)
-z_limit = 5
+dkx = np.abs(kx[0, 1] - kx[0, 0])  # Spacing in the x-direction (constant for a uniform grid)
+dky = np.abs(ky[1, 0] - ky[0, 0])  # Spacing in the y-direction (constant for a uniform grid)
+z_limit = 10
 
 # Hamiltonian_Obj = THF_Hamiltonian(A0=0)
-Hamiltonian_Obj = TwoOrbitalUnspinfulHamiltonian(zeta=0, A0=0)
+# Hamiltonian_Obj = TwoOrbitalUnspinfulHamiltonian(zeta=0.5, A0=0, mu=2)
+Hamiltonian_Obj = SquareLatticeHamiltonian(A0=1, omega=5e0)
 dim = Hamiltonian_Obj.dim
 
 
@@ -82,6 +85,8 @@ else:
     meta_info = {
         "kx": kx,
         "ky": ky,
+        "dkx": dkx, 
+        "dky": dky,
         "mesh_spacing": mesh_spacing,
         "Hamiltonian_Obj": Hamiltonian_Obj  # Include the Hamiltonian object
     }
@@ -115,10 +120,33 @@ def experiment():
 
 eigenvalues = capping_eigenvalues(eigenvalues=eigenvalues, z_limit=z_limit)
 
-plot_eigenvalues_surface(kx, ky, eigenvalues, dim=dim, z_limit=z_limit)
+plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, color_maps='bwr', norm=None)
 
 # plot_eigenfunction_components(kx, ky, eigenfunctions, band_index=0, components_to_plot=[0])
 
 # plot_phases(kx, ky, phasefactors, dim=2)
 
 # plot_neighbor_phases(kx, ky, overall_neighbor_phase_array, dim=2)
+
+
+
+
+
+# Define the line parameters
+angle_deg = 90  # Line angle in degrees
+k_angle = np.deg2rad(angle_deg) # Convert into Radians
+kx_shift = 0
+# ky_shift = -np.pi/2
+ky_shift = 0
+num_points = 100  # Number of points along the line
+# k_max = 1 * (np.pi)
+k_max = np.sqrt(2) * (np.pi)
+k_line = np.linspace(-k_max, k_max, num_points)
+line_kx = k_line * np.cos(k_angle) + kx_shift
+line_ky = k_line * np.sin(k_angle) + ky_shift
+# plot_k_line_on_grid(line_kx, line_ky, k_max)
+
+eigenvalues, eigenfunctions, _ = line_eigenvalues_eigenfunctions(Hamiltonian_Obj, line_kx, line_ky)
+
+plot_eigenvalues_line(k_line, eigenvalues)
+

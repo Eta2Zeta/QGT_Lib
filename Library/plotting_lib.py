@@ -4,6 +4,61 @@ from mpl_toolkits.mplot3d import Axes3D
 import math
 from .utilities import replace_zeros_with_nan
 
+def plot_k_line_on_grid(line_kx, line_ky, k_max):
+    """
+    Plot the k-path line (line_kx, line_ky) on a 2D grid representing the Brillouin zone.
+
+    Parameters:
+    - line_kx: 1D array of kx values along the line.
+    - line_ky: 1D array of ky values along the line.
+    - k_max: Maximum k-value defining the grid boundary.
+    """
+    # Generate the grid for visualization
+    kx_grid, ky_grid = np.meshgrid(np.linspace(-k_max, k_max, 100), 
+                                   np.linspace(-k_max, k_max, 100))
+
+    # Plot the grid and the line
+    plt.figure(figsize=(8, 8))
+    plt.plot(line_kx, line_ky, color='red', label='k-path line', linewidth=2)  # Plot the line
+    plt.axhline(0, color='black', linewidth=0.5, linestyle='--')  # Optional x-axis
+    plt.axvline(0, color='black', linewidth=0.5, linestyle='--')  # Optional y-axis
+    plt.xlim(-k_max, k_max)
+    plt.ylim(-k_max, k_max)
+    plt.title("k-Path Line on 2D k-Space Grid")
+    plt.xlabel("kx")
+    plt.ylabel("ky")
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+
+def plot_eigenvalues_line(k_line, eigenvalues, dim=None):
+    """
+    Plot eigenvalues for all bands along a 1D k-path.
+
+    Parameters:
+    - k_line: 1D array of k-values along the line.
+    - eigenvalues: 2D array of eigenvalues (shape: [num_points, num_bands]).
+    - dim: Number of bands (optional). If None, it will be inferred from the eigenvalues array.
+    """
+    # Infer the number of bands from eigenvalues if not provided
+    if dim is None:
+        dim = eigenvalues.shape[1]
+
+    # Set up the plot
+    plt.figure(figsize=(10, 6))
+    for band in range(dim):
+        plt.plot(k_line, eigenvalues[:, band], label=f'Band {band + 1}')
+    
+    # Add plot details
+    plt.title('Eigenvalues Along the Line in k-Space')
+    plt.xlabel('k (along the line)')
+    plt.ylabel('Eigenvalue')
+    plt.axhline(0, color='black', linewidth=0.8, linestyle='--')  # Optional: Add a horizontal line at y=0
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
 
 def plot_eigenvalues_surface(kx, ky, eigenvalues, dim=6, z_limit=300, stride_size=3, color_maps='default'):
     """
@@ -30,6 +85,57 @@ def plot_eigenvalues_surface(kx, ky, eigenvalues, dim=6, z_limit=300, stride_siz
         Z = replace_zeros_with_nan(eigenvalues[:, :, band])
         ax.plot_surface(kx, ky, Z, cmap=color_maps[band % len(color_maps)], 
                         rstride=stride_size, cstride=stride_size, alpha=0.8)
+
+    ax.set_title('Eigenvalues for All Bands with Touching Points')
+    ax.set_xlabel('kx')
+    ax.set_ylabel('ky')
+    ax.set_zlabel('Eigenvalue')
+    ax.set_zlim(-z_limit, z_limit)
+
+    plt.show()
+    plt.close()
+
+
+def plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=6, z_limit=300, norm = True, stride_size=3, color_maps='default'):
+    """
+    Plot eigenvalues as 3D surface plots, with an option to specify color maps.
+
+    Parameters:
+    - kx, ky: 2D arrays for the k-space grid.
+    - eigenvalues: 3D array of eigenvalues for each (kx, ky) grid point and band.
+    - dim: Number of eigenvalue bands.
+    - z_limit: Z-axis limit for plotting.
+    - stride_size: Controls the density of plotted surfaces.
+    - color_maps: List of color maps for each band, or a single color map for all bands.
+    """
+    # Default color maps if none is provided
+    if color_maps == 'default':
+        color_maps = ['viridis', 'magma', 'coolwarm', 'plasma', 'inferno', 'cividis']
+    elif isinstance(color_maps, str):
+        color_maps = [color_maps] * dim  # Use the specified color map for all bands
+
+    fig = plt.figure(figsize=(24, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot each band and add a color bar
+    for band in range(dim):
+        Z = replace_zeros_with_nan(eigenvalues[:, :, band])
+        cmap = plt.get_cmap(color_maps[band % len(color_maps)])
+        if norm is not None: 
+            norm = plt.Normalize(vmin=-z_limit, vmax=z_limit)
+        else: 
+            norm = None
+        
+        # Plot the surface
+        surf = ax.plot_surface(kx, ky, Z, cmap=cmap, norm=norm,
+                               rstride=stride_size, cstride=stride_size, alpha=0.8)
+
+        # Add a color bar
+        mappable = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        mappable.set_array(Z)
+        cbar = fig.colorbar(mappable, ax=ax, shrink=0.5, aspect=10, pad=0.01)
+        cbar.set_label(f'Band {band + 1} Eigenvalues', fontsize=10)
+
 
     ax.set_title('Eigenvalues for All Bands with Touching Points')
     ax.set_xlabel('kx')
@@ -256,16 +362,20 @@ def plot_neighbor_phases(kx, ky, overall_neighbor_phase_array, dim=6, z_limit=(-
     plt.show()
     plt.close()
 
-def plot_QGT_components_3d(kx, ky, g_xx_array, g_xy_array, g_yx_array, g_yy_array, stride_size=3):
+def plot_QGT_components_3d(kx, ky, g_xx_array, g_xy_array, g_xy_array_imag, g_yy_array, stride_size=3):
     """
     Plot g_xx, g_xy, g_yx, and g_yy arrays as 3D surface plots in a single figure.
 
     Parameters:
     - kx, ky: 2D arrays for the k-space grid.
-    - g_xx_array, g_xy_array, g_yx_array, g_yy_array: 2D arrays to be plotted as surfaces.
+    - g_xx_array, g_xy_array, g_xy_array_imag, g_yy_array: 2D arrays to be plotted as surfaces.
     - stride_size: Controls the density of points in the surface plot.
     """
     fig = plt.figure(figsize=(24, 6))
+
+    # Determine common z-limits for g_xy_array (real) and g_xy_array_imag (imaginary)
+    g_xy_min = min(np.min(g_xy_array), np.min(g_xy_array_imag))
+    g_xy_max = max(np.max(g_xy_array), np.max(g_xy_array_imag))
 
     # Plot g_xx_array
     ax1 = fig.add_subplot(141, projection='3d')
@@ -275,21 +385,23 @@ def plot_QGT_components_3d(kx, ky, g_xx_array, g_xy_array, g_yx_array, g_yy_arra
     ax1.set_ylabel('ky')
     ax1.set_zlabel('$g_{xx}$')
 
-    # Plot g_xy_array
+    # Plot g_xy_array (real part)
     ax2 = fig.add_subplot(142, projection='3d')
     ax2.plot_surface(kx, ky, g_xy_array, cmap='plasma', rstride=stride_size, cstride=stride_size)
     ax2.set_title('Numerical $g_{xy}$ (real part)')
     ax2.set_xlabel('kx')
     ax2.set_ylabel('ky')
-    ax2.set_zlabel('$g_{xy}$')
+    ax2.set_zlabel('$g_{xy}$ (real)')
+    ax2.set_zlim(g_xy_min, g_xy_max)  # Set z-limits
 
-    # Plot g_yx_array
+    # Plot g_xy_array_imag (imaginary part)
     ax3 = fig.add_subplot(143, projection='3d')
-    ax3.plot_surface(kx, ky, g_yx_array, cmap='plasma', rstride=stride_size, cstride=stride_size)
-    ax3.set_title('Numerical $g_{yx}$ (real part)')
+    ax3.plot_surface(kx, ky, g_xy_array_imag, cmap='plasma', rstride=stride_size, cstride=stride_size)
+    ax3.set_title('Numerical $g_{xy}$ (imaginary part)')
     ax3.set_xlabel('kx')
     ax3.set_ylabel('ky')
-    ax3.set_zlabel('$g_{yx}$')
+    ax3.set_zlabel('$g_{xy}$ (imag)')
+    ax3.set_zlim(g_xy_min, g_xy_max)  # Set z-limits
 
     # Plot g_yy_array
     ax4 = fig.add_subplot(144, projection='3d')

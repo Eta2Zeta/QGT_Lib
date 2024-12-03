@@ -178,7 +178,7 @@ def QGT_grid(
     return g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array
 
 
-def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, dim, band_index):
+def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, band_index):
     """
     Calculate the Quantum Geometric Tensor (QGT) along a line in the kx-ky plane.
 
@@ -198,8 +198,20 @@ def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, dim, band_index):
     - trace_values: Array of trace components (g_xx + g_yy) along the line.
     """
     # Step 1: Get eigenvalues and eigenfunctions along the line
-    eigenvalues, eigenfunctions, _ = line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, dim)
+    eigenvalues, eigenfunctions, _ = line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky)
 
+    # Ensure eigenvalues is at least 2D (e.g., [points, bands])
+    eigenvalues = np.asarray(eigenvalues)
+
+    if eigenvalues.ndim == 1:
+        # If eigenvalues is 1D (e.g., just one band at each k-point)
+        eigenvalues_band = eigenvalues
+    elif eigenvalues.ndim >= 2:
+        # General case: eigenvalues is 2D or more, extract the specified band
+        eigenvalues_band = eigenvalues[..., band_index]
+    else:
+        raise ValueError("Invalid eigenvalues shape.")
+    
 
     # Step 2: Initialize arrays to store QGT components
     g_xx_values = []
@@ -214,7 +226,7 @@ def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, dim, band_index):
         eigenfunction = eigenfunctions[i]
 
         g_xx, g_xy_real, g_xy_imag, g_yy = quantum_geometric_tensor_num(
-            Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, dim, band_index
+            Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index
         )
 
         g_xx_values.append(g_xx)
@@ -230,4 +242,4 @@ def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, dim, band_index):
     g_yy_values = np.array(g_yy_values)
     trace_values = np.array(trace_values)
 
-    return g_xx_values, g_xy_real_values, g_xy_imag_values, g_yy_values, trace_values
+    return eigenvalues_band, g_xx_values, g_xy_real_values, g_xy_imag_values, g_yy_values, trace_values

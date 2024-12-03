@@ -1,78 +1,60 @@
-import numpy as np
-import matplotlib.pyplot as plt
+from tqdm import tqdm  # Import tqdm for progress bar
 
-# Constants and Component Values
-Z0 = 50  # Characteristic Impedance in Ohms
-R = 50e3  # Resistance in Ohms
-L = 7.9577e-9  # Inductance in Henries
-C = 3.0407e-12  # Capacitance in Farads
-Cc = 0.1424e-12  # Coupling Capacitance in Farads
+def range_of_omega(spacing='log', omega_min=5e0, omega_max=1e2, num_points=10):
+    """
+    Calculate QGT for a range of omega values and save the results to a file.
+    The output file name is dynamically set based on the spacing type.
 
-# Frequency Range: 0.98 GHz to 1.02 GHz
-f_start = 0.98e9  # 0.98 GHz
-f_end = 1.02e9    # 1.02 GHz
-num_points = 1000  # Number of frequency points
-frequencies = np.linspace(f_start, f_end, num_points)
-omega = 2 * np.pi * frequencies  # Angular frequency
+    Parameters:
+    - spacing: Type of spacing for omega values ('log' or 'linear').
+    - omega: Minimum value of omega.
+    - omega: Maximum value of omega.
+    - num_points: Number of omega values.
 
-# Calculate Impedance Z for each frequency
-# Z = Zc + Z_parallel
-# Zc = 1 / (jωCc)
-# Z_parallel = 1 / (1/R + 1/(jωL) + jωC)
+    Returns:
+    - None: Saves the results to a file.
+    """
+    # Give some amplitude to the light
+    Hamiltonian_Obj.A0 = 100
 
-# Calculate Z_parallel
-Y_R = 1 / R  # Admittance of Resistor
-Y_L = 1 / (1j * omega * L)  # Admittance of Inductor
-Y_C = 1j * omega * C  # Admittance of Capacitor
+    # Generate omega values based on the specified spacing
+    if spacing == 'log':
+        omega_values = np.logspace(np.log10(omega_max), np.log10(omega_min), num_points)
+        file_name = "g_results_log.npy"
+    elif spacing == 'linear':
+        omega_values = np.linspace(omega_max, omega_min, num_points)
+        file_name = "g_results_linear.npy"
+    else:
+        raise ValueError("Invalid spacing. Choose 'log' or 'linear'.")
 
-Y_parallel = Y_R + Y_L + Y_C  # Total Admittance of Parallel Branch
-Z_parallel = 1 / Y_parallel  # Impedance of Parallel Branch
+    # Initialize a list to store results for each G
+    g_results = []
 
-# Calculate Zc
-Zc = 1 / (1j * omega * Cc)  # Impedance of Coupling Capacitor
+    # Use tqdm to create a progress bar for the loop
+    for omega in tqdm(omega_values, desc="Processing omega values", unit="omega"):
+        # Create the Hamiltonian for the current G
+        Hamiltonian_Obj.omega = omega
+        
+        # Calculate QGT along the line
+        g_xx, g_xy_real, g_xy_imag, g_yy, trace = QGT_line(
+            Hamiltonian_Obj, line_kx, line_ky, delta_k, band_index=band
+        )
+        
+        # Store the results as a dictionary for this G
+        g_results.append({
+            'omega': omega,
+            'g_xx': g_xx,
+            'g_xy_real': g_xy_real,
+            'g_xy_imag': g_xy_imag,
+            'g_yy': g_yy,
+            'trace': trace,
+        })
 
-# Total Shunt Impedance Z
-Z_total = Zc + Z_parallel
+    # Save the results to an .npy file with the dynamically set name
+    np.save(file_name, g_results)
+    print(f"Results saved to {file_name}")
 
-# Calculate Scattering Matrix S
-# From part (d): S = 1 / (2 + Z0 / Z) * [ -Z0 / Z, 2; 2, -Z0 / Z ]
-# However, to generalize for complex Z, it's better to compute as follows:
 
-# Calculate denominator for S matrix
-denominator = Z0 + 2*Z_total
+range_of_omega(spacing="linear")
 
-# S11 and S21
-S11 = -Z0 / denominator
-S21 = 2*Z_total / denominator
-
-# Calculate |S11| and |S21|
-abs_S11 = np.abs(S11)
-abs_S21 = np.abs(S21)
-
-# Calculate Power Absorption Coefficient eta_abs
-eta_abs = 1 - abs_S11**2 - abs_S21**2
-
-# Plotting the Results
-plt.figure(figsize=(12, 8))
-
-# Plot |S11| and |S21|
-plt.subplot(2, 1, 1)
-plt.plot(frequencies/1e9, abs_S11, label=r'$|S_{11}|$ (Reflection)')
-plt.plot(frequencies/1e9, abs_S21, label=r'$|S_{21}|$ (Transmission)')
-plt.title('Reflection and Transmission Coefficients vs Frequency')
-plt.xlabel('Frequency (GHz)')
-plt.ylabel('Magnitude')
-plt.legend()
-plt.grid(True)
-
-# Plot eta_abs
-plt.subplot(2, 1, 2)
-plt.plot(frequencies/1e9, eta_abs, color='purple', label=r'$\eta_{\mathrm{abs}}$ (Power Absorption)')
-plt.title('Power Absorption Coefficient vs Frequency')
-plt.xlabel('Frequency (GHz)')
-plt.ylabel(r'$\eta_{\mathrm{abs}}$')
-plt.legend()
-plt.grid(True)
-
-plt.tight_layout()
-plt.show()
+exit()
