@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 from itertools import permutations
 from .indexing_lib import *
 from .Hamiltonian_v2 import Hamiltonian_Obj
@@ -483,9 +484,9 @@ def eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, eigenvector
 
 
 
-# & Calculations in an anglee line
+# & Calculations in an angled line
 
-def line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, dim):
+def line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky):
     """
     Calculate eigenvalues and eigenvectors along a line in the kx-ky plane.
 
@@ -500,7 +501,7 @@ def line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, dim):
     - eigenfunctions: 3D array of eigenfunctions, shape (num_points, dim, dim).
     - phase_factors_array: 2D array of phase factors, shape (num_points, dim).
     """
-
+    dim = Hamiltonian.dim
     # Initialize arrays to store results
     num_points = len(line_kx)
     eigenvalues = np.zeros((num_points, dim), dtype=float)
@@ -542,7 +543,7 @@ def grid_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim):
             
     return eigenvalues, eigenfunctions
 
-def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, phase_correction = True):
+def spiral_eigenvalues_eigenfunctions_nobar(Hamiltonian, kx, ky, mesh_spacing, dim, phase_correction = True):
     # Initialize arrays to store eigenfunctions and eigenvalues
     eigenfunctions = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
     eigenvalues = np.zeros((mesh_spacing, mesh_spacing, dim), dtype=float)
@@ -569,6 +570,61 @@ def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, ph
 
     return eigenvalues, eigenfunctions, phase_factors_array, neighbor_phase_array_after_calc
 
+
+def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, phase_correction=True):
+    """
+    Calculate eigenvalues and eigenfunctions on a spiral grid.
+
+    Parameters:
+    - Hamiltonian: The Hamiltonian object.
+    - kx, ky: k-space grid arrays.
+    - mesh_spacing: The number of points in the grid.
+    - dim: The dimension of the Hamiltonian.
+    - phase_correction: Whether to apply phase correction.
+
+    Returns:
+    - eigenvalues: Array of eigenvalues.
+    - eigenfunctions: Array of eigenfunctions.
+    - phase_factors_array: Array of phase factors.
+    - neighbor_phase_array_after_calc: Array of neighbor phase differences.
+    """
+    # Initialize arrays to store eigenfunctions and eigenvalues
+    eigenfunctions = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
+    eigenvalues = np.zeros((mesh_spacing, mesh_spacing, dim), dtype=float)
+    phase_factors_array = np.zeros((mesh_spacing, mesh_spacing, dim), dtype=float)
+
+    # Get spiral indices
+    spiral_indices = get_spiral_indices(mesh_spacing)
+
+    eigenvector = Eigenvectors(dim)
+
+    # Create a progress bar for the nested loop
+    with tqdm(total=mesh_spacing * mesh_spacing, desc="Processing kx-ky grid", unit="point") as pbar:
+        for i in range(mesh_spacing):
+            for j in range(mesh_spacing):
+                k, l = spiral_indices[i, j]
+                if phase_correction:
+                    vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(
+                        Hamiltonian, kx[k, l], ky[k, l], eigenvector=eigenvector
+                    )
+                else:
+                    vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(
+                        Hamiltonian, kx[k, l], ky[k, l], eigenvector=None
+                    )
+                phase_factors = eigenvector.get_phase_factors()
+
+                # Store results
+                eigenfunctions[k, l] = vecs
+                eigenvalues[k, l] = vals
+                phase_factors_array[k, l] = phase_factors
+
+                # Update the progress bar
+                pbar.update(1)
+
+    # Calculate neighbor phase array after the main loop
+    neighbor_phase_array_after_calc = calculate_neighbor_phase_array(eigenfunctions, mesh_spacing, dim)
+
+    return eigenvalues, eigenfunctions, phase_factors_array, neighbor_phase_array_after_calc
 
 
 def phase_corrected_spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim):
