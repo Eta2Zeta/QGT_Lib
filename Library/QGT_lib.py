@@ -1,4 +1,3 @@
-import numpy as np
 from .eigenvalue_calc_lib import *    
 from .utilities import sign_check
 
@@ -125,8 +124,7 @@ def QGT_grid(
     hamiltonian, delta_k, band_index, z_cutoff=None
 ):
     """
-    Calculate the quantum geometric tensor (QGT) components for a kx-ky grid.
-    Order of the calculation is simply row-major order.
+    Calculate the quantum geometric tensor (QGT) components for a kx-ky grid with a progress bar.
 
     Parameters:
     - kx, ky: 2D arrays defining the k-space grid.
@@ -135,7 +133,6 @@ def QGT_grid(
     - quantum_geometric_tensor_func: Function to calculate QGT components.
     - hamiltonian: The Hamiltonian function for the system.
     - delta_k: Small step for numerical differentiation.
-    - dim: Dimension of the system.
     - band_index: Band index for which QGT is calculated.
     - z_cutoff: Optional maximum value for clipping the QGT components.
 
@@ -153,19 +150,28 @@ def QGT_grid(
     g_yy_array = np.zeros(kx.shape)
     trace_array = np.zeros(kx.shape)
 
-    # Calculate tensor components for each point in the Brillouin zone
-    for i in range(kx.shape[0]):
-        for j in range(kx.shape[1]):
-            eigenfunction = eigenfunctions[i, j]
-            eigenvalue = eigenvalues[i, j]
-            g_xx, g_xy_real, g_xy_imag, g_yy = quantum_geometric_tensor_func(
-                hamiltonian, kx[i, j], ky[i, j], delta_k, eigenvalue, eigenfunction, band_index
-            )
-            g_xx_array[i, j] = g_xx
-            g_xy_real_array[i, j] = g_xy_real
-            g_xy_imag_array[i, j] = g_xy_imag
-            g_yy_array[i, j] = g_yy
-            trace_array[i, j] = g_xx + g_yy
+    total_points = kx.shape[0] * kx.shape[1]  # Total number of k-points
+
+    # Create a progress bar for the nested loop
+    with tqdm(total=total_points, desc="Computing QGT grid", unit="point") as pbar:
+        for i in range(kx.shape[0]):
+            for j in range(kx.shape[1]):
+                eigenfunction = eigenfunctions[i, j]
+                eigenvalue = eigenvalues[i, j]
+
+                g_xx, g_xy_real, g_xy_imag, g_yy = quantum_geometric_tensor_func(
+                    hamiltonian, kx[i, j], ky[i, j], delta_k, eigenvalue, eigenfunction, band_index
+                )
+
+                # Store computed QGT components
+                g_xx_array[i, j] = g_xx
+                g_xy_real_array[i, j] = g_xy_real
+                g_xy_imag_array[i, j] = g_xy_imag
+                g_yy_array[i, j] = g_yy
+                trace_array[i, j] = g_xx + g_yy
+
+                # Update progress bar
+                pbar.update(1)
 
     # Apply the cutoff if specified
     if z_cutoff is not None:
@@ -176,6 +182,7 @@ def QGT_grid(
         trace_array = np.clip(trace_array, None, z_cutoff)
 
     return g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array
+
 
 
 def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, band_index):
@@ -198,7 +205,7 @@ def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, band_index):
     - trace_values: Array of trace components (g_xx + g_yy) along the line.
     """
     # Step 1: Get eigenvalues and eigenfunctions along the line
-    eigenvalues, eigenfunctions, _ = line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky)
+    eigenvalues, eigenfunctions, _ = line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, band_index)
 
     # Ensure eigenvalues is at least 2D (e.g., [points, bands])
     eigenvalues = np.asarray(eigenvalues)
