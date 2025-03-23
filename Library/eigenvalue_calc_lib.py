@@ -3,7 +3,9 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from itertools import permutations
 from .indexing_lib import *
-from .Hamiltonian_v2 import Hamiltonian_Obj
+from .Hamiltonian_v2 import hamiltonian
+from .Hamiltonian_helper import get_Hamiltonian
+from .Eigenvector import *
 
 # * Checkers
 def check_eigen_solution(Hamiltonian, kx, ky, eigenvalues, eigenvectors, tolerance=1e-6):
@@ -37,7 +39,6 @@ def check_eigen_solution(Hamiltonian, kx, ky, eigenvalues, eigenvectors, toleran
             valid = False
 
     return valid
-
 
 
 # * Phase Calculations
@@ -250,161 +251,6 @@ def align_regions(eigenfunctions, regions, num_regions, dim):
     return eigenfunctions
 
 
-class Eigenvector:
-    def __init__(self, dimension):
-        self.dimension = dimension
-        self.previous_eigenvector = None
-        self.previous_kx = None
-        self.previous_ky = None
-        self.phase_factor = None
-
-    def set_dimension(self, dim):
-        self.dimension = dim
-
-    def set_eigenvectors(self, new_eigenvector):
-        if self.previous_eigenvector is not None:
-            dot_product = np.vdot(self.previous_eigenvector, new_eigenvector)
-            phase_diff = np.angle(dot_product)
-            phase_factor = np.exp(-1j * phase_diff)
-            new_eigenvector = new_eigenvector * phase_factor
-
-
-        self.previous_eigenvector = new_eigenvector
-        return new_eigenvector
-
-
-class Eigenvectors:
-    def __init__(self, dimension):
-        self.dimension = dimension
-        self.previous_eigenvectors = None
-        self.previous_eigenvalues = None
-        self.previous_kx = None
-        self.previous_ky = None
-        self.phase_factor = None
-
-    def set_dimension(self, dim):
-        self.dimension = dim
-
-    # If the solutions are already ordered by eigenvalues, you can use this to just correct the phase factor of the eigenvalues
-    def set_eigenvectors_eigenvalue_preordered(self, new_eigenvectors, new_eigenvalues, kx, ky, ignore_small_phase_diff=False, phase_diff_threshold=0.2):
-        # Initialize phase_factor_array with the correct dimension
-        phase_factor_array = np.zeros(self.dimension, dtype=complex)
-        
-        if self.previous_eigenvectors is not None:
-            for i in range(len(new_eigenvectors)):
-                dot_product = np.vdot(self.previous_eigenvectors[i], new_eigenvectors[i])
-                phase_diff = np.angle(dot_product)
-                
-                if ignore_small_phase_diff and abs(phase_diff) < phase_diff_threshold:
-                    # Ignore small phase differences if the option is set
-                    phase_factor = 1.0  # No correction applied
-                else:
-                    phase_factor = np.exp(-1j * phase_diff)
-                
-                phase_factor_array[i] = phase_factor
-                new_eigenvectors[i] = new_eigenvectors[i] * phase_factor
-        else:
-            # Sort by the real part of eigenvalues for the first set
-            sorted_indices = np.argsort(-np.real(new_eigenvalues))
-            new_eigenvectors = [new_eigenvectors[i] for i in sorted_indices]
-            new_eigenvalues = [new_eigenvalues[i] for i in sorted_indices]
-        
-        self.previous_eigenvectors = new_eigenvectors
-        self.previous_kx = kx
-        self.previous_ky = ky
-        self.phase_factor = phase_factor_array
-        
-        return new_eigenvectors
-
-
-    # Eigenvector ordered
-    def set_eigenvectors_eigenvector_ordered(self, new_eigenvectors, new_eigenvalues, kx, ky):
-        # Initialize phase_factor_array with the correct dimension
-        phase_factor_array = np.zeros(self.dimension, dtype=complex)
-        
-        if self.previous_eigenvectors is not None and self.previous_eigenvalues is not None:
-            best_permutation = None
-            min_phase_diff = np.inf
-            
-            # Check all permutations of the new eigenvectors and corresponding eigenvalues
-            for perm in permutations(range(self.dimension)):
-                total_phase_diff = 0
-
-                for i in range(self.dimension):
-                    previous_vector = self.previous_eigenvectors[i]
-                    current_vector = new_eigenvectors[perm[i]]
-                    dot_product = np.abs(np.vdot(previous_vector, current_vector))
-
-                    # Calculate the phase difference
-                    phase_diff = np.abs(1 - dot_product)
-                    total_phase_diff += phase_diff
-                
-                # Update the best permutation if this one is better
-                if total_phase_diff < min_phase_diff:
-                    min_phase_diff = total_phase_diff
-                    best_permutation = perm
-            
-            # Reorder the new eigenvectors and eigenvalues according to the best permutation
-            new_eigenvectors = [new_eigenvectors[i] for i in best_permutation]
-            new_eigenvalues = [new_eigenvalues[i] for i in best_permutation]
-            phase_factor_array = np.array([np.vdot(self.previous_eigenvectors[i], new_eigenvectors[i]) for i in range(self.dimension)], dtype=complex)
-
-            # Check for the correct sign alignment of the eigenvalues
-            dot_eigenvalues = np.real(np.vdot(self.previous_eigenvalues, new_eigenvalues))
-            if dot_eigenvalues < 0:
-                new_eigenvectors = [-v for v in new_eigenvectors]
-                new_eigenvalues = [-v for v in new_eigenvalues]
-
-        else:
-            # Sort by the real part of eigenvalues for the first set
-            sorted_indices = np.argsort(-np.real(new_eigenvalues))
-            new_eigenvectors = [new_eigenvectors[i] for i in sorted_indices]
-            new_eigenvalues = [new_eigenvalues[i] for i in sorted_indices]
-
-        self.previous_eigenvectors = new_eigenvectors
-        self.previous_eigenvalues = new_eigenvalues
-        self.previous_kx = kx
-        self.previous_ky = ky
-        self.phase_factor = phase_factor_array
-        return new_eigenvalues, new_eigenvectors
-    
-
-    
-    def set_eigenvectors_eigenvector_reordered(self, new_eigenvectors, new_eigenvalues, kx, ky):
-        """
-        Reorder only the third and fourth eigenvectors (and corresponding eigenvalues) based on the phase continuity condition.
-        """
-        if self.previous_eigenvectors is not None:
-            # Extract relevant eigenvectors (3rd and 4th)
-            previous_vectors = [self.previous_eigenvectors[0], self.previous_eigenvectors[1]]
-            current_vectors = [new_eigenvectors[0], new_eigenvectors[1]]
-
-            # Compute phase differences for the two possible reorderings
-            phase_diff_33_44 = np.abs(1 - np.abs(np.vdot(previous_vectors[0], current_vectors[0]))) + \
-                            np.abs(1 - np.abs(np.vdot(previous_vectors[1], current_vectors[1])))
-            
-            phase_diff_34_43 = np.abs(1 - np.abs(np.vdot(previous_vectors[0], current_vectors[1]))) + \
-                            np.abs(1 - np.abs(np.vdot(previous_vectors[1], current_vectors[0])))
-            if phase_diff_34_43 - phase_diff_33_44 < 1: 
-                print(phase_diff_34_43 - phase_diff_33_44)
-            # Choose the best reordering
-            if phase_diff_34_43 < phase_diff_33_44:
-                print("hello")
-                # Swap the 3rd and 4th eigenvectors and their corresponding eigenvalues if it results in a smaller phase difference
-                new_eigenvectors[0], new_eigenvectors[1] = new_eigenvectors[1], new_eigenvectors[0]
-                new_eigenvalues[0], new_eigenvalues[1] = new_eigenvalues[1], new_eigenvalues[0]
-
-        # Update previous eigenvectors and eigenvalues for the next iteration
-        self.previous_eigenvectors = new_eigenvectors
-        self.previous_eigenvalues = new_eigenvalues
-        self.previous_kx = kx
-        self.previous_ky = ky
-        
-        return new_eigenvectors, new_eigenvalues
-
-
-    def get_phase_factors(self):
-        return self.phase_factor
 
 # * Basic getting eigenvalues and eigenvectors 
 
@@ -435,33 +281,29 @@ def eigenvalues_and_vectors_eigenvector_ordering(Hamiltonian, kx, ky, eigenvecto
     
     return eigenvalues, eigenvectors
 
-def eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, eigenvector: 'Eigenvectors' = None, zone_num=None):
+def eigenvalues_and_vectors_eigenvalue_ordering(
+    Hamiltonian, kx, ky, eigenvector: 'Eigenvectors' = None, zone_num=None, band_index=None
+    ):
     """
     Calculate eigenvalues and eigenvectors, with optional reordering based on the zone number.
-
-    If the zone number is odd, the order between the 3rd and 4th eigenvalues and eigenvectors is reversed.
+    Also calculates the maximum perturbation strength for a given band index.
 
     Parameters:
-    - Hamiltonian: A function, a numpy array, or a Hamiltonian class object that returns the Hamiltonian matrix for a given kx and ky.
-    - kx: Just a number. The kx value for which to calculate the eigenvalues and eigenvectors.
-    - ky: Just a number. The ky value for which to calculate the eigenvalues and eigenvectors.
+    - Hamiltonian: The Hamiltonian object.
+    - kx: A number representing the kx value.
+    - ky: A number representing the ky value.
     - eigenvector: An optional Eigenvector object for phase correction.
-    - zone_num: An optional integer specifying the zone number. If odd, the 3rd and 4th eigenvalues/eigenvectors are swapped.
+    - zone_num: An optional integer specifying the zone number. If odd, swaps the 3rd and 4th eigenvalues/eigenvectors.
+    - band_index: Index of the band to compute perturbation strength.
 
     Returns:
     - eigenvalues: The sorted eigenvalues.
     - eigenvectors: The sorted and possibly reordered eigenvectors.
+    - max_perturbation: Maximum perturbation strength for the given band (or None if band_index is None).
     """
-    # Determine how to compute the Hamiltonian matrix
-    if isinstance(Hamiltonian, Hamiltonian_Obj):  # Check if it's a Hamiltonian class object
-        H_k = Hamiltonian.effective_hamiltonian(kx, ky)
-    elif callable(Hamiltonian):  # If it's a callable function
-        H_k = Hamiltonian(kx, ky)
-    elif isinstance(Hamiltonian, np.ndarray):  # If it's a static numpy array
-        H_k = Hamiltonian  # Use it directly
-    else:
-        raise ValueError("Invalid Hamiltonian type. Must be a callable, a numpy array, or a Hamiltonian class object.")
-    
+
+    H_k, H_prime = get_Hamiltonian(Hamiltonian, kx, ky)
+
     # Calculate eigenvalues and eigenvectors
     eigenvalues, eigenvectors = get_eigenvalues_and_eigenvectors(H_k)
 
@@ -479,14 +321,63 @@ def eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, eigenvector
     # Set the new eigenvectors with phase correction
     if eigenvector is not None:
         eigenvectors = eigenvector.set_eigenvectors_eigenvalue_preordered(eigenvectors, eigenvalues, kx, ky, ignore_small_phase_diff=False)
+
+    # Initialize max perturbation strength
+    max_perturbation = None
+
+    # Compute the perturbation strength if band_index is specified
+    if band_index is not None:
+        num_bands = len(eigenvalues)
+
+        # Ensure the band index is within valid range
+        if not (0 <= band_index < num_bands):
+            raise ValueError(f"Invalid band_index {band_index}. Must be between 0 and {num_bands-1}.")
+
+        perturbation_values = []
+
+        # Check if the band is at the lower edge (band 0)
+        if band_index == 0:
+            # Compute only for (0,1)
+            n, m = 0, 1
+            delta_E = eigenvalues[n] - eigenvalues[m]
+            if delta_E != 0:
+                pert_strength = abs(eigenvectors[n].conj().T @ H_prime @ eigenvectors[m]) / delta_E
+                perturbation_values.append(pert_strength)
+
+        # Check if the band is at the upper edge (last band)
+        elif band_index == num_bands - 1:
+            # Compute only for (last-1, last)
+            n, m = num_bands - 2, num_bands - 1
+            delta_E = eigenvalues[n] - eigenvalues[m]
+            if delta_E != 0:
+                pert_strength = abs(eigenvectors[n].conj().T @ H_prime @ eigenvectors[m]) / delta_E
+                A = eigenvectors[n].conj().T 
+                B = H_prime
+                C = eigenvectors[m]
+                perturbation_values.append(pert_strength)
+
+        # Otherwise, compute for both (band-1, band) and (band, band+1)
+        else:
+            for m in [band_index - 1, band_index + 1]:
+                n = band_index
+                delta_E = eigenvalues[n] - eigenvalues[m]
+                if delta_E != 0:
+                    pert_strength = abs(eigenvectors[n].conj().T @ H_prime @ eigenvectors[m]) / delta_E
+                    perturbation_values.append(pert_strength)
+
+        # Find the maximum perturbation strength
+        max_perturbation = max(perturbation_values) if perturbation_values else 0
     
-    return eigenvalues, eigenvectors
+    if max_perturbation is not None:
+        return eigenvalues, eigenvectors, max_perturbation
+    else:   
+        return eigenvalues, eigenvectors
 
 
 
 # & Calculations in an angled line
 
-def line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky):
+def line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, band_index):
     """
     Calculate eigenvalues and eigenvectors along a line in the kx-ky plane.
 
@@ -512,7 +403,7 @@ def line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky):
 
     # Loop through each point along the line
     for i, (kx, ky) in enumerate(zip(line_kx, line_ky)):
-        vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, eigenvector)
+        vals, vecs, pert = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, eigenvector, band_index=band_index)
         phase_factors = eigenvector.get_phase_factors()
         
         eigenvalues[i] = vals
@@ -571,9 +462,9 @@ def spiral_eigenvalues_eigenfunctions_nobar(Hamiltonian, kx, ky, mesh_spacing, d
     return eigenvalues, eigenfunctions, phase_factors_array, neighbor_phase_array_after_calc
 
 
-def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, phase_correction=True):
+def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, phase_correction=True, calculate_phase_factors=False):
     """
-    Calculate eigenvalues and eigenfunctions on a spiral grid.
+    Calculate eigenvalues, eigenfunctions, and store Magnus terms on a spiral grid.
 
     Parameters:
     - Hamiltonian: The Hamiltonian object.
@@ -587,15 +478,18 @@ def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, ph
     - eigenfunctions: Array of eigenfunctions.
     - phase_factors_array: Array of phase factors.
     - neighbor_phase_array_after_calc: Array of neighbor phase differences.
+    - magnus_first_term: Array of first Magnus terms.
+    - magnus_second_term: Array of second Magnus terms.
     """
     # Initialize arrays to store eigenfunctions and eigenvalues
     eigenfunctions = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
     eigenvalues = np.zeros((mesh_spacing, mesh_spacing, dim), dtype=float)
     phase_factors_array = np.zeros((mesh_spacing, mesh_spacing, dim), dtype=float)
+    magnus_first_term = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
+    magnus_second_term = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
 
     # Get spiral indices
     spiral_indices = get_spiral_indices(mesh_spacing)
-
     eigenvector = Eigenvectors(dim)
 
     # Create a progress bar for the nested loop
@@ -603,20 +497,28 @@ def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, ph
         for i in range(mesh_spacing):
             for j in range(mesh_spacing):
                 k, l = spiral_indices[i, j]
+                kx_kl, ky_kl = kx[k, l], ky[k, l]
+
+                # Get Hamiltonian, first Magnus term, and second Magnus term
+                H_k, H_k_magnus1, H_k_magnus2 = get_Hamiltonian(Hamiltonian, kx_kl, ky_kl, get_first_magnus=True, get_second_magnus=True)
+
                 if phase_correction:
                     vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(
-                        Hamiltonian, kx[k, l], ky[k, l], eigenvector=eigenvector
+                        H_k, kx_kl, ky_kl, eigenvector=eigenvector
                     )
+                    if calculate_phase_factors:
+                        phase_factors = eigenvector.get_phase_factors()
+                        phase_factors_array[k, l] = phase_factors   
                 else:
                     vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(
-                        Hamiltonian, kx[k, l], ky[k, l], eigenvector=None
+                        H_k, kx_kl, ky_kl, eigenvector=None
                     )
-                phase_factors = eigenvector.get_phase_factors()
 
                 # Store results
                 eigenfunctions[k, l] = vecs
                 eigenvalues[k, l] = vals
-                phase_factors_array[k, l] = phase_factors
+                magnus_first_term[k, l] = H_k_magnus1
+                magnus_second_term[k, l] = H_k_magnus2
 
                 # Update the progress bar
                 pbar.update(1)
@@ -624,8 +526,7 @@ def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, ph
     # Calculate neighbor phase array after the main loop
     neighbor_phase_array_after_calc = calculate_neighbor_phase_array(eigenfunctions, mesh_spacing, dim)
 
-    return eigenvalues, eigenfunctions, phase_factors_array, neighbor_phase_array_after_calc
-
+    return eigenvalues, eigenfunctions, phase_factors_array, neighbor_phase_array_after_calc, magnus_first_term, magnus_second_term
 
 def phase_corrected_spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim):
     # Initialize arrays to store eigenfunctions and eigenvalues

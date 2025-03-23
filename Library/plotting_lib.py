@@ -32,29 +32,54 @@ def plot_k_line_on_grid(line_kx, line_ky, k_max):
     plt.show()
 
 
-def plot_eigenvalues_line(k_line, eigenvalues, dim=None):
+
+def plot_eigenvalues_line(k_line, eigenvalues, dim=None, bands_to_plot=None):
     """
-    Plot eigenvalues for all bands along a 1D k-path.
+    Plot eigenvalues for selected bands along a 1D k-path.
 
     Parameters:
     - k_line: 1D array of k-values along the line.
     - eigenvalues: 2D array of eigenvalues (shape: [num_points, num_bands]).
     - dim: Number of bands (optional). If None, it will be inferred from the eigenvalues array.
+    - bands_to_plot: Tuple of band indices to plot (e.g., (0,1,3)). Default is None, which plots all bands.
     """
     # Infer the number of bands from eigenvalues if not provided
     if dim is None:
         dim = eigenvalues.shape[1]
 
+    # Default to plotting all bands if no specific selection is given
+    if bands_to_plot is None:
+        bands_to_plot = range(dim)
+
+    # Ensure bands_to_plot is a tuple
+    if isinstance(bands_to_plot, int):
+        bands_to_plot = (bands_to_plot,)
+
+    # Collect eigenvalues for selected bands
+    selected_eigenvalues = np.array([eigenvalues[:, band] for band in bands_to_plot if 0 <= band < dim])
+
+    if selected_eigenvalues.size == 0:
+        print("Warning: No valid bands selected for plotting.")
+        return
+
+    # Determine y-axis limits
+    ymin, ymax = np.min(selected_eigenvalues), np.max(selected_eigenvalues)
+    y_padding = 0.05 * (ymax - ymin)  # Add 5% padding
+    ymin, ymax = ymin - y_padding, ymax + y_padding
+
     # Set up the plot
     plt.figure(figsize=(10, 6))
-    for band in range(dim):
-        plt.plot(k_line, eigenvalues[:, band], label=f'Band {band + 1}')
-    
+    for band in bands_to_plot:
+        if 0 <= band < dim:  # Ensure the band index is within valid range
+            plt.plot(k_line, eigenvalues[:, band], label=f'Band {band}')
+        else:
+            print(f"Warning: Band {band} is out of range and will not be plotted.")
+
     # Add plot details
     plt.title('Eigenvalues Along the Line in k-Space')
     plt.xlabel('k (along the line)')
     plt.ylabel('Eigenvalue')
-    plt.axhline(0, color='black', linewidth=0.8, linestyle='--')  # Optional: Add a horizontal line at y=0
+    plt.ylim(ymin, ymax)  # Dynamically adjust the y-axis range
     plt.legend()
     plt.grid(True)
     plt.show()
@@ -189,7 +214,15 @@ def plot_individual_eigenvalues(kx, ky, eigenvalues, dim=6, z_limit=300, stride_
         ax.set_xlabel('kx')
         ax.set_ylabel('ky')
         ax.set_zlabel('Eigenvalue')
-        ax.set_zlim(-z_limit, z_limit)
+        if z_limit is None:
+            # Dynamically determine z-axis limits based on data in this band
+            zmin = np.nanmin(Z_eigenvalue)
+            zmax = np.nanmax(Z_eigenvalue)
+            margin = 0.05 * (zmax - zmin)  # 5% margin
+            ax.set_zlim(zmin - margin, zmax + margin)
+        else:
+            ax.set_zlim(-z_limit, z_limit)
+
 
     # Hide any unused subplots if rows * cols > dim
     for idx in range(dim, rows * cols):

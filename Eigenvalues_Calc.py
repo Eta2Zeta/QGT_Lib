@@ -1,7 +1,8 @@
-import sys
 import os
 import numpy as np
 import pickle
+import shutil
+
 
 # from Library import * 
 from Library.plotting_lib import *
@@ -9,96 +10,12 @@ from Library.Hamiltonian_v1 import *
 from Library.Hamiltonian_v2 import * 
 from Library.eigenvalue_calc_lib import *
 from Library.Geometry.zones import ZoneDivider
+from Library.utilities import *
 
-
-
-# Define parameters
-mesh_spacing = 150
-k_max = 1 * (np.pi)  # Maximum k value for the first Brillouin zone
-
-# Create kx and ky arrays
-kx = np.linspace(-k_max, k_max, mesh_spacing)
-# ky = np.linspace(-(3/2)*k_max, k_max/2, mesh_spacing)
-ky = np.linspace(-k_max, k_max, mesh_spacing)
-kx, ky = np.meshgrid(kx, ky)
-dkx = np.abs(kx[0, 1] - kx[0, 0])  # Spacing in the x-direction (constant for a uniform grid)
-dky = np.abs(ky[1, 0] - ky[0, 0])  # Spacing in the y-direction (constant for a uniform grid)
-z_limit = 10
-
-# Hamiltonian_Obj = THF_Hamiltonian(A0=0)
-# Hamiltonian_Obj = TwoOrbitalUnspinfulHamiltonian(zeta=0.5, A0=0, mu=2)
-Hamiltonian_Obj = SquareLatticeHamiltonian(A0=1, omega=5e0)
-dim = Hamiltonian_Obj.dim
-
-
-
-UseExisting = False
-
-# Define the temp directory for storing .npy files
-temp_dir = os.path.join(os.getcwd(), "temp")
-
-# Create the temp directory if it doesn't exist
-os.makedirs(temp_dir, exist_ok=True)
-
-# File paths for saving and loading data
-eigenvalues_file = os.path.join(temp_dir, "eigenvalues.npy")
-eigenfunctions_file = os.path.join(temp_dir, "eigenfunctions.npy")
-phasefactors_file = os.path.join(temp_dir, "phasefactors.npy")
-meta_info_file = os.path.join(temp_dir, "meta_info.npy")  # New file for meta information
-neighbor_phase_array_file = os.path.join(temp_dir, "neighbor_phase_array.npy")
-
-
-if UseExisting: 
-    # Load the eigenvalues and eigenfunctions from files
-    if os.path.exists(eigenvalues_file) and os.path.exists(eigenfunctions_file) and os.path.exists(meta_info_file):
-        eigenvalues = np.load(eigenvalues_file)
-        eigenfunctions = np.load(eigenfunctions_file)
-        with open(meta_info_file, "rb") as meta_file:
-            meta_info = pickle.load(meta_file)
-            kx = meta_info["kx"]
-            ky = meta_info["ky"]
-            mesh_spacing = meta_info["mesh_spacing"]
-            Hamiltonian_Obj = meta_info["Hamiltonian_Obj"]
-        print("Loaded eigenvalues, eigenfunctions, and meta information from files.")
-    else:
-        print("Required files not found. Please ensure eigenvalues, eigenfunctions, and meta information are available in the 'temp' directory.")
-        sys.exit(1)
-else: 
-    # Initialize arrays to store eigenfunctions and eigenvalues with NaNs
-    eigenfunctions = np.full((mesh_spacing, mesh_spacing, dim, dim), np.nan, dtype=complex)
-    eigenvalues = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
-    phasefactors = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
-    overall_neighbor_phase_array = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
-
-    # Calculate the eigenvalues and eigenfunctions
-    eigenvalues, eigenfunctions, phasefactors, overall_neighbor_phase_array = spiral_eigenvalues_eigenfunctions(
-        Hamiltonian_Obj, kx, ky, mesh_spacing, dim=dim, phase_correction=False
-    )
-
-    # Save the data to files
-    np.save(eigenvalues_file, eigenvalues)
-    np.save(eigenfunctions_file, eigenfunctions)
-    np.save(phasefactors_file, phasefactors)
-    np.save(neighbor_phase_array_file, overall_neighbor_phase_array)
-
-    # Save meta information
-    meta_info = {
-        "kx": kx,
-        "ky": ky,
-        "dkx": dkx, 
-        "dky": dky,
-        "mesh_spacing": mesh_spacing,
-        "Hamiltonian_Obj": Hamiltonian_Obj  # Include the Hamiltonian object
-    }
-
-    # Save the metadata using pickle
-    with open(meta_info_file, "wb") as meta_file:
-        pickle.dump(meta_info, meta_file)
-    print(f"Saved eigenvalues, eigenfunctions, phasefactors, neighbor phase array, and meta information to '{temp_dir}'.")
-
-
-
-
+# There were four zones of the eigenfunction with distinct phases and
+# I was trying to test if changing the phases of one can make it match 
+# to the phase another but it could not. Forgot which Hamiltonian it
+# was for
 def experiment():
     # Experiment Changing the phase of one zone
     num_zones = 4
@@ -116,37 +33,174 @@ def experiment():
     modified_eigenfunctions = eigenfunctions.copy()
     modified_eigenfunctions[:, :, 0, 0][zone_mask] *= phase_factor
 
+# Ensure the temp directory exists
+temp_dir = os.path.join(os.getcwd(), "temp")
+os.makedirs(temp_dir, exist_ok=True)
+
+# Hamiltonian_Obj = THF_Hamiltonian(A0=0)
+hamiltonian = TwoOrbitalUnspinfulHamiltonian(zeta=1.0, omega = 10.0, A0=0.1, mu=0, magnus_order = 1)
+# Hamiltonian_Obj = SquareLatticeHamiltonian(A0=1, omega=5e0)
+dim = hamiltonian.dim
+
+def calculation_2d(hamiltonian = hamiltonian):
+    # Does the calculation on 2d 
 
 
-eigenvalues = capping_eigenvalues(eigenvalues=eigenvalues, z_limit=z_limit)
+    # Define parameters
+    k_max = np.pi
+    kx_min, kx_max = -k_max, k_max
+    ky_min, ky_max = -k_max, k_max
 
-plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, color_maps='bwr', norm=None)
+    # Create kx and ky arrays
+    kx_range = (kx_min, kx_max)
+    ky_range = (ky_min, ky_max)
+    mesh_spacing = 150
 
-# plot_eigenfunction_components(kx, ky, eigenfunctions, band_index=0, components_to_plot=[0])
+    kx = np.linspace(kx_min, kx_max, mesh_spacing)
+    ky = np.linspace(ky_min, ky_max, mesh_spacing)
+    kx, ky = np.meshgrid(kx, ky)
+    dkx = np.abs(kx[0, 1] - kx[0, 0])  # Spacing in the x-direction (constant for a uniform grid)
+    dky = np.abs(ky[1, 0] - ky[0, 0])  # Spacing in the y-direction (constant for a uniform grid)
+    z_limit = 10
 
-# plot_phases(kx, ky, phasefactors, dim=2)
+    # Create the results directory
+    file_paths, use_existing, results_subdir = setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing)
 
-# plot_neighbor_phases(kx, ky, overall_neighbor_phase_array, dim=2)
+    if use_existing:
+        # Load existing data
+        eigenvalues = np.load(file_paths["eigenvalues"])
+        eigenfunctions = np.load(file_paths["eigenfunctions"])
+        phasefactors = np.load(file_paths["phasefactors"])
+        magnus_first_term = np.load(file_paths["magnus_first"])
+        magnus_second_term = np.load(file_paths["magnus_second"])
+
+        with open(file_paths["meta_info"], "rb") as meta_file:
+            meta_info = pickle.load(meta_file)
+            kx, ky, mesh_spacing, hamiltonian = meta_info["kx"], meta_info["ky"], meta_info["mesh_spacing"], meta_info["Hamiltonian_Obj"]
+
+        print("Loaded eigenvalues, eigenfunctions, and metadata from files.")
+
+        # Copy files to temp directory
+        for key, file_path in file_paths.items():
+            shutil.copy(file_path, os.path.join(temp_dir, os.path.basename(file_path)))
+
+        print(f"Copied existing results to temp directory: {temp_dir}")
+    else: 
+        # Initialize arrays to store eigenfunctions, eigenvalues, and Magnus terms
+        eigenfunctions = np.full((mesh_spacing, mesh_spacing, dim, dim), np.nan, dtype=complex)
+        eigenvalues = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
+        phasefactors = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
+        overall_neighbor_phase_array = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
+        magnus_first_term = np.full((mesh_spacing, mesh_spacing, dim, dim), np.nan, dtype=complex)
+        magnus_second_term = np.full((mesh_spacing, mesh_spacing, dim, dim), np.nan, dtype=complex)
+        
+        # Calculate the eigenvalues and eigenfunctions
+        eigenvalues, eigenfunctions, phasefactors, overall_neighbor_phase_array, magnus_first_term, magnus_second_term = spiral_eigenvalues_eigenfunctions(
+            hamiltonian, kx, ky, mesh_spacing, dim=dim, phase_correction=False
+        )
+
+        # Save results
+        for key, array in {
+            "eigenvalues": eigenvalues,
+            "eigenfunctions": eigenfunctions,
+            "phasefactors": phasefactors,
+            "neighbor_phase_array": overall_neighbor_phase_array,
+            "magnus_first": magnus_first_term,
+            "magnus_second": magnus_second_term,
+        }.items():
+            np.save(file_paths[key], array)
+            np.save(os.path.join(temp_dir, os.path.basename(file_paths[key])), array)  # Save to temp directory
+
+
+        # Save meta information
+        meta_info = {
+            "kx": kx,
+            "ky": ky,
+            "dkx": dkx, 
+            "dky": dky,
+            "mesh_spacing": mesh_spacing,
+            "Hamiltonian_Obj": hamiltonian, 
+            "kx_range": kx_range,
+            "ky_range": ky_range,
+            "mesh_spacing": mesh_spacing
+        }
+
+        # Save the metadata using pickle
+        with open(file_paths["meta_info"], "wb") as meta_file:
+            pickle.dump(meta_info, meta_file)
+        print(f"Saved all results to '{results_subdir}'.")
+        with open(os.path.join(temp_dir, "meta_info.pkl"), "wb") as meta_file:
+            pickle.dump(meta_info, meta_file)  # Save to temp directory as well
+        print(f"Saved all results to '{results_subdir}' and copied to temp directory: {temp_dir}")
 
 
 
 
+    eigenvalues = capping_eigenvalues(eigenvalues=eigenvalues, z_limit=z_limit)
 
-# Define the line parameters
-angle_deg = 90  # Line angle in degrees
-k_angle = np.deg2rad(angle_deg) # Convert into Radians
-kx_shift = 0
-# ky_shift = -np.pi/2
-ky_shift = 0
-num_points = 100  # Number of points along the line
-# k_max = 1 * (np.pi)
-k_max = np.sqrt(2) * (np.pi)
-k_line = np.linspace(-k_max, k_max, num_points)
-line_kx = k_line * np.cos(k_angle) + kx_shift
-line_ky = k_line * np.sin(k_angle) + ky_shift
-# plot_k_line_on_grid(line_kx, line_ky, k_max)
+    # plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, color_maps='bwr', norm=None)
 
-eigenvalues, eigenfunctions, _ = line_eigenvalues_eigenfunctions(Hamiltonian_Obj, line_kx, line_ky)
+    plot_individual_eigenvalues(kx, ky, eigenvalues, dim=dim, z_limit=None)
 
-plot_eigenvalues_line(k_line, eigenvalues)
+    # plot_eigenfunction_components(kx, ky, eigenfunctions, band_index=0, components_to_plot=[0])
 
+    # plot_phases(kx, ky, phasefactors, dim=2)
+
+    # plot_neighbor_phases(kx, ky, overall_neighbor_phase_array, dim=2)
+
+
+def calculation_1d(hamiltonian=hamiltonian):
+    # Does the calculation on a line
+
+    # Define the line parameters
+    angle_deg = 30  # Line angle in degrees
+    k_angle = np.deg2rad(angle_deg)  # Convert into Radians
+    kx_shift = 0
+    ky_shift = 0
+    num_points = 100  # Number of points along the line
+    k_max = np.sqrt(2) * np.pi
+    k_line = np.linspace(-k_max, k_max, num_points)
+    line_kx = k_line * np.cos(k_angle) + kx_shift
+    line_ky = k_line * np.sin(k_angle) + ky_shift
+
+    # Create the results directory
+    file_paths, use_existing, results_subdir = setup_results_directory_1d(
+        hamiltonian, angle_deg, kx_shift, ky_shift, num_points, k_max
+    )
+
+    if use_existing:
+        # Load existing data
+        eigenvalues = np.load(file_paths["eigenvalues"])
+        eigenfunctions = np.load(file_paths["eigenfunctions"])
+
+        with open(file_paths["meta_info"], "rb") as meta_file:
+            meta_info = pickle.load(meta_file)
+            hamiltonian = meta_info["Hamiltonian_Obj"]
+
+        print("Loaded eigenvalues and eigenfunctions from files.")
+    else:
+        # Calculate eigenvalues and eigenfunctions
+        eigenvalues, eigenfunctions, _ = line_eigenvalues_eigenfunctions(hamiltonian, line_kx, line_ky)
+
+        # Save results
+        np.save(file_paths["eigenvalues"], eigenvalues)
+        np.save(file_paths["eigenfunctions"], eigenfunctions)
+
+        # Save meta information
+        meta_info = {
+            "kx_line": line_kx,
+            "ky_line": line_ky,
+            "num_points": num_points,
+            "Hamiltonian_Obj": hamiltonian  
+        }
+
+        # Save metadata using pickle
+        with open(file_paths["meta_info"], "wb") as meta_file:
+            pickle.dump(meta_info, meta_file)
+        print(f"Saved all results to '{results_subdir}'.")
+
+    plot_eigenvalues_line(k_line, eigenvalues, dim = None, bands_to_plot=(0,))
+
+
+calculation_1d()
+# calculation_2d()

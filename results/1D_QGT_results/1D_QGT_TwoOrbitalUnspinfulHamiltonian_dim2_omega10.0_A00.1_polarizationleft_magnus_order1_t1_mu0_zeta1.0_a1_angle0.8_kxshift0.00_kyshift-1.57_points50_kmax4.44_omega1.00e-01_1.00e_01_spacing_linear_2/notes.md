@@ -1,0 +1,1 @@
+This was calculated with rounded integrals. The results seem to be the same as when the integral was not rounded. 
