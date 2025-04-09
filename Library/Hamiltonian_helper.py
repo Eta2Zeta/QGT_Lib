@@ -32,8 +32,7 @@ def get_Hamiltonian(Hamiltonian, kx, ky, get_first_magnus=False, get_second_magn
             second_magnus = Hamiltonian.magnus_second_term(kx, ky)
             results.append(second_magnus)
 
-        # Return results
-        return tuple(results) if len(results) > 1 else H_k, H_prime
+        return tuple(results) if len(results) > 1 else (H_k, H_prime)
 
     elif callable(Hamiltonian):  # If it's a callable function
         H_k = Hamiltonian(kx, ky)

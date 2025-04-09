@@ -33,7 +33,7 @@ def setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing):
         str: Path to the results directory used.
     """
     # Ensure the main "results" directory exists
-    results_dir = os.path.join(os.getcwd(), "results")
+    results_dir = os.path.join(os.getcwd(), "results", "2D_Eigen_results")
     os.makedirs(results_dir, exist_ok=True)
 
     # Base subdirectory name
@@ -176,7 +176,7 @@ def setup_QGT_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing):
     os.makedirs(results_dir, exist_ok=True)
 
     # Base subdirectory name
-    base_subdir_name = f"QGT_{hamiltonian.get_filename()}_kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_mesh{mesh_spacing}"
+    base_subdir_name = f"QGT_{hamiltonian.get_filename(parameter = '2D')}_kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_mesh{mesh_spacing}"
     base_subdir_name = re.sub(r'[^\w.-]', '_', base_subdir_name)  # Sanitize filename
 
     # Check for existing directories with the same base name
@@ -228,7 +228,8 @@ def setup_QGT_results_directory_1D(
     k_angle,
     kx_shift,
     ky_shift,
-    num_points,
+    num_k_points,
+    num_omega_points,
     k_max,
     omega_min,
     omega_max,
@@ -253,18 +254,19 @@ def setup_QGT_results_directory_1D(
         bool: Whether to use existing data (if all files are found).
         str: Path to the results directory used.
     """
+    Hamiltonian_name = hamiltonian.name
     # Ensure the main "QGT_results_1D" directory exists
-    results_dir = os.path.join(os.getcwd(), "results", "1D_QGT_results")
+    results_dir = os.path.join(os.getcwd(), "results", "1D_QGT_results", Hamiltonian_name)
     os.makedirs(results_dir, exist_ok=True)
 
     # Get Hamiltonian parameter string
-    hamiltonian_params = hamiltonian.get_filename()  # Uses the method to format parameter string
+    hamiltonian_params = hamiltonian.get_filename(parameter = "1D")  # Uses the method to format parameter string
 
     # Base subdirectory name with Hamiltonian parameters and 1D QGT settings
     base_subdir_name = (
-    f"1D_QGT_{hamiltonian_params}_angle{k_angle:.1f}_kxshift{kx_shift:.2f}_"
-    f"kyshift{ky_shift:.2f}_points{num_points}_kmax{k_max:.2f}_"
-    f"omega{omega_min:.2e}_{omega_max:.2e}_spacing_{str(spacing)}"
+    f"{hamiltonian_params}_angle{k_angle:.1f}_kxshift{kx_shift:.2f}_"
+    f"kyshift{ky_shift:.2f}_points{num_k_points}_kmax{k_max:.2f}_"
+    f"omega{omega_min:.2e}_{omega_max:.2e}_spacing_{str(spacing)}_points{num_omega_points}"
     )
 
 
@@ -302,3 +304,86 @@ def setup_QGT_results_directory_1D(
 
     print(f"Created new QGT results directory: {results_subdir}")
     return file_paths, False, results_subdir  # New directory, so use_existing=False
+
+
+
+
+def setup_QGT_results_directory_2D_omega_range(
+    hamiltonian,
+    kx_range,
+    ky_range,
+    mesh_spacing,
+    omega_min,
+    omega_max,
+    num_omega_points,
+    spacing,
+    force_new=False,
+):
+    """
+    Creates a results directory for storing 2D QGT omega sweep data, structured by Hamiltonian parameters.
+
+    Parameters:
+        hamiltonian (object): The Hamiltonian object.
+        kx_range (tuple): Tuple of (min_kx, max_kx).
+        ky_range (tuple): Tuple of (min_ky, max_ky).
+        mesh_spacing (int): Number of k-points along each axis.
+        omega_min (float): Minimum omega.
+        omega_max (float): Maximum omega.
+        num_omega_points (int): Number of omega values to sweep.
+        spacing (str): 'log' or 'linear'.
+        force_new (bool): If True, always creates a new results directory.
+
+    Returns:
+        dict: Dictionary of file paths.
+        bool: Whether to use existing data.
+        str: Path to the results directory.
+    """
+    Hamiltonian_name = hamiltonian.name
+
+    # Main results directory for 2D omega range sweeps
+    results_dir = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", Hamiltonian_name)
+    os.makedirs(results_dir, exist_ok=True)
+
+    # Parameter string
+    hamiltonian_params = hamiltonian.get_filename(parameter="2D")
+
+    # Base subdir name
+    base_subdir_name = (
+        f"{hamiltonian_params}_kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_"
+        f"ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_mesh{mesh_spacing}_"
+        f"omega{omega_min:.2e}_{omega_max:.2e}_spacing_{spacing}_points{num_omega_points}"
+    )
+
+    base_subdir_name = re.sub(r'[^\w.-]', '_', base_subdir_name)  # Sanitize
+
+    # Check for existing subdirectories
+    existing_dirs = [d for d in os.listdir(results_dir) if d.startswith(base_subdir_name)]
+    if not force_new:
+        for existing_dir in sorted(existing_dirs):
+            existing_path = os.path.join(results_dir, existing_dir)
+
+            # Define expected files
+            file_paths = {
+                "QGT_2D": os.path.join(existing_path, "QGT_2D.npy"),
+                "meta_info": os.path.join(existing_path, "meta_info.pkl"),
+            }
+
+            if all(os.path.exists(path) for path in file_paths.values()):
+                print(f"Using existing QGT 2D omega sweep directory: {existing_path}")
+                return file_paths, True, existing_path
+
+    # Create new results directory with increment
+    next_number = 1
+    while os.path.exists(os.path.join(results_dir, f"{base_subdir_name}_{next_number}")):
+        next_number += 1
+
+    results_subdir = os.path.join(results_dir, f"{base_subdir_name}_{next_number}")
+    os.makedirs(results_subdir, exist_ok=True)
+
+    file_paths = {
+        "QGT_2D": os.path.join(results_subdir, "QGT_2D.npy"),
+        "meta_info": os.path.join(results_subdir, "meta_info.pkl"),
+    }
+
+    print(f"Created new QGT 2D omega sweep directory: {results_subdir}")
+    return file_paths, False, results_subdir

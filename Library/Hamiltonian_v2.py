@@ -32,14 +32,31 @@ class hamiltonian:
         self.polarization = polarization.lower()  # Polarization type ('left', 'right', or 'custom')
         self.magnus_order = magnus_order  # Order of Magnus expansion
     
-    def get_filename(self):
-        # Only include attributes that are not callable (i.e. not functions) and do not start with an underscore.
-        params = {key: value for key, value in vars(self).items() 
-                if not callable(value) and not key.startswith('_')}
-        # Exclude the 'name' key if needed.
-        param_str = f"{self.name}_" + "_".join(f"{key}{value}" for key, value in params.items() if key != "name")
-        return param_str
+    def get_filename(self, parameter='2D'):
+        """
+        Generate a filename-style string encoding key parameter values.
+        
+        Parameters:
+            papermeter (str): '1D' or '2D'. In '1D', omega is excluded. Default is '2D'.
+        
+        Returns:
+            str: Filename string.
+        """
+        # Create a dictionary of relevant attributes
+        params = {
+            key: value for key, value in vars(self).items()
+            if not callable(value) and not key.startswith('_')
+            and key not in ('name', 'dim')  # Always exclude 'name' and 'dim'
+        }
 
+        # Exclude 'omega' if 1D
+        if parameter == '1D':
+            params.pop('omega', None)
+
+        # Format parameters into a filename string
+        param_str = "_".join(f"{key}{value}" for key, value in params.items())
+        return param_str
+    
     def compute_static(self, kx, ky):
         """
         Compute the static Hamiltonian matrix for a given (kx, ky).
@@ -160,7 +177,7 @@ class hamiltonian:
     def magnus_first_term(self, kx, ky):
         """
         Compute the first term of the Magnus expansion:
-        (1/omega) * [H1, H-1]
+        (1/omega) * [H1, H-1], rounded to 1e-16 precision.
         """
         # Compute H1 and H-1 Fourier components
         H1 = self.numerical_fourier_component(1, kx, ky)
@@ -169,8 +186,14 @@ class hamiltonian:
         # Compute the commutator [H1, H-1]
         comm = commutator_static(H1, Hm1)
 
-        # Return the first Magnus term
-        return (1 / self.omega) * comm
+        # Compute Magnus first term
+        magnus_term = (1 / self.omega) * comm
+
+        # Round to 1e-16 precision
+        epsilon = 1e-16
+        rounded_magnus = np.round(magnus_term / epsilon) * epsilon
+
+        return rounded_magnus
 
     def magnus_second_term(self, kx, ky):
         """
@@ -330,10 +353,11 @@ class hamiltonian:
         return state
 
     def __setstate__(self, state):
-        # Restore instance attributes
         self.__dict__.update(state)
-        # Recreate the lambdified functions.
-        self.setup_symbolic_derivatives()
+        # Only call setup_symbolic_derivatives if the method exists
+        if hasattr(self, "setup_symbolic_derivatives"):
+            self.setup_symbolic_derivatives()
+
 
 
 
@@ -749,7 +773,7 @@ class SquareLatticeHamiltonian(hamiltonian):
     """
     Hamiltonian for a square lattice model.
     """
-    def __init__(self, t1=1, t2=1/np.sqrt(2), t5=-0.1, omega=2 * np.pi, A0=0):
+    def __init__(self, t1=1, t2=1/np.sqrt(2), t5=0, omega=2 * np.pi, A0=0):
         super().__init__(dim=2, omega=omega, A0=A0)  # Pass omega and A0 to the base class
         self.t1 = t1
         self.t2 = t2
@@ -782,7 +806,6 @@ class SquareLatticeHamiltonian(hamiltonian):
         H21 = self.A0 * self.t1 * (-1j * np.sin(ky) + np.sqrt(2) * 1j * 
                                    np.sin(kx + np.pi / 4) + np.cos(ky)) * np.exp(-1j * (ky + np.pi / 4))
         return H21 # Temporary, change it to full matrix later
-
 
 
 class SquareLatticeHamiltonianMod(hamiltonian):

@@ -38,8 +38,9 @@ temp_dir = os.path.join(os.getcwd(), "temp")
 os.makedirs(temp_dir, exist_ok=True)
 
 # Hamiltonian_Obj = THF_Hamiltonian(A0=0)
-hamiltonian = TwoOrbitalUnspinfulHamiltonian(zeta=1.0, omega = 10.0, A0=0.1, mu=0, magnus_order = 1)
-# Hamiltonian_Obj = SquareLatticeHamiltonian(A0=1, omega=5e0)
+# hamiltonian = TwoOrbitalUnspinfulHamiltonian(zeta=1.0, omega = 10.0, A0=0.1, mu=0, magnus_order = 1)
+# hamiltonian = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=0)
+hamiltonian = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=(1-np.sqrt(2))/4)
 dim = hamiltonian.dim
 
 def calculation_2d(hamiltonian = hamiltonian):
@@ -129,8 +130,10 @@ def calculation_2d(hamiltonian = hamiltonian):
         with open(file_paths["meta_info"], "wb") as meta_file:
             pickle.dump(meta_info, meta_file)
         print(f"Saved all results to '{results_subdir}'.")
+
         with open(os.path.join(temp_dir, "meta_info.pkl"), "wb") as meta_file:
             pickle.dump(meta_info, meta_file)  # Save to temp directory as well
+            
         print(f"Saved all results to '{results_subdir}' and copied to temp directory: {temp_dir}")
 
 
@@ -138,7 +141,7 @@ def calculation_2d(hamiltonian = hamiltonian):
 
     eigenvalues = capping_eigenvalues(eigenvalues=eigenvalues, z_limit=z_limit)
 
-    # plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, color_maps='bwr', norm=None)
+    plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, color_maps='bwr', norm=None)
 
     plot_individual_eigenvalues(kx, ky, eigenvalues, dim=dim, z_limit=None)
 
@@ -153,10 +156,12 @@ def calculation_1d(hamiltonian=hamiltonian):
     # Does the calculation on a line
 
     # Define the line parameters
-    angle_deg = 30  # Line angle in degrees
+    # angle_deg = 30  # For the Two Orbital Hamiltonian
+    angle_deg = 45  # Line angle in degrees for the Square Lattice Hamiltonian
     k_angle = np.deg2rad(angle_deg)  # Convert into Radians
     kx_shift = 0
-    ky_shift = 0
+    # ky_shift = 0
+    ky_shift = - np.pi / 2
     num_points = 100  # Number of points along the line
     k_max = np.sqrt(2) * np.pi
     k_line = np.linspace(-k_max, k_max, num_points)
@@ -202,5 +207,5 @@ def calculation_1d(hamiltonian=hamiltonian):
     plot_eigenvalues_line(k_line, eigenvalues, dim = None, bands_to_plot=(0,))
 
 
-calculation_1d()
-# calculation_2d()
+# calculation_1d()
+calculation_2d()

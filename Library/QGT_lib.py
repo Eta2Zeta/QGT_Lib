@@ -205,7 +205,7 @@ def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, band_index):
     - trace_values: Array of trace components (g_xx + g_yy) along the line.
     """
     # Step 1: Get eigenvalues and eigenfunctions along the line
-    eigenvalues, eigenfunctions, _ = line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, band_index)
+    eigenvalues, eigenfunctions, _, perturbations = line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, band_index)
 
     # Ensure eigenvalues is at least 2D (e.g., [points, bands])
     eigenvalues = np.asarray(eigenvalues)
@@ -249,4 +249,4 @@ def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, band_index):
     g_yy_values = np.array(g_yy_values)
     trace_values = np.array(trace_values)
 
-    return eigenvalues_band, g_xx_values, g_xy_real_values, g_xy_imag_values, g_yy_values, trace_values
+    return eigenvalues, perturbations, g_xx_values, g_xy_real_values, g_xy_imag_values, g_yy_values, trace_values

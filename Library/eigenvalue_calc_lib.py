@@ -348,12 +348,9 @@ def eigenvalues_and_vectors_eigenvalue_ordering(
         elif band_index == num_bands - 1:
             # Compute only for (last-1, last)
             n, m = num_bands - 2, num_bands - 1
-            delta_E = eigenvalues[n] - eigenvalues[m]
+            delta_E = np.real(eigenvalues[n] - eigenvalues[m])
             if delta_E != 0:
                 pert_strength = abs(eigenvectors[n].conj().T @ H_prime @ eigenvectors[m]) / delta_E
-                A = eigenvectors[n].conj().T 
-                B = H_prime
-                C = eigenvectors[m]
                 perturbation_values.append(pert_strength)
 
         # Otherwise, compute for both (band-1, band) and (band, band+1)
@@ -377,7 +374,7 @@ def eigenvalues_and_vectors_eigenvalue_ordering(
 
 # & Calculations in an angled line
 
-def line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, band_index):
+def line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, band_index = None):
     """
     Calculate eigenvalues and eigenvectors along a line in the kx-ky plane.
 
@@ -398,6 +395,7 @@ def line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, band_index):
     eigenvalues = np.zeros((num_points, dim), dtype=float)
     eigenfunctions = np.zeros((num_points, dim, dim), dtype=complex)
     phase_factors_array = np.zeros((num_points, dim), dtype=float)
+    perturbation_array = np.zeros(num_points, dtype=float)
 
     eigenvector = Eigenvectors(dim)
 
@@ -409,8 +407,12 @@ def line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, band_index):
         eigenvalues[i] = vals
         eigenfunctions[i] = vecs
         phase_factors_array[i] = phase_factors
-
-    return eigenvalues, eigenfunctions, phase_factors_array
+        perturbation_array[i] =pert
+    
+    if band_index is not None:
+        return eigenvalues, eigenfunctions, phase_factors_array, perturbation_array
+    else:
+        return eigenvalues, eigenfunctions, phase_factors_array
 
 
 # & Calculations in a normal grid
@@ -462,7 +464,7 @@ def spiral_eigenvalues_eigenfunctions_nobar(Hamiltonian, kx, ky, mesh_spacing, d
     return eigenvalues, eigenfunctions, phase_factors_array, neighbor_phase_array_after_calc
 
 
-def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, phase_correction=True, calculate_phase_factors=False):
+def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, phase_correction=True, calculate_phase_factors=False, calculating_magnus_terms=False):
     """
     Calculate eigenvalues, eigenfunctions, and store Magnus terms on a spiral grid.
 
@@ -499,8 +501,7 @@ def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, ph
                 k, l = spiral_indices[i, j]
                 kx_kl, ky_kl = kx[k, l], ky[k, l]
 
-                # Get Hamiltonian, first Magnus term, and second Magnus term
-                H_k, H_k_magnus1, H_k_magnus2 = get_Hamiltonian(Hamiltonian, kx_kl, ky_kl, get_first_magnus=True, get_second_magnus=True)
+                H_k = Hamiltonian
 
                 if phase_correction:
                     vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(
@@ -510,15 +511,20 @@ def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, ph
                         phase_factors = eigenvector.get_phase_factors()
                         phase_factors_array[k, l] = phase_factors   
                 else:
-                    vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(
-                        H_k, kx_kl, ky_kl, eigenvector=None
-                    )
-
+                    if calculating_magnus_terms:
+                        vals, vecs, H_k_magnus1, H_k_magnus2  = eigenvalues_and_vectors_eigenvalue_ordering(
+                            H_k, kx_kl, ky_kl, eigenvector=None
+                        )
+                        magnus_first_term[k, l] = H_k_magnus1
+                        magnus_second_term[k, l] = H_k_magnus2
+                    else: 
+                        vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(
+                            H_k, kx_kl, ky_kl, eigenvector=None
+                        )
                 # Store results
                 eigenfunctions[k, l] = vecs
                 eigenvalues[k, l] = vals
-                magnus_first_term[k, l] = H_k_magnus1
-                magnus_second_term[k, l] = H_k_magnus2
+
 
                 # Update the progress bar
                 pbar.update(1)
