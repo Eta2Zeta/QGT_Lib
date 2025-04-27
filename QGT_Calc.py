@@ -216,8 +216,8 @@ def range_of_omega(spacing='linear', omega_min=5e-2, omega_max=5e1, num_k_points
     # angle_deg = 22.5  # Line angle in degrees
     k_angle = np.deg2rad(angle_deg) # Convert into Radians
     kx_shift = 0
-    ky_shift = -np.pi/2
-    # ky_shift = 0
+    # ky_shift = -np.pi/2
+    ky_shift = 0
     # k_max = 1 * (np.pi) # Choose this when you do 0 or 90 degrees
     k_max = np.sqrt(2) * (np.pi) # Choose this when you do 45 degrees
     k_line = np.linspace(-k_max, k_max, num_k_points)
@@ -421,7 +421,7 @@ def range_of_omega_2d_par(spacing='linear', omega_min=5e-2, omega_max=5e1, num_o
     elif spacing == 'linear':
         omega_values = np.linspace(omega_max, omega_min, num_omega_points)
     else:
-        raise ValueError("Invalid spacing. Use 'log' or 'linear'.")
+        raise ValueError("Invalid spacing.Use 'log' or 'linear'.")
 
     # Ensure A0 is set
     Hamiltonian_Obj.A0 = 0.1
@@ -487,6 +487,6 @@ def range_of_omega_2d_par(spacing='linear', omega_min=5e-2, omega_max=5e1, num_o
 if __name__ == '__main__':
 
     # calculate_2d()
-    # range_of_omega(spacing="log")
+    range_of_omega(spacing="log")
     # range_of_omega_2d(spacing="log")
-    range_of_omega_2d_par(spacing="log")
+    # range_of_omega_2d_par(spacing="log")

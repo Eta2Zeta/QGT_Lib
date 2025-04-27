@@ -38,9 +38,9 @@ temp_dir = os.path.join(os.getcwd(), "temp")
 os.makedirs(temp_dir, exist_ok=True)
 
 # Hamiltonian_Obj = THF_Hamiltonian(A0=0)
-# hamiltonian = TwoOrbitalUnspinfulHamiltonian(zeta=1.0, omega = 10.0, A0=0.1, mu=0, magnus_order = 1)
+hamiltonian = TwoOrbitalUnspinfulHamiltonian(zeta=1.0, omega = 10.0, A0=0.1, mu=0, magnus_order = 1)
 # hamiltonian = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=0)
-hamiltonian = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=(1-np.sqrt(2))/4)
+# hamiltonian = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=(1-np.sqrt(2))/4)
 dim = hamiltonian.dim
 
 def calculation_2d(hamiltonian = hamiltonian):
@@ -154,14 +154,15 @@ def calculation_2d(hamiltonian = hamiltonian):
 
 def calculation_1d(hamiltonian=hamiltonian):
     # Does the calculation on a line
+    band_index = 1
 
     # Define the line parameters
-    # angle_deg = 30  # For the Two Orbital Hamiltonian
-    angle_deg = 45  # Line angle in degrees for the Square Lattice Hamiltonian
+    angle_deg = 30  # For the Two Orbital Hamiltonian
+    # angle_deg = 45  # Line angle in degrees for the Square Lattice Hamiltonian
     k_angle = np.deg2rad(angle_deg)  # Convert into Radians
     kx_shift = 0
-    # ky_shift = 0
-    ky_shift = - np.pi / 2
+    ky_shift = 0
+    # ky_shift = - np.pi / 2
     num_points = 100  # Number of points along the line
     k_max = np.sqrt(2) * np.pi
     k_line = np.linspace(-k_max, k_max, num_points)
@@ -185,7 +186,7 @@ def calculation_1d(hamiltonian=hamiltonian):
         print("Loaded eigenvalues and eigenfunctions from files.")
     else:
         # Calculate eigenvalues and eigenfunctions
-        eigenvalues, eigenfunctions, _ = line_eigenvalues_eigenfunctions(hamiltonian, line_kx, line_ky)
+        eigenvalues, eigenfunctions, _, _ = line_eigenvalues_eigenfunctions(hamiltonian, line_kx, line_ky, band_index)
 
         # Save results
         np.save(file_paths["eigenvalues"], eigenvalues)
