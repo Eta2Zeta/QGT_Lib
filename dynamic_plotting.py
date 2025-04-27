@@ -378,9 +378,147 @@ def dynamic_2d_trace_vs_omega(folder_name):
 
     plt.show()
 
+
+def plot_trace_std_vs_omega(folder_name):
+    """
+    Plot the standard deviation of QGT trace over the Brillouin zone for each omega.
+
+    Parameters:
+        folder_name (str): Name of the subfolder in 'results/2D_QGT_omega_sweep/' containing the results.
+    """
+    results_path = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", folder_name)
+    qgt_data_path = os.path.join(results_path, "QGT_2D.npy")
+    meta_path = os.path.join(results_path, "meta_info.pkl")
+
+    if not os.path.exists(qgt_data_path):
+        raise FileNotFoundError(f"QGT data not found in '{results_path}'.")
+
+    # Load metadata and QGT results
+    with open(meta_path, "rb") as f:
+        meta_info = pickle.load(f)
+    qgt_data = np.load(qgt_data_path, allow_pickle=True)
+
+    # Extract omega values and corresponding trace stds
+    omega_values = []
+    trace_std_values = []
+
+    for entry in qgt_data:
+        omega = entry["omega"]
+        trace = entry["trace"]
+        std = np.std(trace)
+
+        omega_values.append(omega)
+        trace_std_values.append(std)
+
+    # Plotting
+    plt.figure(figsize=(8, 5))
+    plt.plot(omega_values, trace_std_values, marker='o', linestyle='-')
+    plt.xscale('log')
+    plt.xlabel("Drive Frequency ω")
+    plt.ylabel("Std. Dev of QGT Trace over BZ")
+    plt.title("Fluctuation of QGT Trace vs ω")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+def plot_berry_std_vs_omega(folder_name):
+    """
+    Plot the standard deviation of Berry curvature over the Brillouin zone for each omega.
+
+    Parameters:
+        folder_name (str): Name of the subfolder in 'results/2D_QGT_omega_sweep/' containing the results.
+    """
+    results_path = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", folder_name)
+    qgt_data_path = os.path.join(results_path, "QGT_2D.npy")
+    meta_path = os.path.join(results_path, "meta_info.pkl")
+
+    if not os.path.exists(qgt_data_path):
+        raise FileNotFoundError(f"QGT data not found in '{results_path}'.")
+
+    # Load metadata and QGT results
+    with open(meta_path, "rb") as f:
+        meta_info = pickle.load(f)
+    qgt_data = np.load(qgt_data_path, allow_pickle=True)
+
+    # Extract omega values and corresponding Berry curvature stds
+    omega_values = []
+    berry_std_values = []
+
+    for entry in qgt_data:
+        omega = entry["omega"]
+        g_xy_imag = entry["g_xy_imag"]
+
+        # Berry curvature: -2 * Im[g_xy], use absolute value if needed
+        berry_curvature = -2 * g_xy_imag  # sign doesn't affect std
+        std = np.std(berry_curvature)
+
+        omega_values.append(omega)
+        berry_std_values.append(std)
+
+    # Plotting
+    plt.figure(figsize=(8, 5))
+    plt.plot(omega_values, berry_std_values, marker='o', linestyle='-')
+    plt.xscale('log')
+    plt.xlabel("Drive Frequency ω")
+    plt.ylabel("Std. Dev of Berry Curvature over BZ")
+    plt.title("Fluctuation of Berry Curvature vs ω")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+def plot_integrated_trace_minus_berry(folder_name):
+    """
+    Plot the integral over the BZ of [trace - Berry curvature] for each omega.
+
+    Parameters:
+        folder_name (str): Name of the subfolder in 'results/2D_QGT_omega_sweep/' containing the results.
+    """
+    results_path = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", folder_name)
+    qgt_data_path = os.path.join(results_path, "QGT_2D.npy")
+    meta_path = os.path.join(results_path, "meta_info.pkl")
+
+    if not os.path.exists(qgt_data_path):
+        raise FileNotFoundError(f"QGT data not found in '{results_path}'.")
+
+    # Load metadata and QGT results
+    with open(meta_path, "rb") as f:
+        meta_info = pickle.load(f)
+    qgt_data = np.load(qgt_data_path, allow_pickle=True)
+
+    dkx = meta_info["dkx"]
+    dky = meta_info["dky"]
+    area_element = dkx * dky
+
+    omega_values = []
+    integrated_values = []
+
+    for entry in qgt_data:
+        omega = entry["omega"]
+        trace = entry["trace"]
+        berry_curvature = -2 * entry["g_xy_imag"]
+
+        integrand = trace - berry_curvature
+        total_integral = np.sum(integrand) * area_element
+
+        omega_values.append(omega)
+        integrated_values.append(total_integral)
+
+    # Plotting
+    plt.figure(figsize=(8, 5))
+    plt.plot(omega_values, integrated_values, marker='o', linestyle='-')
+    plt.xscale('log')
+    plt.xlabel("Drive Frequency ω")
+    plt.ylabel(r"$\int_{\mathrm{BZ}} \left[\mathrm{Tr}(g) - \Omega\right] d^2k$")
+    plt.title("Integrated Tr(g) - Ω vs ω")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
+
 # 1D QGT
 
-# TwoOrbitalUnspinful
+## TwoOrbitalUnspinful
 # 22.5 degrees
 # dynamic_with_eigenvalues("TwoOrbitalUnspinfulHamiltonian/A00.1_polarizationleft_magnus_order1_t1_mu0_zeta1.0_a1_angle0.4_kxshift0.00_kyshift0.00_points150_kmax4.44_omega1.00e-02_5.00e_01_spacing_log_points100_1")
 # dynamic_with_eigenvalues("TwoOrbitalUnspinfulHamiltonian/A00.1_polarizationleft_magnus_order1_t1_mu0_zeta1.0_a1_angle22.5_kxshift0.00_kyshift0.00_points150_kmax4.44_omega1.00e-02_5.00e-01_spacing_log_points100_1")
@@ -393,25 +531,34 @@ def dynamic_2d_trace_vs_omega(folder_name):
 
 # Conclusion: There is practically no shift in the QGT trace. 
 
-# # Sqaure Lattice
-# t5=0
-# Along the shifted 45 degree line
-# dynamic_with_eigenvalues("1D_QGT_SquareLatticeHamiltonian_dim2_omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t50_angle0.8_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega5.00e-01_5.00e_01_spacing_log_points100_2")
+## Sqaure Lattice
+### t5=0
+#### Along the shifted 45 degree line
+dynamic_with_eigenvalues("1D_QGT_SquareLatticeHamiltonian_dim2_omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t50_angle0.8_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega5.00e-01_5.00e_01_spacing_log_points100_2")
 
 # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t50_angle45.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega1.00e-02_1.00e_01_spacing_log_points100_1")
 
 # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t50_angle45.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega5.00e-02_1.00e_01_spacing_log_points100_1")
 
-# Along the shifted 0 degree line
+#### Along the shifted 0 degree line
 # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t50_angle0.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega5.00e-02_5.00e_01_spacing_log_points100_1")
 
 
-# t5=(1-np.sqrt(2))/4
+### t5=(1-np.sqrt(2))/4
 # dynamic_with_eigenvalues("1D_QGT_SquareLatticeHamiltonian_dim2_omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle0.8_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega5.00e-01_5.00e_01_spacing_log_points100_1")
 
 # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle45.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega5.00e-02_5.00e_01_spacing_log_points100_1")
 
+#### Centered around at (0,0)
+##### 45 degree line 
+# dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle45.0_kxshift0.00_kyshift0.00_points150_kmax4.44_omega5.00e-02_5.00e_01_spacing_log_points100_1")
 
 # 2D QGT
-# dynamic_2d_trace_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega5.00e-02_5.00e_01_spacing_log_points4_2")
-dynamic_2d_trace_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega5.00e-02_5.00e_01_spacing_log_points32_1")
+# dynamic_2d_trace_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega5.00e-02_5.00e_01_spacing_log_points32_1")
+
+# Trace std
+# plot_trace_std_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega5.00e-02_5.00e_01_spacing_log_points32_1")
+
+# plot_berry_std_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega5.00e-02_5.00e_01_spacing_log_points32_1")
+
+# plot_integrated_trace_minus_berry("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega5.00e-02_5.00e_01_spacing_log_points32_1")
