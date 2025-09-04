@@ -15,10 +15,10 @@ def sign_check(vec1, vec2):
         return vec1, vec2
 
 
-def setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing):
+def setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force_new=False):
     """
     Creates a unique results directory for storing computed data, structured by Hamiltonian parameters and k-space info.
-    If a directory with the same name exists and contains all necessary files, it is reused.
+    If a directory with the same name exists and contains all necessary files, it is reused unless force_new=True.
     Otherwise, a new directory with an incremented number is created.
 
     Parameters:
@@ -26,52 +26,54 @@ def setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing):
         kx_range (tuple): Tuple of (min_kx, max_kx).
         ky_range (tuple): Tuple of (min_ky, max_ky).
         mesh_spacing (int): The number of k-space points.
+        force_new (bool): If True, force creation of a new directory even if one already exists.
 
     Returns:
         dict: Dictionary containing file paths.
-        bool: Whether to use existing data (if all files are found).
+        bool: Whether to use existing data (if all files are found and force_new=False).
         str: Path to the results directory used.
     """
-    # Ensure the main "results" directory exists
-    results_dir = os.path.join(os.getcwd(), "results", "2D_Eigen_results")
+    # Group by Hamiltonian name (fallback to generic if missing)
+    Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
+
+    # Main results directory grouped by Hamiltonian
+    results_dir = os.path.join(os.getcwd(), "results", "2D_Eigen_results", Hamiltonian_name)
     os.makedirs(results_dir, exist_ok=True)
 
-    # Base subdirectory name
-    base_subdir_name = f"2D_{hamiltonian.get_filename()}_kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_mesh{mesh_spacing}"
-    base_subdir_name = re.sub(r'[^\w.-]', '_', base_subdir_name)  # Sanitize filename
+    base_subdir_name = (
+        f"2D_{hamiltonian.get_filename()}_"
+        f"kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_"
+        f"ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_mesh{mesh_spacing}"
+    )
+    base_subdir_name = re.sub(r'[^\w.-]', '_', base_subdir_name)
 
-    # Check for existing directories with the same base name
     existing_dirs = [d for d in os.listdir(results_dir) if d.startswith(base_subdir_name)]
-    
-    for existing_dir in sorted(existing_dirs):
-        existing_path = os.path.join(results_dir, existing_dir)
-        
-        # Define expected file paths within this directory
-        file_paths = {
-            "eigenvalues": os.path.join(existing_path, "eigenvalues.npy"),
-            "eigenfunctions": os.path.join(existing_path, "eigenfunctions.npy"),
-            "phasefactors": os.path.join(existing_path, "phasefactors.npy"),
-            "neighbor_phase_array": os.path.join(existing_path, "neighbor_phase_array.npy"),
-            "magnus_first": os.path.join(existing_path, "magnus_first.npy"),
-            "magnus_second": os.path.join(existing_path, "magnus_second.npy"),
-            "meta_info": os.path.join(existing_path, "meta_info.pkl"),  # Use pickle for metadata
-        }
 
-        # Check if all required files exist
-        if all(os.path.exists(path) for path in file_paths.values()):
-            print(f"Using existing results directory: {existing_path}")
-            return file_paths, True, existing_path  # Use existing directory
+    if not force_new:
+        for existing_dir in sorted(existing_dirs):
+            existing_path = os.path.join(results_dir, existing_dir)
 
-    # If no suitable directory was found, create a new one with an incremented number
+            file_paths = {
+                "eigenvalues": os.path.join(existing_path, "eigenvalues.npy"),
+                "eigenfunctions": os.path.join(existing_path, "eigenfunctions.npy"),
+                "phasefactors": os.path.join(existing_path, "phasefactors.npy"),
+                "neighbor_phase_array": os.path.join(existing_path, "neighbor_phase_array.npy"),
+                "magnus_first": os.path.join(existing_path, "magnus_first.npy"),
+                "magnus_second": os.path.join(existing_path, "magnus_second.npy"),
+                "meta_info": os.path.join(existing_path, "meta_info.pkl"),
+            }
+
+            if all(os.path.exists(path) for path in file_paths.values()):
+                print(f"Using existing results directory: {existing_path}")
+                return file_paths, True, existing_path
+
     next_number = 1
     while os.path.exists(os.path.join(results_dir, f"{base_subdir_name}_{next_number}")):
         next_number += 1
 
-    # Define new results directory
     results_subdir = os.path.join(results_dir, f"{base_subdir_name}_{next_number}")
     os.makedirs(results_subdir, exist_ok=True)
 
-    # Define all file paths in the new directory
     file_paths = {
         "eigenvalues": os.path.join(results_subdir, "eigenvalues.npy"),
         "eigenfunctions": os.path.join(results_subdir, "eigenfunctions.npy"),
@@ -79,11 +81,11 @@ def setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing):
         "neighbor_phase_array": os.path.join(results_subdir, "neighbor_phase_array.npy"),
         "magnus_first": os.path.join(results_subdir, "magnus_first.npy"),
         "magnus_second": os.path.join(results_subdir, "magnus_second.npy"),
-        "meta_info": os.path.join(results_subdir, "meta_info.pkl"),  # Use pickle for metadata
+        "meta_info": os.path.join(results_subdir, "meta_info.pkl"),
     }
 
     print(f"Created new results directory: {results_subdir}")
-    return file_paths, False, results_subdir  # New directory, so use_existing=False
+    return file_paths, False, results_subdir
 
 
 def setup_results_directory_1d(hamiltonian, k_angle, kx_shift, ky_shift, num_points, k_max):
@@ -154,10 +156,10 @@ def setup_results_directory_1d(hamiltonian, k_angle, kx_shift, ky_shift, num_poi
     return file_paths, False, results_subdir  # New directory, so use_existing=False
 
 
-def setup_QGT_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing):
+def setup_QGT_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force_new=False):
     """
     Creates a results directory for storing QGT computed data, structured by Hamiltonian parameters and k-space info.
-    If a directory with the same name exists and contains all necessary files, it is reused.
+    If a directory with the same name exists and contains all necessary files, it is reused unless force_new=True.
     Otherwise, a new directory with an incremented number is created.
 
     Parameters:
@@ -165,63 +167,65 @@ def setup_QGT_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing):
         kx_range (tuple): Tuple of (min_kx, max_kx).
         ky_range (tuple): Tuple of (min_ky, max_ky).
         mesh_spacing (int): The number of k-space points.
+        force_new (bool): If True, force creation of a new directory even if one already exists.
 
     Returns:
         dict: Dictionary containing file paths.
-        bool: Whether to use existing data (if all files are found).
+        bool: Whether to use existing data (if all files are found and force_new=False).
         str: Path to the results directory used.
     """
-    # Ensure the main "QGT_results" directory exists
-    results_dir = os.path.join(os.getcwd(), "results", "2D_QGT_results")
+    # Get Hamiltonian name for top-level grouping
+    Hamiltonian_name = hamiltonian.name if hasattr(hamiltonian, "name") else "Hamiltonian"
+
+    # Main result directory grouped by Hamiltonian name
+    results_dir = os.path.join(os.getcwd(), "results", "2D_QGT_results", Hamiltonian_name)
     os.makedirs(results_dir, exist_ok=True)
 
-    # Base subdirectory name
-    base_subdir_name = f"QGT_{hamiltonian.get_filename(parameter = '2D')}_kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_mesh{mesh_spacing}"
-    base_subdir_name = re.sub(r'[^\w.-]', '_', base_subdir_name)  # Sanitize filename
+    # Parameter string and subdir naming
+    base_subdir_name = (
+        f"QGT_{hamiltonian.get_filename(parameter='2D')}_"
+        f"kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_"
+        f"ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_mesh{mesh_spacing}"
+    )
+    base_subdir_name = re.sub(r'[^\w.-]', '_', base_subdir_name)
 
-    # Check for existing directories with the same base name
     existing_dirs = [d for d in os.listdir(results_dir) if d.startswith(base_subdir_name)]
 
-    for existing_dir in sorted(existing_dirs):
-        existing_path = os.path.join(results_dir, existing_dir)
+    if not force_new:
+        for existing_dir in sorted(existing_dirs):
+            existing_path = os.path.join(results_dir, existing_dir)
 
-        # Define expected file paths within this directory
-        file_paths = {
-            "g_xx": os.path.join(existing_path, "g_xx.npy"),
-            "g_xy_real": os.path.join(existing_path, "g_xy_real.npy"),
-            "g_xy_imag": os.path.join(existing_path, "g_xy_imag.npy"),
-            "g_yy": os.path.join(existing_path, "g_yy.npy"),
-            "trace": os.path.join(existing_path, "trace.npy"),
-            "meta_info": os.path.join(existing_path, "meta_info.pkl"),  # Metadata
-        }
+            file_paths = {
+                "g_xx": os.path.join(existing_path, "g_xx.npy"),
+                "g_xy_real": os.path.join(existing_path, "g_xy_real.npy"),
+                "g_xy_imag": os.path.join(existing_path, "g_xy_imag.npy"),
+                "g_yy": os.path.join(existing_path, "g_yy.npy"),
+                "trace": os.path.join(existing_path, "trace.npy"),
+                "meta_info": os.path.join(existing_path, "meta_info.pkl"),
+            }
 
-         # Check if all required files exist
-        if all(os.path.exists(path) for path in file_paths.values()):
-            print(f"Using existing QGT results directory: {existing_path}")
-            return file_paths, True, existing_path  # Use existing directory
+            if all(os.path.exists(path) for path in file_paths.values()):
+                print(f"Using existing QGT results directory: {existing_path}")
+                return file_paths, True, existing_path
 
-    # If no suitable directory was found, create a new one with an incremented number
     next_number = 1
     while os.path.exists(os.path.join(results_dir, f"{base_subdir_name}_{next_number}")):
         next_number += 1
 
-    # Define new results directory
     results_subdir = os.path.join(results_dir, f"{base_subdir_name}_{next_number}")
     os.makedirs(results_subdir, exist_ok=True)
 
-    # Define all file paths in the new directory
     file_paths = {
         "g_xx": os.path.join(results_subdir, "g_xx.npy"),
         "g_xy_real": os.path.join(results_subdir, "g_xy_real.npy"),
         "g_xy_imag": os.path.join(results_subdir, "g_xy_imag.npy"),
         "g_yy": os.path.join(results_subdir, "g_yy.npy"),
         "trace": os.path.join(results_subdir, "trace.npy"),
-        "meta_info": os.path.join(results_subdir, "meta_info.pkl"),  # Metadata
+        "meta_info": os.path.join(results_subdir, "meta_info.pkl"),
     }
 
     print(f"Created new QGT results directory: {results_subdir}")
-    return file_paths, False, results_subdir  # New directory, so use_existing=False
-
+    return file_paths, False, results_subdir
 
 def setup_QGT_results_directory_1D(
     hamiltonian,

@@ -81,7 +81,7 @@ eigenvalue_neg_array = np.zeros(kx.shape)
 # Calculate tensor components for each point in the Brillouin zone
 for i in range(kx.shape[0]):
     for j in range(kx.shape[1]):
-        g_xx, g_xy_real, g_xy_imag, g_yy = quantum_geometric_tensor(psi, I, kx[i, j], ky[i, j], delta_k)
+        g_xx, g_xy_real, g_xy_imag, g_yy = quantum_geometric_tensor_semi_num(psi, I, kx[i, j], ky[i, j], delta_k)
         # if False: 
         if g_xx > z_cutoff:
             g_xx_array[i, j] = z_cutoff

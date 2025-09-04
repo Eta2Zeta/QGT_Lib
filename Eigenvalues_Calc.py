@@ -12,35 +12,17 @@ from Library.eigenvalue_calc_lib import *
 from Library.Geometry.zones import ZoneDivider
 from Library.utilities import *
 
-# There were four zones of the eigenfunction with distinct phases and
-# I was trying to test if changing the phases of one can make it match 
-# to the phase another but it could not. Forgot which Hamiltonian it
-# was for
-def experiment():
-    # Experiment Changing the phase of one zone
-    num_zones = 4
-    zone_to_modify = 1  # Index of the zone to modify (0-based)
-    phase_factor = np.exp(0.8j * np.pi)  # Example phase factor
-
-    # Initialize the ZoneDivider
-    zone_divider = ZoneDivider(kx, ky, num_zones)
-    # Calculate zones
-    zone_divider.calculate_zones()
-    # Create a mask for the selected zone
-    zone_mask = zone_divider.create_mask_for_zone(zone_to_modify)
-
-    # Apply the phase factor to eigenfunctions within the selected zone
-    modified_eigenfunctions = eigenfunctions.copy()
-    modified_eigenfunctions[:, :, 0, 0][zone_mask] *= phase_factor
 
 # Ensure the temp directory exists
 temp_dir = os.path.join(os.getcwd(), "temp")
 os.makedirs(temp_dir, exist_ok=True)
 
 # Hamiltonian_Obj = THF_Hamiltonian(A0=0)
-hamiltonian = TwoOrbitalUnspinfulHamiltonian(zeta=1.0, omega = 10.0, A0=0.1, mu=0, magnus_order = 1)
+# hamiltonian = TwoOrbitalUnspinfulHamiltonian(zeta=1.0, omega = 10.0, A0=0.1, mu=0, magnus_order = 1)
 # hamiltonian = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=0)
 # hamiltonian = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=(1-np.sqrt(2))/4)
+# hamiltonian = RhombohedralGrapheneHamiltonian(n=5, V=30)
+hamiltonian = ChiralHamiltonian(n=5, V=30)
 dim = hamiltonian.dim
 
 def calculation_2d(hamiltonian = hamiltonian):
@@ -48,10 +30,10 @@ def calculation_2d(hamiltonian = hamiltonian):
 
 
     # Define parameters
-    k_max = np.pi
+    k_max = 1.25 * 355.16/542.1
     kx_min, kx_max = -k_max, k_max
     ky_min, ky_max = -k_max, k_max
-
+   
     # Create kx and ky arrays
     kx_range = (kx_min, kx_max)
     ky_range = (ky_min, ky_max)
@@ -62,10 +44,10 @@ def calculation_2d(hamiltonian = hamiltonian):
     kx, ky = np.meshgrid(kx, ky)
     dkx = np.abs(kx[0, 1] - kx[0, 0])  # Spacing in the x-direction (constant for a uniform grid)
     dky = np.abs(ky[1, 0] - ky[0, 0])  # Spacing in the y-direction (constant for a uniform grid)
-    z_limit = 10
+    z_limit = 1000
 
     # Create the results directory
-    file_paths, use_existing, results_subdir = setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing)
+    file_paths, use_existing, results_subdir = setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force_new=False)
 
     if use_existing:
         # Load existing data
@@ -99,6 +81,9 @@ def calculation_2d(hamiltonian = hamiltonian):
         eigenvalues, eigenfunctions, phasefactors, overall_neighbor_phase_array, magnus_first_term, magnus_second_term = spiral_eigenvalues_eigenfunctions(
             hamiltonian, kx, ky, mesh_spacing, dim=dim, phase_correction=False
         )
+
+        # eigenvalues = analytic_eigenvalues_2d(hamiltonian, kx, ky, mesh_spacing, dim)
+
 
         # Save results
         for key, array in {
@@ -143,7 +128,7 @@ def calculation_2d(hamiltonian = hamiltonian):
 
     plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, color_maps='bwr', norm=None)
 
-    plot_individual_eigenvalues(kx, ky, eigenvalues, dim=dim, z_limit=None)
+    # plot_individual_eigenvalues(kx, ky, eigenvalues, dim=dim, z_limit=None)
 
     # plot_eigenfunction_components(kx, ky, eigenfunctions, band_index=0, components_to_plot=[0])
 
@@ -153,6 +138,7 @@ def calculation_2d(hamiltonian = hamiltonian):
 
 
 def calculation_1d(hamiltonian=hamiltonian):
+    print("Currently performing 1D calculation")
     # Does the calculation on a line
     band_index = 1
 
@@ -168,6 +154,8 @@ def calculation_1d(hamiltonian=hamiltonian):
     k_line = np.linspace(-k_max, k_max, num_points)
     line_kx = k_line * np.cos(k_angle) + kx_shift
     line_ky = k_line * np.sin(k_angle) + ky_shift
+
+    
 
     # Create the results directory
     file_paths, use_existing, results_subdir = setup_results_directory_1d(

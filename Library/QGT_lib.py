@@ -1,7 +1,10 @@
 from .eigenvalue_calc_lib import *    
 from .utilities import sign_check
 
-# & Calculation with analytical eigenfunctions
+# & Calculation with semi-analytical eigenfunctions
+# & 
+# & I think the idea is to get the expressions for the eigenfunctions 
+# & and then use them to calculate the quantum geometric tensor
 # Projection operator
 def projection_operator(psi):
     return np.outer(psi, np.conj(psi))
@@ -20,7 +23,7 @@ def dpsi_dy(psi, kx, ky, delta_k):
 
 
 # Calculate the quantum geometric tensor components
-def quantum_geometric_tensor(psi, I, kx, ky, delta_k):
+def quantum_geometric_tensor_semi_num(psi, I, kx, ky, delta_k):
     dpsi_dx_val = dpsi_dx(psi, kx, ky, delta_k)
     dpsi_dy_val = dpsi_dy(psi, kx, ky, delta_k)
     psi_val = psi(kx, ky)
@@ -118,8 +121,30 @@ def quantum_geometric_tensor_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigen
     
     return g_xx, g_xy_real, g_xy_imag, g_yy
 
+def quantum_geometric_tensor_analytic(Hamiltonian, kx, ky):
+    """
+    Returns the analytical components of the quantum geometric tensor (QGT)
+    for a given Hamiltonian at momentum (kx, ky), if defined.
 
-def QGT_grid(
+    Parameters:
+        Hamiltonian: Hamiltonian object with optional analytical QGT methods
+        kx, ky: momentum components
+
+    Returns:
+        g_xx, g_xy_real, g_xy_imag, g_yy: individual QGT components (float or None)
+    """
+
+    g_xx = Hamiltonian.g_xx(kx, ky) if hasattr(Hamiltonian, 'g_xx') else None
+    g_xy_real = Hamiltonian.g_xy_real(kx, ky) if hasattr(Hamiltonian, 'g_xy_real') else None
+    g_xy_imag = Hamiltonian.g_xy_imag(kx, ky) if hasattr(Hamiltonian, 'g_xy_imag') else None
+    g_yy = Hamiltonian.g_yy(kx, ky) if hasattr(Hamiltonian, 'g_yy') else None
+    trace = Hamiltonian.trace(kx, ky) if hasattr(Hamiltonian, 'trace') else None
+
+    return g_xx, g_xy_real, g_xy_imag, g_yy, trace
+
+
+
+def QGT_grid_num(
     kx, ky, eigenvalues, eigenfunctions, quantum_geometric_tensor_func, 
     hamiltonian, delta_k, band_index, z_cutoff=None
 ):
@@ -158,6 +183,9 @@ def QGT_grid(
             for j in range(kx.shape[1]):
                 eigenfunction = eigenfunctions[i, j]
                 eigenvalue = eigenvalues[i, j]
+                if not np.isnan(eigenvalue).all():
+                    pass  # or breakpoint(), or raise, or print
+
 
                 g_xx, g_xy_real, g_xy_imag, g_yy = quantum_geometric_tensor_func(
                     hamiltonian, kx[i, j], ky[i, j], delta_k, eigenvalue, eigenfunction, band_index
@@ -183,6 +211,59 @@ def QGT_grid(
 
     return g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array
 
+def QGT_grid_analytic(
+    kx, ky,
+    quantum_geometric_tensor_func,
+    hamiltonian,
+    z_cutoff=None
+):
+    """
+    Calculate the analytical quantum geometric tensor (QGT) components on a kx-ky grid.
+
+    Parameters:
+    - kx, ky: 2D arrays defining the k-space grid.
+    - quantum_geometric_tensor_func: Analytical function returning QGT components.
+    - hamiltonian: The Hamiltonian object.
+    - z_cutoff: Optional upper bound to clip the QGT components.
+
+    Returns:
+    - g_xx_array: 2D array of g_xx components.
+    - g_xy_real_array: 2D array of real parts of g_xy components.
+    - g_xy_imag_array: 2D array of imaginary parts of g_xy components.
+    - g_yy_array: 2D array of g_yy components.
+    - trace_array: 2D array of g_xx + g_yy.
+    """
+    g_xx_array = np.zeros(kx.shape)
+    g_xy_real_array = np.zeros(kx.shape)
+    g_xy_imag_array = np.zeros(kx.shape)
+    g_yy_array = np.zeros(kx.shape)
+    trace_array = np.zeros(kx.shape)
+
+    total_points = kx.shape[0] * kx.shape[1]
+
+    with tqdm(total=total_points, desc="Computing Analytical QGT Grid", unit="point") as pbar:
+        for i in range(kx.shape[0]):
+            for j in range(kx.shape[1]):
+                g_xx, g_xy_real, g_xy_imag, g_yy, trace = quantum_geometric_tensor_func(
+                    hamiltonian, kx[i, j], ky[i, j]
+                )
+
+                g_xx_array[i, j] = g_xx if g_xx is not None else 0.0
+                g_xy_real_array[i, j] = g_xy_real if g_xy_real is not None else 0.0
+                g_xy_imag_array[i, j] = g_xy_imag if g_xy_imag is not None else 0.0
+                g_yy_array[i, j] = g_yy if g_yy is not None else 0.0
+                trace_array[i, j] = trace if trace is not None else 0.0
+
+                pbar.update(1)
+
+    if z_cutoff is not None:
+        g_xx_array = np.clip(g_xx_array, -z_cutoff, z_cutoff)
+        g_xy_real_array = np.clip(g_xy_real_array, -z_cutoff, z_cutoff)
+        g_xy_imag_array = np.clip(g_xy_imag_array, -z_cutoff, z_cutoff)
+        g_yy_array = np.clip(g_yy_array, -z_cutoff, z_cutoff)
+        trace_array = np.clip(trace_array, -z_cutoff, z_cutoff)
+
+    return g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array
 
 
 def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, band_index):
@@ -205,7 +286,7 @@ def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, band_index):
     - trace_values: Array of trace components (g_xx + g_yy) along the line.
     """
     # Step 1: Get eigenvalues and eigenfunctions along the line
-    eigenvalues, eigenfunctions, _, perturbations = line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, band_index)
+    eigenvalues, eigenfunctions, _, perturbations, magnus_operator_norm = line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, band_index)
 
     # Ensure eigenvalues is at least 2D (e.g., [points, bands])
     eigenvalues = np.asarray(eigenvalues)
@@ -249,4 +330,4 @@ def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, band_index):
     g_yy_values = np.array(g_yy_values)
     trace_values = np.array(trace_values)
 
-    return eigenvalues, perturbations, g_xx_values, g_xy_real_values, g_xy_imag_values, g_yy_values, trace_values
+    return eigenvalues, perturbations, g_xx_values, g_xy_real_values, g_xy_imag_values, g_yy_values, trace_values, magnus_operator_norm

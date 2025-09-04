@@ -19,12 +19,12 @@ from Library.plotting_lib import *
 
 
 # Define parameters
-band = 1 # Which band to calculate your QMT on, starting from 0
-z_cutoff = 1e1 #where to cutoff the plot for the z axis when singularties occur
-
+band = 4 # Which band to calculate your QMT on, starting from 0
+z_cutoff = 1e2 #where to cutoff the plot for the z axis when singularties occur
 
 # Define the temp directory for storing .npy files
 temp_dir = os.path.join(os.getcwd(), "temp")
+
 # File paths for loading the data
 eigenvalues_file = os.path.join(temp_dir, "eigenvalues.npy")
 eigenfunctions_file = os.path.join(temp_dir, "eigenfunctions.npy")
@@ -36,30 +36,24 @@ if os.path.exists(eigenvalues_file) and os.path.exists(eigenfunctions_file) and 
     eigenfunctions = np.load(eigenfunctions_file)
     with open(meta_info_file, "rb") as meta_file:
         meta_info = pickle.load(meta_file)
-        kx = meta_info["kx"]
-        ky = meta_info["ky"]
+        Hamiltonian_Obj = meta_info["Hamiltonian_Obj"] # ALWAYS REQUIRED
+        kx = meta_info["kx"] # Required for 1D
+        ky = meta_info["ky"] # Required for 1D
         dkx = meta_info["dkx"]
         dky = meta_info["dky"]
         mesh_spacing = meta_info["mesh_spacing"]
-        Hamiltonian_Obj = meta_info["Hamiltonian_Obj"]
         kx_range = meta_info["kx_range"]
         ky_range = meta_info["ky_range"]
-        mesh_spacing = meta_info["mesh_spacing"]
     print("Loaded eigenvalues, eigenfunctions, and meta information from files.")
+    print(f"Current Hamiltonian: {Hamiltonian_Obj.name}")
 else:
     print("Eigenvalues or eigenfunctions files not found. Please ensure they are available at the specified paths.")
     sys.exit(1)
 
-def max_grid_spacing(kx, ky):
-    # Calculate the largest difference in kx and ky to determine k_max
-    kx_diff = np.max(np.abs(np.diff(kx, axis=1)))  # Differences along kx
-    ky_diff = np.max(np.abs(np.diff(ky, axis=0)))  # Differences along ky
-    return max(kx_diff, ky_diff)  # Take the maximum difference
-
-delta_k = max_grid_spacing(kx, ky)
+delta_k = min(dkx, dky)
 
 def calculate_2d():
-    file_paths, use_existing, results_subdir = setup_QGT_results_directory(Hamiltonian_Obj, kx_range, ky_range, mesh_spacing)
+    file_paths, use_existing, results_subdir = setup_QGT_results_directory(Hamiltonian_Obj, kx_range, ky_range, mesh_spacing, force_new=False)
     if use_existing:
         # Load existing QGT data
         g_xx_array = np.load(file_paths["g_xx"])
@@ -75,11 +69,24 @@ def calculate_2d():
 
 
     else:
+        Hamiltonian_Obj.A0 = 0.0
+        Hamiltonian_Obj.omega = 5e3
+        Hamiltonian_Obj.analytic_magnus = True
+
         # Compute QGT if data does not exist
-        g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = QGT_grid(
+        # Numerical calculation
+        g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = QGT_grid_num(
             kx, ky, eigenvalues, eigenfunctions, quantum_geometric_tensor_num, 
             Hamiltonian_Obj, delta_k, band_index=band, z_cutoff=z_cutoff
         )
+        
+
+        # Compute QGT if data does not exist
+        # Analytical calculation, so far just does the lower band
+        # g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = QGT_grid_analytic(
+        #     kx, ky, quantum_geometric_tensor_analytic, 
+        #     Hamiltonian_Obj, z_cutoff=z_cutoff
+        # )
 
         # Save QGT results
         for key, array in {
@@ -116,86 +123,16 @@ def calculate_2d():
 
     # print("Chern number is: ", chern_number)
 
-    plot_QGT_components_3d(kx, ky, g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array)
+    # plot_QGT_components_3d(kx, ky, g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array)
 
     # plot_g_components_2d(g_xx_array, g_yy_array, trace_array, k_max=k_max)
 
-    plot_trace_w_eigenvalue(kx, ky, g_xx_array, g_yy_array, eigenvalues, trace_array, eigenvalue_band=band)
+    # plot_trace_w_eigenvalue(kx, ky, g_xx_array, g_yy_array, eigenvalues, trace_array, eigenvalue_band=band)
+
+    plot_qmt_eig_berry_trace_3d(kx, ky, eigenvalues, g_xy_imag_array, trace_array, eigenvalue_band=band)
 
 
-
-
-def range_of_G(spacing='log', G_min=1e-6, G_max=0.02, num_points=100):
-    """
-    Calculate QGT for a range of G values and save the results to a file.
-    The output file name is dynamically set based on the spacing type.
-
-    Parameters:
-    - spacing: Type of spacing for G values ('log' or 'linear').
-    - G_min: Minimum value of G.
-    - G_max: Maximum value of G.
-    - num_points: Number of G values.
-
-    Returns:
-    - None: Saves the results to a file.
-    """
-
-    # Define the line parameters
-    angle_deg = 0  # Line angle in degrees
-    k_angle = np.deg2rad(angle_deg) # Convert into Radians
-    kx_shift = 0
-    ky_shift = 0
-    num_points = 300  # Number of points along the line
-    k_max = 1 * (np.pi)
-    k_line = np.linspace(-k_max, k_max, num_points)
-    line_kx = k_line * np.cos(k_angle) + kx_shift
-    line_ky = k_line * np.sin(k_angle) + ky_shift
-    
-
-    # Generate G values based on the specified spacing
-    if spacing == 'log':
-        G_values = np.logspace(np.log10(G_max), np.log10(G_min), num_points)
-    elif spacing == 'linear':
-        G_values = np.linspace(G_max, G_min, num_points)
-    else:
-        raise ValueError("Invalid spacing. Choose 'log' or 'linear'.")
-    
-    # Create the results directory TODO: Correct this
-    file_paths, use_existing, results_subdir = setup_QGT_results_directory(Hamiltonian_Obj, kx_range, ky_range, num_points, k_max, G_min, G_max, spacing)
-
-    # Initialize a list to store results for each G
-    g_results = []
-
-    # Loop over the G values
-    for G in G_values:
-        # Create the Hamiltonian for the current G
-        H_THF_current = H_THF_factory(G)
-        
-        # Calculate QGT along the line
-        g_xx, g_xy_real, g_xy_imag, g_yy, trace = QGT_line(
-            H_THF_current, line_kx, line_ky, delta_k, band_index=band
-        )
-        
-        # Store the results as a dictionary for this G
-        g_results.append({
-            'G': G,
-            'g_xx': g_xx,
-            'g_xy_real': g_xy_real,
-            'g_xy_imag': g_xy_imag,
-            'g_yy': g_yy,
-            'trace': trace,
-        })
-
-    # Save the results to an .npy file with the dynamically set name
-    np.save(file_name, g_results)
-    print(f"Results saved to {file_name}")
-
-# range_of_G()
-
-
-
-
-def range_of_omega(spacing='linear', omega_min=5e-2, omega_max=5e1, num_k_points=150, num_omega_points=100):
+def range_of_omega(spacing='log', omega_min=5e0, omega_max=5e3, num_k_points=100, num_omega_points=30):
     """
     Calculate QGT for a range of omega values and save the results to a file.
     The output file name is dynamically set based on the spacing type.
@@ -210,16 +147,18 @@ def range_of_omega(spacing='linear', omega_min=5e-2, omega_max=5e1, num_k_points
     - None: Saves the results to a file.
     """
 
+    print("Currently performing 1D calculation")
+
     # Define the line parameters
-    # angle_deg = 0  # Line angle in degrees
-    angle_deg = 45  # Line angle in degrees
+    angle_deg = 0  # Line angle in degrees
+    # angle_deg = 45  # Line angle in degrees
     # angle_deg = 22.5  # Line angle in degrees
     k_angle = np.deg2rad(angle_deg) # Convert into Radians
     kx_shift = 0
     # ky_shift = -np.pi/2
     ky_shift = 0
-    # k_max = 1 * (np.pi) # Choose this when you do 0 or 90 degrees
-    k_max = np.sqrt(2) * (np.pi) # Choose this when you do 45 degrees
+    k_max = 1/2 * (np.pi) # Choose this when you do 0 or 90 degrees
+    # k_max = np.sqrt(2) * (np.pi) # Choose this when you do 45 degrees
     k_line = np.linspace(-k_max, k_max, num_k_points)
     line_kx = k_line * np.cos(k_angle) + kx_shift
     line_ky = k_line * np.sin(k_angle) + ky_shift
@@ -227,6 +166,8 @@ def range_of_omega(spacing='linear', omega_min=5e-2, omega_max=5e1, num_k_points
 
     # Give some amplitude to the light
     Hamiltonian_Obj.A0 = 0.1
+    Hamiltonian_Obj.polarization = "left"
+    # Hamiltonian_Obj.polarization = "linear_x"
 
     # Generate omega values based on the specified spacing
     if spacing == 'log':
@@ -259,7 +200,7 @@ def range_of_omega(spacing='linear', omega_min=5e-2, omega_max=5e1, num_k_points
         Hamiltonian_Obj.omega = omega
         
         # Calculate QGT along the line
-        eigenvalues, permutations, g_xx, g_xy_real, g_xy_imag, g_yy, trace = QGT_line(
+        eigenvalues, permutations, g_xx, g_xy_real, g_xy_imag, g_yy, trace, magnus_operator_norm = QGT_line(
             Hamiltonian_Obj, line_kx, line_ky, delta_k, band_index=band
         )
         
@@ -272,7 +213,8 @@ def range_of_omega(spacing='linear', omega_min=5e-2, omega_max=5e1, num_k_points
             'g_yy': g_yy,
             'trace': trace,
             'eigenvalues': eigenvalues,
-            'perturbation': permutations
+            'perturbation': permutations,
+            'magnus_operator_norm': magnus_operator_norm
         })
 
     # Save the results
@@ -298,7 +240,7 @@ def range_of_omega(spacing='linear', omega_min=5e-2, omega_max=5e1, num_k_points
     print(f"Saved QGT 1D results to '{results_subdir}'.")
 
 
-def range_of_omega_2d(spacing='linear', omega_min=5e-2, omega_max=5e1, num_omega_points=4):
+def range_of_omega_2d(spacing='linear', omega_min=1e-1, omega_max=5e1, num_omega_points=1):
     """
     Calculate the full 2D QGT grid for a range of omega values and save the results.
 
@@ -321,6 +263,9 @@ def range_of_omega_2d(spacing='linear', omega_min=5e-2, omega_max=5e1, num_omega
 
     # Set some default amplitude
     Hamiltonian_Obj.A0 = 0.1
+    Hamiltonian_Obj.polarization = "left"
+    # Hamiltonian_Obj.polarization = "right"
+    # Hamiltonian_Obj.polarization = "linear_x"
 
     # Directory setup
     file_paths, use_existing, results_subdir = setup_QGT_results_directory_2D_omega_range(
@@ -341,7 +286,9 @@ def range_of_omega_2d(spacing='linear', omega_min=5e-2, omega_max=5e1, num_omega
         # Set omega and compute QGT
         Hamiltonian_Obj.omega = omega
 
-        g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = QGT_grid(
+        eigenvalues, eigenfunctions = get_eigenstates_for_omega(Hamiltonian_Obj, kx, ky, mesh_spacing)
+
+        g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = QGT_grid_num(
             kx, ky, eigenvalues, eigenfunctions, quantum_geometric_tensor_num,
             Hamiltonian_Obj, delta_k, band_index=band, z_cutoff=z_cutoff
         )
@@ -378,8 +325,23 @@ def range_of_omega_2d(spacing='linear', omega_min=5e-2, omega_max=5e1, num_omega
 
     print(f"Saved full 2D QGT omega sweep to '{results_subdir}'")
 
+# Assuming 'dim' is defined somewhere globally or passed as an argument
+def get_eigenstates_for_omega(hamiltonian, kx, ky, mesh_spacing):
+    """
+    Computes eigenvalues and eigenfunctions for a given Hamiltonian and k-grid.
+    This is a simplified version of calculation_2d for internal use.
+    """
+    eigenfunctions = np.full((mesh_spacing, mesh_spacing, hamiltonian.dim, hamiltonian.dim), np.nan, dtype=complex)
+    eigenvalues = np.full((mesh_spacing, mesh_spacing, hamiltonian.dim), np.nan, dtype=float)
 
+    # Use a simplified calculation function that doesn't need to save to file
+    eigenvalues, eigenfunctions, _, _, _, _ = spiral_eigenvalues_eigenfunctions(
+        hamiltonian, kx, ky, mesh_spacing, dim=hamiltonian.dim, phase_correction=False
+    )
+    
+    return eigenvalues, eigenfunctions
 
+# Helper function to compute QGT for a single omega value
 def compute_qgt_for_omega(omega, hamiltonian_template, kx, ky, delta_k, eigenvalues, eigenfunctions, band, z_cutoff):
     """
     Compute QGT grid for a single omega value.
@@ -391,7 +353,12 @@ def compute_qgt_for_omega(omega, hamiltonian_template, kx, ky, delta_k, eigenval
     hamiltonian = copy.deepcopy(hamiltonian_template)
     hamiltonian.omega = omega
 
-    g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = QGT_grid(
+    # First, get the eigenvalues and eigenfunctions for the current omega
+    print(f"  > Worker computing for omega = {omega:.2e}")
+    eigenvalues, eigenfunctions = get_eigenstates_for_omega(hamiltonian, kx, ky, mesh_spacing)
+    print(f"  > Eigenstates computed for omega = {omega:.2e}")
+    
+    g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = QGT_grid_num(
         kx, ky, eigenvalues, eigenfunctions, quantum_geometric_tensor_num,
         hamiltonian, delta_k, band_index=band, z_cutoff=z_cutoff
     )
@@ -405,12 +372,7 @@ def compute_qgt_for_omega(omega, hamiltonian_template, kx, ky, delta_k, eigenval
         "trace": trace_array
     }
 
-
-
-
-
-
-def range_of_omega_2d_par(spacing='linear', omega_min=5e-2, omega_max=5e1, num_omega_points=32):
+def range_of_omega_2d_par(spacing='log', omega_min=5e0, omega_max=5e3, num_omega_points=64):
     """
     Parallelized: Calculate the full 2D QGT grid for a range of omega values and save the results.
     """
@@ -425,6 +387,8 @@ def range_of_omega_2d_par(spacing='linear', omega_min=5e-2, omega_max=5e1, num_o
 
     # Ensure A0 is set
     Hamiltonian_Obj.A0 = 0.1
+    Hamiltonian_Obj.polarization = "right"
+    # Hamiltonian_Obj.analytic_magnus = True
 
     # Setup directory
     file_paths, use_existing, results_subdir = setup_QGT_results_directory_2D_omega_range(
@@ -483,6 +447,7 @@ def range_of_omega_2d_par(spacing='linear', omega_min=5e-2, omega_max=5e1, num_o
         pickle.dump(meta_info, meta_file)
 
     print(f"✅ Saved full 2D QGT omega sweep to '{results_subdir}'")
+
 
 if __name__ == '__main__':
 

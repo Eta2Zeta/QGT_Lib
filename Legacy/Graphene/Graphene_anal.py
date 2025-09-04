@@ -75,7 +75,7 @@ analytic_g_xy_imag_array = np.zeros(kx.shape)
 for i in range(kx.shape[0]):
     for j in range(kx.shape[1]):
         if in_brillouin_zone(kx[i, j], ky[i, j]):
-            g_xx, g_xy_real, g_xy_imag, g_yy = quantum_geometric_tensor(psi, I, kx[i, j], ky[i, j], delta_k,)
+            g_xx, g_xy_real, g_xy_imag, g_yy = quantum_geometric_tensor_semi_num(psi, I, kx[i, j], ky[i, j], delta_k,)
             g_xx_array[i, j] = g_xx
             g_xy_real_array[i, j] = g_xy_real
             g_xy_imag_array[i, j] = g_xy_imag
