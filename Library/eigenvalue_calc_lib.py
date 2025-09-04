@@ -366,7 +366,7 @@ def eigenvalues_and_vectors_eigenvalue_ordering(
         max_perturbation = max(perturbation_values) if perturbation_values else 0
     
     if max_perturbation is not None:
-        return eigenvalues, eigenvectors, max_perturbation
+        return eigenvalues, eigenvectors, max_perturbation, np.linalg.norm(H_prime, 2)
     else:   
         return eigenvalues, eigenvectors
 
@@ -374,45 +374,82 @@ def eigenvalues_and_vectors_eigenvalue_ordering(
 
 # & Calculations in an angled line
 
-def line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, band_index = None):
+def line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, band_index=None):
     """
     Calculate eigenvalues and eigenvectors along a line in the kx-ky plane.
 
+    If Hamiltonian has a method called `valid_k_point(kx, ky)`, it will skip points where
+    that method returns False by assigning np.nan to the output arrays.
+
     Parameters:
-    - Hamiltonian: Function to compute the Hamiltonian matrix.
-    - k_line: 1D array of k-values along the line.
-    - k_angle: The angle of the line in radians.
-    - dim: The dimension of the system.
+    - Hamiltonian: Object with a method compute_static(kx, ky) and possibly valid_k_point(kx, ky).
+    - line_kx, line_ky: 1D arrays of the same length specifying the k-points.
+    - band_index: If specified, filters eigenvalues/eigenvectors by band index.
 
     Returns:
-    - eigenvalues: 2D array of eigenvalues, shape (num_points, dim).
-    - eigenfunctions: 3D array of eigenfunctions, shape (num_points, dim, dim).
-    - phase_factors_array: 2D array of phase factors, shape (num_points, dim).
+    - eigenvalues: (num_points, dim) array
+    - eigenfunctions: (num_points, dim, dim) array
+    - phase_factors_array: (num_points, dim) array
+    - perturbation_array: (num_points,) array [only if band_index is specified]
     """
     dim = Hamiltonian.dim
-    # Initialize arrays to store results
     num_points = len(line_kx)
-    eigenvalues = np.zeros((num_points, dim), dtype=float)
-    eigenfunctions = np.zeros((num_points, dim, dim), dtype=complex)
-    phase_factors_array = np.zeros((num_points, dim), dtype=float)
-    perturbation_array = np.zeros(num_points, dtype=float)
+
+    eigenvalues = np.full((num_points, dim), np.nan, dtype=float)
+    eigenfunctions = np.full((num_points, dim, dim), np.nan, dtype=complex)
+    phase_factors_array = np.full((num_points, dim), np.nan, dtype=float)
+    perturbation_array = np.full(num_points, np.nan, dtype=float)
+    magnus_operator_norm = np.full(num_points, np.nan, dtype=float)
 
     eigenvector = Eigenvectors(dim)
 
-    # Loop through each point along the line
+    has_valid_k = hasattr(Hamiltonian, "valid_k_point") and callable(getattr(Hamiltonian, "valid_k_point"))
+
     for i, (kx, ky) in enumerate(zip(line_kx, line_ky)):
-        vals, vecs, pert = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, eigenvector, band_index=band_index)
-        phase_factors = eigenvector.get_phase_factors()
-        
-        eigenvalues[i] = vals
-        eigenfunctions[i] = vecs
-        phase_factors_array[i] = phase_factors
-        perturbation_array[i] =pert
-    
+        if has_valid_k and not Hamiltonian.valid_k_point(kx, ky):
+            continue  # leave NaNs
+        try:
+            vals, vecs, pert, mon = eigenvalues_and_vectors_eigenvalue_ordering(
+                Hamiltonian, kx, ky, eigenvector, band_index=band_index
+            )
+            phase_factors = eigenvector.get_phase_factors()
+
+            eigenvalues[i] = vals
+            eigenfunctions[i] = vecs
+            phase_factors_array[i] = phase_factors
+            perturbation_array[i] = pert
+            magnus_operator_norm[i] = mon
+        except Exception:
+            # Just in case any numerical failure occurs
+            continue
+
     if band_index is not None:
-        return eigenvalues, eigenfunctions, phase_factors_array, perturbation_array
+        return eigenvalues, eigenfunctions, phase_factors_array, perturbation_array, magnus_operator_norm
     else:
         return eigenvalues, eigenfunctions, phase_factors_array
+
+# & Analytical Calculations
+
+def analytic_eigenvalues_2d(hamiltonian, kx, ky, mesh_spacing, dim):
+    """
+    Compute analytical eigenvalues on a 2D k-grid using the Hamiltonian's analytic expression.
+
+    Parameters:
+        hamiltonian: Hamiltonian object with `analytic_eigenvalues(kx, ky)` method.
+        kx, ky: 2D meshgrid arrays of shape (mesh_spacing, mesh_spacing).
+        mesh_spacing: Integer defining the number of points along each axis.
+        dim: Number of bands (should be 2 for RhombohedralGrapheneHamiltonian).
+
+    Returns:
+        eigenvalues: Array of shape (mesh_spacing, mesh_spacing, dim) containing band energies.
+    """
+    eigenvalues = np.zeros((mesh_spacing, mesh_spacing, dim), dtype=float)
+
+    for i in range(mesh_spacing):
+        for j in range(mesh_spacing):
+            eigenvalues[i, j] = hamiltonian.analytic_eigenvalues(kx[i, j], ky[i, j])
+
+    return eigenvalues
 
 
 # & Calculations in a normal grid
@@ -463,73 +500,65 @@ def spiral_eigenvalues_eigenfunctions_nobar(Hamiltonian, kx, ky, mesh_spacing, d
 
     return eigenvalues, eigenfunctions, phase_factors_array, neighbor_phase_array_after_calc
 
-
-def spiral_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, phase_correction=True, calculate_phase_factors=False, calculating_magnus_terms=False):
+def spiral_eigenvalues_eigenfunctions(
+    Hamiltonian,
+    kx,
+    ky,
+    mesh_spacing,
+    dim,
+    phase_correction=True,
+    calculate_phase_factors=False,
+    calculating_magnus_terms=False
+):
     """
-    Calculate eigenvalues, eigenfunctions, and store Magnus terms on a spiral grid.
-
-    Parameters:
-    - Hamiltonian: The Hamiltonian object.
-    - kx, ky: k-space grid arrays.
-    - mesh_spacing: The number of points in the grid.
-    - dim: The dimension of the Hamiltonian.
-    - phase_correction: Whether to apply phase correction.
+    Calculate eigenvalues, eigenfunctions, and store Magnus terms on a spiral grid,
+    skipping k-points that fail the Hamiltonian's .valid_k_point method.
 
     Returns:
-    - eigenvalues: Array of eigenvalues.
-    - eigenfunctions: Array of eigenfunctions.
-    - phase_factors_array: Array of phase factors.
-    - neighbor_phase_array_after_calc: Array of neighbor phase differences.
-    - magnus_first_term: Array of first Magnus terms.
-    - magnus_second_term: Array of second Magnus terms.
+        eigenvalues, eigenfunctions, phase_factors_array, neighbor_phase_array_after_calc,
+        magnus_first_term, magnus_second_term
     """
-    # Initialize arrays to store eigenfunctions and eigenvalues
-    eigenfunctions = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
-    eigenvalues = np.zeros((mesh_spacing, mesh_spacing, dim), dtype=float)
-    phase_factors_array = np.zeros((mesh_spacing, mesh_spacing, dim), dtype=float)
-    magnus_first_term = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
-    magnus_second_term = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
+    eigenfunctions = np.full((mesh_spacing, mesh_spacing, dim, dim), np.nan, dtype=complex)
+    eigenvalues = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
+    phase_factors_array = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
+    magnus_first_term = np.full((mesh_spacing, mesh_spacing, dim, dim), np.nan, dtype=complex)
+    magnus_second_term = np.full((mesh_spacing, mesh_spacing, dim, dim), np.nan, dtype=complex)
 
-    # Get spiral indices
     spiral_indices = get_spiral_indices(mesh_spacing)
     eigenvector = Eigenvectors(dim)
 
-    # Create a progress bar for the nested loop
     with tqdm(total=mesh_spacing * mesh_spacing, desc="Processing kx-ky grid", unit="point") as pbar:
         for i in range(mesh_spacing):
             for j in range(mesh_spacing):
                 k, l = spiral_indices[i, j]
                 kx_kl, ky_kl = kx[k, l], ky[k, l]
 
-                H_k = Hamiltonian
+                if hasattr(Hamiltonian, "valid_k_point") and not Hamiltonian.valid_k_point(kx_kl, ky_kl):
+                    pbar.update(1)
+                    continue
 
                 if phase_correction:
                     vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(
-                        H_k, kx_kl, ky_kl, eigenvector=eigenvector
+                        Hamiltonian, kx_kl, ky_kl, eigenvector=eigenvector
                     )
                     if calculate_phase_factors:
-                        phase_factors = eigenvector.get_phase_factors()
-                        phase_factors_array[k, l] = phase_factors   
+                        phase_factors_array[k, l] = eigenvector.get_phase_factors()
                 else:
                     if calculating_magnus_terms:
-                        vals, vecs, H_k_magnus1, H_k_magnus2  = eigenvalues_and_vectors_eigenvalue_ordering(
-                            H_k, kx_kl, ky_kl, eigenvector=None
+                        vals, vecs, m1, m2 = eigenvalues_and_vectors_eigenvalue_ordering(
+                            Hamiltonian, kx_kl, ky_kl, eigenvector=None
                         )
-                        magnus_first_term[k, l] = H_k_magnus1
-                        magnus_second_term[k, l] = H_k_magnus2
-                    else: 
+                        magnus_first_term[k, l] = m1
+                        magnus_second_term[k, l] = m2
+                    else:
                         vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(
-                            H_k, kx_kl, ky_kl, eigenvector=None
+                            Hamiltonian, kx_kl, ky_kl, eigenvector=None
                         )
-                # Store results
-                eigenfunctions[k, l] = vecs
+
                 eigenvalues[k, l] = vals
-
-
-                # Update the progress bar
+                eigenfunctions[k, l] = vecs
                 pbar.update(1)
 
-    # Calculate neighbor phase array after the main loop
     neighbor_phase_array_after_calc = calculate_neighbor_phase_array(eigenfunctions, mesh_spacing, dim)
 
     return eigenvalues, eigenfunctions, phase_factors_array, neighbor_phase_array_after_calc, magnus_first_term, magnus_second_term

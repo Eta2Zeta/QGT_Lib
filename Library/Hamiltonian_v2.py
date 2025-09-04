@@ -14,7 +14,7 @@ class hamiltonian:
     """
     Base class for defining time-dependent Hamiltonians with driven terms.
     """
-    def __init__(self, dim, omega, A0=0, polarization='left', magnus_order=1):
+    def __init__(self, dim, omega, A0=0, polarization='left', magnus_order=1, analytic_magnus=False):
         """
         Initialize the Hamiltonian with its dimension, driving frequency (omega), and driving amplitude (A0).
         
@@ -31,6 +31,7 @@ class hamiltonian:
         self.A0 = A0  # Driving amplitude
         self.polarization = polarization.lower()  # Polarization type ('left', 'right', or 'custom')
         self.magnus_order = magnus_order  # Order of Magnus expansion
+        self.analytic_magnus = analytic_magnus
     
     def get_filename(self, parameter='2D'):
         """
@@ -77,8 +78,16 @@ class hamiltonian:
             # Apply right-hand polarized driving
             kx_t = kx + self.A0 * np.cos(self.omega * t)
             ky_t = ky - self.A0 * np.sin(self.omega * t)
+        elif self.polarization == 'linear_x':
+            # Linearly polarized along x
+            kx_t = kx + self.A0 * np.cos(self.omega * t)
+            ky_t = ky
+        elif self.polarization == 'linear_y':
+            # Linearly polarized along y
+            kx_t = kx
+            ky_t = ky + self.A0 * np.cos(self.omega * t)
         else:
-            raise ValueError("Invalid polarization type. Choose 'left' or 'right'.")
+            raise ValueError("Invalid polarization type. Choose 'left', 'right', 'linear_x', or 'linear_y'.")
 
         # Return the static Hamiltonian evaluated at the transformed kx, ky
         return self.compute_static(kx_t, ky_t)
@@ -171,9 +180,6 @@ class hamiltonian:
         result = scale * (rounded_real + 1j * rounded_imag)
         return result
 
-
-
-
     def magnus_first_term(self, kx, ky):
         """
         Compute the first term of the Magnus expansion:
@@ -235,7 +241,11 @@ class hamiltonian:
 
         # Add Magnus terms to H_prime based on specified order
         if self.magnus_order >= 1:
-            H_prime += self.magnus_first_term(kx, ky)
+            if self.analytic_magnus and hasattr(self, "analytic_magnus_first_term"):
+                # Expect analytic_magnus_first_term to ALREADY include the 1/omega factor
+                H_prime += self.analytic_magnus_first_term(kx, ky)
+            else:
+                H_prime += self.magnus_first_term(kx, ky)
         if self.magnus_order >= 2:
             H_prime += self.magnus_second_term(kx, ky)
         
@@ -243,6 +253,7 @@ class hamiltonian:
         H_eff = H_0 + H_prime
 
         return H_eff, H_prime
+    
     # ____________________________________________________________________________________________________________
     # Below are the method to compute the Fourier Harmonics of the Hamiltonian by the Taylor Expansion Method
     def get_derivative(self, func_name, kx, ky):
@@ -858,3 +869,538 @@ class THF_Hamiltonian(hamiltonian):
         ])
         
         return H_k
+
+
+class RhombohedralGrapheneHamiltonian(hamiltonian):
+    """
+    Minimal chiral effective Hamiltonian for n-layer rhombohedral graphene in the chiral basis,
+    projected onto low-energy subspace, with a displacement field included.
+    """
+    def __init__(self, vF=542.1, t1=355.16, V=30.0, n=2, omega=2 * np.pi, A0=0):
+        super().__init__(dim=2, omega=omega, A0=A0)
+        self.vF = vF
+        self.t1 = t1
+        self.V = V
+        self.n = n
+
+    def k(self, kx, ky):
+        return np.sqrt(kx**2 + ky**2)
+
+    def theta(self, kx, ky):
+        return np.arctan2(ky, kx)  # angle of k-vector
+
+
+    def N_k(self, k):
+        vk_t1 = (self.vF * k / self.t1)
+        numerator = 1 - vk_t1 ** (2 * self.n)
+        denominator = 1 - vk_t1 ** 2
+        return np.sqrt(numerator / denominator)
+
+    def V_k(self, k):
+        vk_t1 = (self.vF * k / self.t1)
+        num = (self.n - 1) * vk_t1 ** (2 * self.n + 2) + vk_t1 ** 2 - self.n * vk_t1 ** (2 * self.n)
+        denom = (1 - vk_t1 ** 2) * (1 - vk_t1 ** (2 * self.n))
+        return self.V * (-0.5 * (self.n - 1) + num / denom)
+    
+    def dN_dk(self, k):
+        """
+        Analytical derivative ∂N/∂k as defined by:
+        ∂N/∂k = [a^2 k^2 (n (a k)^{2n} - (a k)^{2n} + 1) - n (a k)^{2n}]
+                / [k (1 - a^2 k^2)^2 * sqrt(((a k)^{2n} - 1) / (a^2 k^2 - 1))]
+        """
+        a = self.vF / self.t1
+        n = self.n
+        ak = a * k
+        ak2 = ak**2
+        ak2n = ak2**n
+        ak2n_plus = ak**(2 * n)
+
+        numerator = a**2 * k**2 * (n * ak2n - ak2n + 1) - n * ak2n
+        denominator = (
+            k * (1 - a**2 * k**2) ** 2 *
+            np.sqrt((ak2n - 1) / (a**2 * k**2 - 1))
+        )
+        return numerator / denominator
+
+    def G_k(self, k):
+        return -self.vF**self.n * k**self.n / (self.t1**(self.n - 1) * self.N_k(k)**2)
+
+    def A_k(self, k):
+        a = self.vF / self.t1
+        return 1.0 - (a * k) ** 2
+
+    def B_k(self, k):
+        a = self.vF / self.t1
+        n = self.n
+        return (a * k) ** (2 * n) - 1.0
+    
+    def U_k(self, k):
+        return 2*self.vF**self.n * self.M(k) * k**(self.n - 2) / (self.t1**(self.n - 1) * self.N_k(k)**4)
+
+    def gamma_k(self, k):
+        return self.vF**self.n * self.n * k**(self.n - 1) / (self.t1**(self.n - 1) * self.N_k(k)**2)
+    
+    def P_k(self, k):
+        a = self.vF / self.t1
+        n = self.n
+        ak = a * k
+        ak2 = ak ** 2
+        ak2n = ak2 ** n
+        return (-2 * a**4 * k**4 * n**2 * ak2n
+                + 2 * a**2 * k**2 * (2 * n**2 * ak2n + (ak2n - 1)**2)
+                - 2 * n**2 * ak2n)
+
+    def Q_k(self, k):
+        a = self.vF / self.t1
+        n = self.n
+        ak = a * k
+        ak2 = ak ** 2
+        ak2n = ak2 ** n
+        return a**2 * k**2 * (n * ak2n - ak2n + 1) - n * ak2n
+
+    
+    def M(self, k):
+        """
+        Computes the analytical expression M(k) used in trace formula.
+        M = [a^2 k^2 (n (a k)^{2n} - (a k)^{2n} + 1) - n (a k)^{2n}] / (1 - a^2 k^2)^2
+        """
+        a = self.vF / self.t1
+        n = self.n
+        ak = a * k
+        ak2n = (ak ** (2 * n))
+        
+        numerator = a**2 * k**2 * (n * ak2n - ak2n + 1) - n * ak2n
+        denominator = (1 - a**2 * k**2)**2
+        return numerator / denominator
+
+
+
+    def d_x(self, kx, ky):
+        k = self.k(kx, ky)
+        theta = self.theta(kx, ky)
+        N = self.N_k(k)
+        return - (self.vF ** self.n / self.t1 ** (self.n - 1)) * k ** self.n * np.cos(self.n * theta) / N**2
+
+    def d_y(self, kx, ky):
+        k = self.k(kx, ky)
+        theta = self.theta(kx, ky)
+        N = self.N_k(k)
+        return - (self.vF ** self.n / self.t1 ** (self.n - 1)) * k ** self.n * np.sin(self.n * theta) / N**2
+
+    def d_z(self, kx, ky):
+        k = self.k(kx, ky)
+        a = self.vF / self.t1
+        ak = a * k
+        numerator = (self.n - 1) * ak ** (2 * self.n + 2) + ak ** 2 - self.n * ak ** (2 * self.n)
+        denominator = (1 - ak**2) * (1 - ak ** (2 * self.n))
+        return self.V * (-0.5 * (self.n - 1) + numerator / denominator)
+    
+    def d_squared(self, kx, ky):
+        """
+        Computes the squared magnitude |d|^2 = d_x^2 + d_y^2 + d_z^2.
+        Useful for expressions requiring the norm squared of the d vector.
+        """
+        dx = self.d_x(kx, ky)
+        dy = self.d_y(kx, ky)
+        dz = self.d_z(kx, ky)
+        return dx**2 + dy**2 + dz**2
+
+    def ddx_dx(self, kx, ky):
+        k = self.k(kx, ky)
+        theta = self.theta(kx, ky)
+        dNk = self.dN_dk(k)
+        a = self.vF / self.t1
+        N = self.N_k(k)
+        n = self.n
+
+        term1 = (2 * self.vF**n) / (self.t1**(n - 1) * N**3) * dNk * (kx / k) * k**n * np.cos(n * theta)
+        term2 = -(self.vF**n * n * k**(n - 1)) / (self.t1**(n - 1) * N**2) * np.cos(n * theta - theta)
+        return term1 + term2
+
+    def ddy_dx(self, kx, ky):
+        k = self.k(kx, ky)
+        theta = self.theta(kx, ky)
+        dNk = self.dN_dk(k)
+        a = self.vF / self.t1
+        N = self.N_k(k)
+        n = self.n
+
+        term1 = (2 * self.vF**n) / (self.t1**(n - 1) * N**3) * dNk * (kx / k) * k**n * np.sin(n * theta)
+        term2 = -(self.vF**n * n * k**(n - 1)) / (self.t1**(n - 1) * N**2) * np.sin(n * theta - theta)
+        return term1 + term2
+
+    def ddz_dx(self, kx, ky):
+        k = self.k(kx, ky)
+        a = self.vF / self.t1
+        n = self.n
+        vkx = kx / k
+
+        num = (-2 * a**4 * k**4 * n**2 * (a * k)**(2 * n)
+               + 2 * a**2 * k**2 * (2 * n**2 * (a * k)**(2 * n) + ((a * k)**(2 * n) - 1)**2)
+               - 2 * n**2 * (a * k)**(2 * n))
+
+        denom = k * (1 - a**2 * k**2)**2 * ((a * k)**(2 * n) - 1)**2
+
+        return self.V * vkx * num / denom
+
+
+    def ddx_dy(self, kx, ky):
+        k = self.k(kx, ky)
+        theta = self.theta(kx, ky)
+        dNk = self.dN_dk(k)
+        a = self.vF / self.t1
+        N = self.N_k(k)
+        n = self.n
+
+        term1 = (2 * self.vF**n) / (self.t1**(n - 1) * N**3) * dNk * (ky / k) * k**n * np.cos(n * theta)
+        term2 = (self.vF**n * n * k**(n - 1)) / (self.t1**(n - 1) * N**2) * np.sin(n * theta - theta)
+        return term1 + term2
+
+    def ddy_dy(self, kx, ky):
+        k = self.k(kx, ky)
+        theta = self.theta(kx, ky)
+        dNk = self.dN_dk(k)
+        a = self.vF / self.t1
+        N = self.N_k(k)
+        n = self.n
+
+        term1 = (2 * self.vF**n) / (self.t1**(n - 1) * N**3) * dNk * (ky / k) * k**n * np.sin(n * theta)
+        term2 = -(self.vF**n * n * k**(n - 1)) / (self.t1**(n - 1) * N**2) * np.cos(n * theta - theta)
+        return term1 + term2
+
+    def ddz_dy(self, kx, ky):
+        k = self.k(kx, ky)
+        a = self.vF / self.t1
+        n = self.n
+        vky = ky / k
+
+        num = (-2 * a**4 * k**4 * n**2 * (a * k)**(2 * n)
+               + 2 * a**2 * k**2 * (2 * n**2 * (a * k)**(2 * n) + ((a * k)**(2 * n) - 1)**2)
+               - 2 * n**2 * (a * k)**(2 * n))
+
+        denom = k * (1 - a**2 * k**2)**2 * ((a * k)**(2 * n) - 1)**2
+
+        return self.V * vky * num / denom
+    
+    def d_magnitude(self, kx, ky):
+        """
+        Computes the norm |d| = sqrt(d_x^2 + d_y^2 + d_z^2)
+        using the analytical expression:
+        |d| = sqrt(V(k)^2 + [v_F^n k^n]^2 / N^4)
+        """
+        k = self.k(kx, ky)
+        V_k = self.d_z(kx, ky)  # this is the scalar V(k)
+        N = self.N_k(k)
+        off_diag_term = (self.vF ** self.n * k ** self.n / (self.t1 ** (self.n - 1))) / N**2
+        return np.sqrt(V_k**2 + off_diag_term**2)
+    
+    def sum_x(self, kx, ky):
+        """
+        Computes the sum of d_x components.
+        """
+
+        # Individual components
+        ddx_dx = self.ddx_dx(kx, ky)
+        ddy_dx = self.ddy_dx(kx, ky)
+        ddz_dx = self.ddz_dx(kx, ky)
+
+        dx = self.d_x(kx, ky)
+        dy = self.d_y(kx, ky)
+        dz = self.d_z(kx, ky)
+
+        return dx * ddx_dx + dy * ddy_dx + dz * ddz_dx
+    
+    def sum_y(self, kx, ky):
+        """
+        Computes the sum of d_y components.
+        """
+
+        # Individual components
+        ddx_dy = self.ddx_dy(kx, ky)
+        ddy_dy = self.ddy_dy(kx, ky)
+        ddz_dy = self.ddz_dy(kx, ky)
+
+        dx = self.d_x(kx, ky)
+        dy = self.d_y(kx, ky)
+        dz = self.d_z(kx, ky)
+
+        return dx * ddx_dy + dy * ddy_dy + dz * ddz_dy
+
+    def partial_x_dhat_dot_partial_x_dhat(self, kx, ky):
+        """
+        Computes ∂x d̂ ⋅ ∂x d̂ using the full expansion:
+        (1/d^2)(∂x d_i)^2 - (2/d^4)(∑ d_i ∂x d_i) + (1/d^6)(∑ d_i^2)(∑ d_i ∂x d_i)^2
+        """
+        # Individual components
+        ddx_dx = self.ddx_dx(kx, ky)
+        ddy_dx = self.ddy_dx(kx, ky)
+        ddz_dx = self.ddz_dx(kx, ky)
+
+        d_norm = self.d_magnitude(kx, ky)
+        d2 = d_norm**2
+        d4 = d2**2
+
+        dot_d_dxd = self.sum_x(kx, ky)
+
+        term1 = (ddx_dx**2 + ddy_dx**2 + ddz_dx**2)/ d2
+        term2 = - dot_d_dxd ** 2 / d4
+
+        return term1 + term2 
+    
+    def partial_y_dhat_dot_partial_y_dhat(self, kx, ky):
+        """
+        Computes ∂y d̂ ⋅ ∂y d̂ using the full expansion:
+        (1/d^2)(∂y d_i)^2 - (2/d^4)(∑ d_i ∂y d_i)^2 + (1/d^6)(∑ d_i^2)(∑ d_i ∂y d_i)^2
+        """
+        # ∂y d_i components
+        ddx_dy = self.ddx_dy(kx, ky)
+        ddy_dy = self.ddy_dy(kx, ky)
+        ddz_dy = self.ddz_dy(kx, ky)
+
+        # d_i values
+        dx = self.d_x(kx, ky)
+        dy = self.d_y(kx, ky)
+        dz = self.d_z(kx, ky)
+
+        d_norm = self.d_magnitude(kx, ky)
+        d2 = d_norm**2
+        d4 = d2**2
+        d6 = d2**3
+
+        # ∑ d_i ∂y d_i
+        dot_d_dyd = dx * ddx_dy + dy * ddy_dy + dz * ddz_dy
+
+        # (∂y d_x)^2 + (∂y d_y)^2 + (∂y d_z)^2
+        term1 = (ddx_dy**2 + ddy_dy**2 + ddz_dy**2) / d2
+
+        # -2 * (∑ d_i ∂y d_i)^2 / d^4
+        term2 = -2 * dot_d_dyd**2 / d4
+
+        # (∑ d_i^2) * (∑ d_i ∂y d_i)^2 / d^6
+        d_squared_sum = dx**2 + dy**2 + dz**2
+        term3 = dot_d_dyd**2 * d_squared_sum / d6
+
+        return term1 + term2 + term3
+
+
+    def compute_static(self, kx, ky):
+        k = np.sqrt(kx**2 + ky**2)
+        k_plus = kx + 1j * ky
+        k_minus = kx - 1j * ky
+        N = self.N_k(k)
+        V_k = self.V_k(k)
+        off_diag = -self.t1 * (self.vF * k_plus / self.t1) ** self.n / N**2
+
+        return np.array([
+            [V_k, np.conj(off_diag)],
+            [off_diag, -V_k]
+        ], dtype=complex)
+        
+    
+    def analytic_eigenvalues(self, kx, ky):
+        """
+        Return the correct analytical eigenvalues of the projected 2x2 rhombohedral graphene Hamiltonian
+        with a displacement field, based on Appendix B of the paper.
+
+        Parameters:
+            kx, ky (float): Momentum components.
+
+        Returns:
+            np.ndarray: Two eigenvalues (E_minus, E_plus)
+        """
+        k = np.sqrt(kx**2 + ky**2)
+        vk_t1 = self.vF * k / self.t1
+        N = self.N_k(k)
+        V_k = self.V_k(k)
+
+        # |off-diagonal|^2 = (vF^n * k^n)^2 / (t1^{2n-2} * N^4)
+        h_off_sq = (self.vF**self.n * k**self.n / (self.t1**(self.n - 1) * N**2))**2
+
+        E = np.sqrt(V_k**2 + h_off_sq)
+        return np.array([-E, E])
+
+    def g_xx(self, kx, ky):
+        """
+        Returns the quantum metric component g_xx(k) = 1/4 * (∂x d̂ ⋅ ∂x d̂)
+        """
+        return 0.25 * self.partial_x_dhat_dot_partial_x_dhat(kx, ky)
+    
+    def g_yy(self, kx, ky):
+        """
+        Returns the quantum metric component g_yy(k) = 1/4 * (∂y d̂ ⋅ ∂y d̂)
+        """
+        return 0.25 * self.partial_y_dhat_dot_partial_y_dhat(kx, ky)
+
+
+    def trace(self, kx, ky):
+        """
+        Computes the analytical expression for the trace of the quantum metric tensor Tr[g],
+        based on Appendix B formula using M(k), H(k), and V_k(k).
+        """
+        k = self.k(kx, ky)
+        n = self.n
+        vF = self.vF
+        t1 = self.t1
+        d = self.d_magnitude(kx, ky)
+
+        k_pow_4n_2 = k ** (4 * n - 2)
+        k_pow_2n_2 = k ** (2 * n - 2)
+
+        N = self.N_k(k)
+        N2 = N**2
+        N4 = N2**2
+        N6 = N2**3
+        N8 = N4**2
+
+        M_val = self.M(k)
+        H_val = self.H(k)
+        V_k_val = self.V_k(k)
+
+        term1 = (vF ** (4 * n) * n**2 * k_pow_4n_2) / (t1 ** (4 * n - 4) * N8)
+        term2 = (vF ** (2 * n) * H_val**2 * k_pow_2n_2) / (t1 ** (2 * n - 2) * N4)
+        term3 = (4 * vF ** (2 * n) * M_val**2 * V_k_val**2 * k_pow_2n_2) / (t1 ** (2 * n - 2) * N8)
+        term4 = (2 * vF ** (2 * n) * n**2 * V_k_val**2 * k_pow_2n_2) / (t1 ** (2 * n - 2) * N4)
+        term5 = (-4 * vF ** (2 * n) * M_val * n * V_k_val**2 * k_pow_2n_2) / (t1 ** (2 * n - 2) * N6)
+        term6 = (4 * vF ** (2 * n) * M_val * H_val * V_k_val * k_pow_2n_2) / (t1 ** (2 * n - 2) * N6)
+        term7 = (-2 * vF ** (2 * n) * n * V_k_val * H_val * k_pow_2n_2) / (t1 ** (2 * n - 2) * N4)
+
+        return 1/4 * (term1 + term2 + term3 + term4 + term5 + term6 + term7)/d**4
+
+    def valid_k_point(self, kx, ky):
+        k = np.sqrt(kx**2 + ky**2)
+        # return True
+        return (self.vF * k / self.t1) < 1
+    
+    def H(self, k):
+        """
+        Computes the analytical expression H(k) used in trace formula.
+        H = V * [−2 a⁴ k⁴ n² (a k)^{2n} + 2 a² k² (2 n² (a k)^{2n} + ((a k)^{2n} − 1)²) − 2 n² (a k)^{2n}]
+                / [ (1 − a² k²)² ((a k)^{2n} − 1)² ]
+        """
+        a = self.vF / self.t1
+        n = self.n
+        ak = a * k
+        ak2 = ak**2
+        ak2n = ak2**n
+        V = self.V
+
+        num = (-2 * a**4 * k**4 * n**2 * ak2n +
+            2 * a**2 * k**2 * (2 * n**2 * ak2n + (ak2n - 1)**2) -
+            2 * n**2 * ak2n)
+
+        denom = (1 - a**2 * k**2)**2 * (ak2n - 1)**2
+        return V * num / denom
+    
+    def analytic_magnus_first_term(self, kx, ky):
+        """
+        Analytic first-order Magnus correction H^(1)/omega (2×2), returned as a matrix.
+        This ALREADY includes the 1/omega factor.
+        """
+        k = np.hypot(kx, ky)
+        if k == 0:
+            # Singular prefactors like k^{n-2}; take zero correction at exactly k=0 by default
+            return np.zeros((2, 2), dtype=complex)
+
+        theta = np.arctan2(ky, kx)
+        n = self.n
+
+        A = self.A_k(k)
+        B = self.B_k(k)
+        P = self.P_k(k)
+        Q = self.Q_k(k)
+
+        eps = 1e-15
+        if abs(A) < eps or abs(B) < eps:
+            return np.zeros((2, 2), dtype=complex)
+
+        # ---- off-diagonal term ----
+        # using constant V (self.V). If you meant V_k(k), replace self.V with self.V_k(k).
+        pref_off = (self.vF ** n) * n * self.V * P
+        pref_off /= (self.t1 ** (n - 1)) * A * (B ** 3)
+        pref_off *= k ** (n - 2)
+
+        phase = np.exp(1j * n * theta)
+        off = pref_off * phase
+        H_off = np.array([[0.0, np.conj(off)],
+                          [off, 0.0]], dtype=complex)
+
+        # ---- σ_z term ----
+        coeff_z = (self.vF ** (2 * n)) / (self.t1 ** (2 * n - 2))
+        coeff_z *= (n * A) / (B ** 2)
+        coeff_z *= k ** (2 * n - 2)
+        coeff_z *= (n * A - 2 * Q / B)
+
+        H_z = np.array([[coeff_z, 0.0],
+                        [0.0, -coeff_z]], dtype=complex)
+
+        # include division by omega here
+        return - (H_off + H_z) * self.A0**2 / self.omega
+    
+class ChiralHamiltonian(hamiltonian):
+    """
+    Full chiral (v_F, t1-only) Hamiltonian + linear displacement field H_D.
+    Basis: (layer 0: A,B; layer 1: A,B; ...; layer n-1: A,B).
+    """
+    def __init__(self, n=2, vF=542.1, t1=355.16, V=0.0,
+                 valley='K', omega=2*np.pi, A0=0):
+        super().__init__(dim=2*n, omega=omega, A0=A0)
+        self.n = int(n)
+        self.vF = float(vF)
+        self.t1 = float(t1)
+        self.V  = float(V)           # displacement-field strength (same units as energies)
+
+        v = valley.lower()
+        if v in ('k',):
+            self.eta = 1.0
+        elif v in ('kp', 'kprime', "k'"):
+            self.eta = -1.0
+        else:
+            raise ValueError("valley must be 'K' or 'Kp'/'Kprime'")
+
+        # 2x2 sublattice operators
+        self._sigma_plus  = 0.5 * (sigma_x + 1j * sigma_y)
+        self._sigma_minus = 0.5 * (sigma_x - 1j * sigma_y)
+        self._I2 = np.eye(2, dtype=complex)
+
+        # Precompute the layer potentials V_l = V * (l - (n-1)/2)
+        center = (self.n - 1) / 2.0
+        self._V_layer = np.array([self.V * (l - center) for l in range(self.n)], dtype=float)
+
+    def _D_block(self, kx, ky):
+        # D = vF * ( kx σ_x + η ky σ_y )
+        return self.vF * (kx * sigma_x + self.eta * ky * sigma_y)
+
+    def _L_block(self):
+        # L = t1 σ^+
+        return self.t1 * self._sigma_plus
+
+    def _U_block(self):
+        # U = t1 σ^-
+        return self.t1 * self._sigma_minus
+
+    def compute_static(self, kx, ky):
+        """
+        H(k) = h_n(k) + H_D
+        h_n(k): block-tridiagonal chiral Hamiltonian
+        H_D: diagonal layer-linear onsite potentials (same for A/B on a layer)
+        """
+        n = self.n
+        H = np.zeros((2*n, 2*n), dtype=complex)
+
+        D = self._D_block(kx, ky)
+        L = self._L_block()
+        U = self._U_block()
+
+        for l in range(n):
+            # chiral intralayer block
+            H[2*l:2*l+2, 2*l:2*l+2] = D
+            # add displacement-field onsite to this layer (A & B equally)
+            Vl = self._V_layer[l]
+            H[2*l:2*l+2, 2*l:2*l+2] += Vl * self._I2
+
+            # interlayer couplings
+            if l < n - 1:
+                H[2*(l+1):2*(l+1)+2, 2*l:2*l+2] = L   # sub-diagonal
+                H[2*l:2*l+2, 2*(l+1):2*(l+1)+2] = U   # super-diagonal
+
+        return H
