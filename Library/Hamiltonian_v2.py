@@ -33,30 +33,42 @@ class hamiltonian:
         self.magnus_order = magnus_order  # Order of Magnus expansion
         self.analytic_magnus = analytic_magnus
     
-    def get_filename(self, parameter='2D'):
+    def get_filename(self, parameter='2D', decimals=2):
         """
-        Generate a filename-style string encoding key parameter values.
-        
+        Generate a compact, stable filename-style string of parameters.
+        Example: t1_-1.00-t2_0.33-psi_1.57-M_0.00-omega_6.28-A0_0.10-polarization_left
+
         Parameters:
-            papermeter (str): '1D' or '2D'. In '1D', omega is excluded. Default is '2D'.
-        
-        Returns:
-            str: Filename string.
+            parameter (str): '1D' or '2D'. If '1D', exclude omega (default '2D').
+            decimals (int): float precision for formatting.
         """
-        # Create a dictionary of relevant attributes
+        def is_simple_type(val):
+            return isinstance(val, (int, float, str, bool))
+
+        def fmt_val(v):
+            if isinstance(v, float):
+                return f"{v:.{decimals}f}"
+            return str(v)
+
+        # Collect simple, public attributes (exclude name, dim)
         params = {
-            key: value for key, value in vars(self).items()
-            if not callable(value) and not key.startswith('_')
-            and key not in ('name', 'dim')  # Always exclude 'name' and 'dim'
+            k: v for k, v in vars(self).items()
+            if not callable(v)
+            and not k.startswith('_')
+            and k not in ('name', 'dim')
+            and is_simple_type(v)
         }
 
-        # Exclude 'omega' if 1D
+        # Exclude omega for 1D
         if parameter == '1D':
             params.pop('omega', None)
 
-        # Format parameters into a filename string
-        param_str = "_".join(f"{key}{value}" for key, value in params.items())
-        return param_str
+        # Build parts in a stable order
+        parts = [f"{k}_{fmt_val(params[k])}" for k in sorted(params.keys())]
+
+        # Join with '-' between parameters
+        return "-".join(parts)
+
     
     def compute_static(self, kx, ky):
         """
@@ -420,8 +432,8 @@ class TestHamiltonian(hamiltonian):
 
 class GrapheneHamiltonian(hamiltonian):
     def __init__(self, omega = np.pi, A0 = 0):
-        super().__init__(dim=2, omega=omega, A0=A0)  # THF model has a 6x6 matrix
-    
+        super().__init__(dim=2, omega=omega, A0=A0)  
+
     def compute_static(self, kx, ky):
         H_k = np.array([
             [0, kx - 1j*ky],
@@ -500,6 +512,58 @@ class RashbaHamiltonian(hamiltonian):
         return H_k
 
 
+class HaldaneHamiltonian(hamiltonian):
+    """
+    Haldane model Hamiltonian on a honeycomb lattice, using full expressions.
+    """
+    def __init__(self, t1=-1.0, t2=1.0/3.0, M=0.5, psi=np.pi/2, a=1.0, omega=2*np.pi, A0=0.0):
+        super().__init__(dim=2, omega=omega, A0=A0)
+        self.t1 = t1       # Nearest-neighbor hopping
+        self.t2 = t2       # Next-nearest-neighbor hopping
+        self.M = M         # Sublattice mass term
+        self.psi = psi     # TRS-breaking phase
+        self.a = a         # Lattice constant
+
+        # Nearest-neighbor vectors δ_i
+        self.delta = np.array([
+            [a, 0],
+            [-0.5 * a, np.sqrt(3) * a / 2],
+            [-0.5 * a, -np.sqrt(3) * a / 2]
+        ])
+
+
+        # Next-nearest-neighbor vectors v_i
+        sqrt3 = np.sqrt(3)
+        self.v = np.array([
+            [0, a * sqrt3],
+            [-1.5 * a, -0.5 * a * sqrt3],
+            [1.5 * a, -0.5 * a * sqrt3]
+        ])
+
+        # reciprocal lattice vectors
+        self.b1 = (2*np.pi/(3*a)) * np.array([1.0,  np.sqrt(3.0)])
+        self.b2 = (2*np.pi/(3*a)) * np.array([1.0, -np.sqrt(3.0)])
+
+    def h_x(self, kx, ky):
+        return np.sum(np.cos(kx * self.delta[:, 0] + ky * self.delta[:, 1]))
+
+    def h_y(self, kx, ky):
+        return np.sum(np.sin(kx * self.delta[:, 0] + ky * self.delta[:, 1]))
+
+    def h_z(self, kx, ky):
+        return np.sum(np.sin(kx * self.v[:, 0] + ky * self.v[:, 1]))
+
+    def compute_static(self, kx, ky):
+        hx = self.h_x(kx, ky)
+        hy = self.h_y(kx, ky)
+        hz = self.h_z(kx, ky)
+        
+        d_x = self.t1 * hx
+        d_y = -self.t1 * hy
+        d_z = self.M - 2 * self.t2 * np.sin(self.psi) * hz
+
+        H = d_x * sigma_x + d_y * sigma_y + d_z * sigma_z
+        return H
 
 
 class TwoOrbitalSpinfulHamiltonian(hamiltonian):

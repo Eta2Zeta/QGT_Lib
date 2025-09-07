@@ -248,7 +248,7 @@ def dynamic_with_eigenvalues(folder_name, band_index1=0, band_index2=1):
     eigen_buffer = 0.1 * (y_max_eigen - y_min_eigen)  # Buffer for eigenvalues
 
     # Create figure and axes
-    fig, ax1 = plt.subplots(figsize=(10, 6))
+    fig, ax1 = plt.subplots(figsize=(12, 8))
     fig.subplots_adjust(bottom=0.2, right=0.8)  # Leave room for third y-axis and slider
 
     ax2 = ax1.twinx()  # Second y-axis

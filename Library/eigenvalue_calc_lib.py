@@ -365,8 +365,9 @@ def eigenvalues_and_vectors_eigenvalue_ordering(
         # Find the maximum perturbation strength
         max_perturbation = max(perturbation_values) if perturbation_values else 0
     
+    magnus_operator_norm = np.linalg.norm(H_prime, 2)
     if max_perturbation is not None:
-        return eigenvalues, eigenvectors, max_perturbation, np.linalg.norm(H_prime, 2)
+        return eigenvalues, eigenvectors, max_perturbation, magnus_operator_norm
     else:   
         return eigenvalues, eigenvectors
 

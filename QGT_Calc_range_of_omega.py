@@ -19,7 +19,7 @@ from Library.plotting_lib import *
 
 
 # Define parameters
-band = 4 # Which band to calculate your QMT on, starting from 0
+band = 1 # Which band to calculate your QMT on, starting from 0
 z_cutoff = 1e2 #where to cutoff the plot for the z axis when singularties occur
 
 # Define the temp directory for storing .npy files
@@ -119,9 +119,15 @@ def calculate_2d():
 
 
 
-    # chern_number = compute_chern_number(g_xy_imag_array, dkx, dky)
+    b1, b2 = Hamiltonian_Obj.b1, Hamiltonian_Obj.b2
+    chern_number = compute_chern_number(
+        g_xy_imag_array,
+        dkx, dky,
+        kx, ky,
+        b1, b2
+    )
+    print("Chern number is: ", chern_number)
 
-    # print("Chern number is: ", chern_number)
 
     # plot_QGT_components_3d(kx, ky, g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array)
 
@@ -132,7 +138,7 @@ def calculate_2d():
     plot_qmt_eig_berry_trace_3d(kx, ky, eigenvalues, g_xy_imag_array, trace_array, eigenvalue_band=band)
 
 
-def range_of_omega(spacing='log', omega_min=5e0, omega_max=5e3, num_k_points=100, num_omega_points=30):
+def range_of_omega(spacing='log', omega_min=5e0, omega_max=5e3, num_k_points=100, num_omega_points=1):
     """
     Calculate QGT for a range of omega values and save the results to a file.
     The output file name is dynamically set based on the spacing type.
@@ -451,7 +457,7 @@ def range_of_omega_2d_par(spacing='log', omega_min=5e0, omega_max=5e3, num_omega
 
 if __name__ == '__main__':
 
-    # calculate_2d()
-    range_of_omega(spacing="log")
+    calculate_2d()
+    # range_of_omega(spacing="log")
     # range_of_omega_2d(spacing="log")
     # range_of_omega_2d_par(spacing="log")
