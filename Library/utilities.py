@@ -391,3 +391,134 @@ def setup_QGT_results_directory_2D_omega_range(
 
     print(f"Created new QGT 2D omega sweep directory: {results_subdir}")
     return file_paths, False, results_subdir
+
+
+def _sanitize(name: str) -> str:
+    """Keep [A-Za-z0-9_ . -], replace everything else with underscore."""
+    return re.sub(r'[^\w.\-]', '_', str(name))
+
+def _range_dir_name(param_ranges, decimals=2):
+    """
+    Build calc-range dir name like: "t1_-2.00_2.00-t2_0.00_1.00-psi_-3.14_3.14".
+    param_ranges: iterable of (name, vmin, vmax) or dict {name: (vmin, vmax)}.
+    """
+    if isinstance(param_ranges, dict):
+        items = list(param_ranges.items())
+    else:
+        # assume iterable of (name, vmin, vmax)
+        items = [(k, (vmin, vmax)) if not isinstance(vmin, tuple) else (k, vmin)
+                 for (k, vmin, vmax) in [(n, a, b) for (n, a, b) in param_ranges]]
+
+    # normalize to [(name, (vmin, vmax)), ...]
+    norm = []
+    for it in items:
+        name, rng = it[0], it[1]
+        vmin, vmax = rng
+        norm.append((str(name), float(vmin), float(vmax)))
+
+    # stable order by param name
+    norm.sort(key=lambda x: x[0])
+
+    parts = [
+        f"{n}_{vmin:.{decimals}f}_{vmax:.{decimals}f}"
+        for (n, vmin, vmax) in norm
+    ]
+    return "-".join(parts)
+
+def _point_dir_name_from_values(param_values: dict, decimals=2):
+    """
+    Build point dir name like: "t1_-1.00-t2_0.33-psi_1.57".
+    param_values: dict {name: value}
+    """
+    # stable order by key
+    items = sorted(param_values.items(), key=lambda kv: str(kv[0]))
+    parts = []
+    for k, v in items:
+        if isinstance(v, float):
+            parts.append(f"{k}_{v:.{decimals}f}")
+        else:
+            parts.append(f"{k}_{v}")
+    return "-".join(parts)
+
+def _phase_point_file_paths(root_dir):
+    """Standard files for one phase point."""
+    return {
+        "eigenvalues":    os.path.join(root_dir, "eigenvalues.npy"),
+        "eigenfunctions": os.path.join(root_dir, "eigenfunctions.npy"),
+        "g_xx":           os.path.join(root_dir, "g_xx.npy"),
+        "g_xy_real":      os.path.join(root_dir, "g_xy_real.npy"),
+        "g_xy_imag":      os.path.join(root_dir, "g_xy_imag.npy"),
+        "g_yy":           os.path.join(root_dir, "g_yy.npy"),
+        "trace":          os.path.join(root_dir, "trace.npy"),
+        "chern":          os.path.join(root_dir, "chern.npy"),
+        "meta_info":      os.path.join(root_dir, "meta_info.pkl"),
+    }
+
+# ---------- public API ----------
+
+def setup_phase_diagram_results_general(hamiltonian_template, param_ranges, decimals=2, force_new_range=False):
+    """
+    Create (or reuse) the calc-range directory under:
+      results/phase_diagram/<HamiltonianName>/<range_dir>
+    where <range_dir> is built from a general list/dict of parameter ranges.
+
+    Args:
+        hamiltonian_template: your Hamiltonian instance (used only for name).
+        param_ranges: iterable [(name, vmin, vmax), ...] OR dict {name: (vmin, vmax)}.
+        decimals: float formatting for range labels.
+        force_new_range: if True, always create a new numbered dir.
+
+    Returns:
+        (range_root_dir, used_existing: bool)
+    """
+    Hname = getattr(hamiltonian_template, "name", "Hamiltonian")
+    base_root = os.path.join(os.getcwd(), "results", "phase_diagram", _sanitize(Hname))
+    os.makedirs(base_root, exist_ok=True)
+
+    base = _sanitize(_range_dir_name(param_ranges, decimals=decimals))
+
+    if not force_new_range:
+        # exact or numbered reuses
+        for d in sorted(os.listdir(base_root)):
+            if d == base or d.startswith(base + "_"):
+                existing = os.path.join(base_root, d)
+                print(f"Using existing phase-diagram range directory: {existing}")
+                return existing, True
+
+    # create new with increment
+    idx = 1
+    while os.path.exists(os.path.join(base_root, f"{base}_data_set{idx}")):
+        idx += 1
+    range_root = os.path.join(base_root, f"{base}_data_set{idx}")
+    
+    os.makedirs(range_root, exist_ok=True)
+    print(f"Created new phase-diagram range directory: {range_root}")
+    return range_root, False
+
+def setup_phase_point_directory_general(range_root_dir, param_values: dict, decimals=2, force_new_point=False):
+    """
+    Create (or reuse) a subdirectory for one parameter point under <range_root_dir>.
+    Name is constructed from param_values dict (general, not tied to psi/M).
+
+    Args:
+        range_root_dir: directory returned by setup_phase_diagram_results_general.
+        param_values: dict {param_name: value} (e.g. {"t1":-1.0, "t2":0.33, "psi":1.57, "M":0.0})
+        decimals: float formatting of values.
+        force_new_point: if True, do not reuse existing even if complete.
+
+    Returns:
+        (file_paths_dict, used_existing: bool, point_dir: str)
+    """
+    point_name = _sanitize(_point_dir_name_from_values(param_values, decimals=decimals))
+    point_dir = os.path.join(range_root_dir, point_name)
+
+    if not force_new_point and os.path.isdir(point_dir):
+        fps = _phase_point_file_paths(point_dir)
+        if all(os.path.exists(p) for p in fps.values()):
+            print(f"Using existing phase-point directory: {point_dir}")
+            return fps, True, point_dir
+
+    os.makedirs(point_dir, exist_ok=True)
+    fps = _phase_point_file_paths(point_dir)
+    print(f"Created phase-point directory: {point_dir}")
+    return fps, False, point_dir
