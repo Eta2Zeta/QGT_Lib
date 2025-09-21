@@ -75,10 +75,10 @@ def calculate_2d():
 
         # Compute QGT if data does not exist
         # Numerical calculation
-        g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = QGT_grid_num(
-            kx, ky, eigenvalues, eigenfunctions, quantum_geometric_tensor_num, 
-            Hamiltonian_Obj, delta_k, band_index=band, z_cutoff=z_cutoff
-        )
+        # g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = QGT_grid_num(
+        #     kx, ky, eigenvalues, eigenfunctions, quantum_geometric_tensor_num, 
+        #     Hamiltonian_Obj, delta_k, band_index=band, z_cutoff=z_cutoff
+        # )
         
 
         # Compute QGT if data does not exist
@@ -87,6 +87,16 @@ def calculate_2d():
         #     kx, ky, quantum_geometric_tensor_analytic, 
         #     Hamiltonian_Obj, z_cutoff=z_cutoff
         # )
+
+        g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = QGT_grid_semi_num(
+            kx, ky,
+            quantum_geometric_tensor_semi_num,  # your function from earlier
+            hamiltonian=Hamiltonian_Obj,
+            delta_k=dkx,
+            band_index=1,                       # 0 -> psiA, 1 -> psiB
+            z_cutoff=None
+        )
+
 
         # Save QGT results
         for key, array in {
@@ -119,21 +129,21 @@ def calculate_2d():
 
 
 
-    b1, b2 = Hamiltonian_Obj.b1, Hamiltonian_Obj.b2
-    chern_number = compute_chern_number(
-        g_xy_imag_array,
-        dkx, dky,
-        kx, ky,
-        b1, b2
-    )
-    print("Chern number is: ", chern_number)
+    # b1, b2 = Hamiltonian_Obj.b1, Hamiltonian_Obj.b2
+    # chern_number = compute_chern_number(
+    #     g_xy_imag_array,
+    #     dkx, dky,
+    #     kx, ky,
+    #     b1, b2
+    # )
+    # print("Chern number is: ", chern_number)
 
 
-    # plot_QGT_components_3d(kx, ky, g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array)
+    plot_QGT_components_3d(kx, ky, g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array)
 
     # plot_g_components_2d(g_xx_array, g_yy_array, trace_array, k_max=k_max)
 
-    # plot_trace_w_eigenvalue(kx, ky, g_xx_array, g_yy_array, eigenvalues, trace_array, eigenvalue_band=band)
+    plot_trace_w_eigenvalue(kx, ky, g_xx_array, g_yy_array, eigenvalues, trace_array, eigenvalue_band=band)
 
     plot_qmt_eig_berry_trace_3d(kx, ky, eigenvalues, g_xy_imag_array, trace_array, eigenvalue_band=band)
 
@@ -172,7 +182,7 @@ def range_of_omega(spacing='log', omega_min=5e0, omega_max=5e3, num_k_points=100
 
     # Give some amplitude to the light
     Hamiltonian_Obj.A0 = 0.1
-    Hamiltonian_Obj.polarization = "left"
+    Hamiltonian_Obj.polarization = "right"
     # Hamiltonian_Obj.polarization = "linear_x"
 
     # Generate omega values based on the specified spacing
@@ -457,7 +467,7 @@ def range_of_omega_2d_par(spacing='log', omega_min=5e0, omega_max=5e3, num_omega
 
 if __name__ == '__main__':
 
-    calculate_2d()
-    # range_of_omega(spacing="log")
+    # calculate_2d()
+    range_of_omega(spacing="log")
     # range_of_omega_2d(spacing="log")
     # range_of_omega_2d_par(spacing="log")

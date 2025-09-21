@@ -15,6 +15,11 @@ def sign_check(vec1, vec2):
         return vec1, vec2
 
 
+def in_range(w, omega_min, omega_max):
+    if (omega_min is not None) and (w < omega_min): return False
+    if (omega_max is not None) and (w > omega_max): return False
+    return True
+
 def setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force_new=False):
     """
     Creates a unique results directory for storing computed data, structured by Hamiltonian parameters and k-space info.
@@ -456,15 +461,82 @@ def _phase_point_file_paths(root_dir):
 
 # ---------- public API ----------
 
-def setup_phase_diagram_results_general(hamiltonian_template, param_ranges, decimals=2, force_new_range=False):
+def _normalize_param_ranges(param_ranges):
+    """
+    Return a stable, sorted list of (name, vmin, vmax) as floats/strings.
+    Accepts dict {name: (vmin, vmax)} or iterable [(name, vmin, vmax), ...].
+    """
+    if isinstance(param_ranges, dict):
+        items = [(str(k), float(v[0]), float(v[1])) for k, v in param_ranges.items()]
+    else:
+        items = []
+        for tup in param_ranges:
+            # allow (name, (vmin, vmax)) or (name, vmin, vmax)
+            if len(tup) == 2 and isinstance(tup[1], (tuple, list)) and len(tup[1]) == 2:
+                n, (a, b) = tup
+            elif len(tup) == 3:
+                n, a, b = tup
+            else:
+                raise ValueError("param_ranges items must be (name,(min,max)) or (name,min,max)")
+            items.append((str(n), float(a), float(b)))
+    # stable order by name
+    return sorted(items, key=lambda x: x[0])
+
+
+def _normalize_spacing(parameter_spacing, names):
+    """
+    Return a dict {name: count} given:
+      - int -> same count for all names
+      - dict -> per-name counts (missing names default to 1)
+      - None -> default all 1
+    """
+    if parameter_spacing is None:
+        return {n: 1 for n in names}
+    if isinstance(parameter_spacing, int):
+        return {n: int(parameter_spacing) for n in names}
+    # dict
+    out = {}
+    for n in names:
+        c = parameter_spacing.get(n, 1)
+        out[n] = int(c)
+    return out
+
+
+def _range_dir_name_with_spacing(param_ranges, parameter_spacing, decimals=2):
+    """
+    Build name like:
+      "M_-2.00_2.00_N32-psi_-3.14_3.14_N32"
+    so that changing spacing creates a different directory.
+    """
+    rng_list = _normalize_param_ranges(param_ranges)
+    names = [n for (n, _, _) in rng_list]
+    counts = _normalize_spacing(parameter_spacing, names)
+
+    parts = [
+        f"{n}_{vmin:.{decimals}f}_{vmax:.{decimals}f}_N{counts[n]}"
+        for (n, vmin, vmax) in rng_list
+    ]
+    return "-".join(parts)
+
+
+def setup_phase_diagram_results_general(
+    hamiltonian_template,
+    param_ranges,
+    parameter_spacing=None,   # <-- new argument
+    decimals=2,
+    force_new_range=False
+):
     """
     Create (or reuse) the calc-range directory under:
       results/phase_diagram/<HamiltonianName>/<range_dir>
-    where <range_dir> is built from a general list/dict of parameter ranges.
+
+    <range_dir> now encodes BOTH the parameter ranges AND the spacing, e.g.:
+      M_-2.00_2.00_N32-psi_-3.14_3.14_N32_data_set1
 
     Args:
-        hamiltonian_template: your Hamiltonian instance (used only for name).
-        param_ranges: iterable [(name, vmin, vmax), ...] OR dict {name: (vmin, vmax)}.
+        hamiltonian_template: Hamiltonian instance (used for name only).
+        param_ranges: [(name, vmin, vmax), ...] OR {name: (vmin, vmax)}.
+        parameter_spacing: int or {name: count}. If None, defaults to 1 per param.
         decimals: float formatting for range labels.
         force_new_range: if True, always create a new numbered dir.
 
@@ -475,10 +547,10 @@ def setup_phase_diagram_results_general(hamiltonian_template, param_ranges, deci
     base_root = os.path.join(os.getcwd(), "results", "phase_diagram", _sanitize(Hname))
     os.makedirs(base_root, exist_ok=True)
 
-    base = _sanitize(_range_dir_name(param_ranges, decimals=decimals))
+    base = _sanitize(_range_dir_name_with_spacing(param_ranges, parameter_spacing, decimals=decimals))
 
     if not force_new_range:
-        # exact or numbered reuses
+        # reuse exact or numbered matches
         for d in sorted(os.listdir(base_root)):
             if d == base or d.startswith(base + "_"):
                 existing = os.path.join(base_root, d)
@@ -490,7 +562,7 @@ def setup_phase_diagram_results_general(hamiltonian_template, param_ranges, deci
     while os.path.exists(os.path.join(base_root, f"{base}_data_set{idx}")):
         idx += 1
     range_root = os.path.join(base_root, f"{base}_data_set{idx}")
-    
+
     os.makedirs(range_root, exist_ok=True)
     print(f"Created new phase-diagram range directory: {range_root}")
     return range_root, False

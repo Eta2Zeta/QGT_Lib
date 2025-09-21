@@ -22,19 +22,53 @@ def dpsi_dy(psi, kx, ky, delta_k):
     return (psi_front - psi_back) / (2 * delta_k)
 
 
-# Calculate the quantum geometric tensor components
-def quantum_geometric_tensor_semi_num(psi, I, kx, ky, delta_k):
+def quantum_geometric_tensor_semi_num(hamiltonian, band_index, kx, ky, delta_k):
+    """
+    Semi-analytic QGT for the chiral (holomorphic) pseudo-eigenvectors.
+
+    Parameters
+    ----------
+    hamiltonian : object
+        Must provide:
+          - .dim (int): Hilbert-space dimension (2n)
+          - .pseudo_eigenvector(band_index) -> callable psi(kx, ky, prev_psi=None)
+    band_index : int
+        0 -> psiA (A-chiral), 1 -> psiB (B-chiral)
+    kx, ky : float
+        Momentum coordinates
+    delta_k : float
+        Central-difference step for numerical derivatives
+
+    Returns
+    -------
+    g_xx, g_xy_real, g_xy_imag, g_yy : floats
+        QGT components for the chosen pseudo-eigenvector at (kx, ky)
+    """
+    # get the callable pseudo-eigenvector psi(kx, ky, prev_psi=None)
+    if not hasattr(hamiltonian, 'pseudo_eigenvector'):
+        raise AttributeError("hamiltonian must implement .pseudo_eigenvector(band_index)")
+
+    psi = hamiltonian.pseudo_eigenvector(band_index)
+
+    # identity in the full 2n-dimensional space
+    I = np.eye(hamiltonian.dim, dtype=complex)
+
+    # finite differences (uses prev_psi internally to smooth gauge)
     dpsi_dx_val = dpsi_dx(psi, kx, ky, delta_k)
     dpsi_dy_val = dpsi_dy(psi, kx, ky, delta_k)
+
+    # projector onto the chosen state
     psi_val = psi(kx, ky)
     P = projection_operator(psi_val)
-    
-    g_xx = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dx_val).real
+
+    # QGT components: g_{μν} = Re <∂μψ | (1 - |ψ><ψ|) | ∂νψ>,  Im-part gives Berry curvature/2
+    g_xx      = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dx_val).real
     g_xy_real = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dy_val).real
     g_xy_imag = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dy_val).imag
-    g_yy = np.vdot(dpsi_dy_val, (I - P) @ dpsi_dy_val).real
-    
+    g_yy      = np.vdot(dpsi_dy_val, (I - P) @ dpsi_dy_val).real
+
     return g_xx, g_xy_real, g_xy_imag, g_yy
+
 
 # & sanity checks
 # Calculate the quantum geometric tensor components
@@ -210,6 +244,77 @@ def QGT_grid_num(
         trace_array = np.clip(trace_array, None, z_cutoff)
 
     return g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array
+
+def QGT_grid_semi_num(
+    kx, ky,
+    quantum_geometric_tensor_func,
+    hamiltonian,
+    delta_k,
+    band_index,
+    z_cutoff=None
+):
+    """
+    Calculate the semi-analytic quantum geometric tensor (QGT) components
+    on a kx-ky grid using pseudo-eigenvectors from the Hamiltonian.
+
+    Parameters
+    ----------
+    kx, ky : 2D np.ndarray
+        Grids of kx, ky values (same shape).
+    quantum_geometric_tensor_func : callable
+        Function with signature:
+            (hamiltonian, band_index, kx, ky, delta_k) -> (g_xx, g_xy_real, g_xy_imag, g_yy)
+        e.g. your quantum_geometric_tensor_semi_num(...) defined earlier.
+    hamiltonian : object
+        Must provide:
+          - .dim (int)
+          - .pseudo_eigenvector(band_index) -> callable psi(kx, ky, prev_psi=None)
+    delta_k : float
+        Central-difference step for k-derivatives.
+    band_index : int
+        0 -> psiA, 1 -> psiB (by your convention).
+    z_cutoff : float or None
+        If provided, clip outputs above this value (upper bound only, like QGT_grid_num).
+
+    Returns
+    -------
+    g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array : 2D np.ndarray
+        Arrays of the same shape as kx/ky with QGT components (trace = g_xx + g_yy).
+    """
+    # Allocate outputs
+    g_xx_array      = np.zeros(kx.shape)
+    g_xy_real_array = np.zeros(kx.shape)
+    g_xy_imag_array = np.zeros(kx.shape)
+    g_yy_array      = np.zeros(kx.shape)
+    trace_array     = np.zeros(kx.shape)
+
+    total_points = kx.shape[0] * kx.shape[1]
+
+    with tqdm(total=total_points, desc="Computing Semi-Num QGT Grid", unit="point") as pbar:
+        for i in range(kx.shape[0]):
+            for j in range(kx.shape[1]):
+                g_xx, g_xy_real, g_xy_imag, g_yy = quantum_geometric_tensor_func(
+                    hamiltonian, band_index, kx[i, j], ky[i, j], delta_k
+                )
+
+                g_xx_array[i, j]      = g_xx
+                g_xy_real_array[i, j] = g_xy_real
+                g_xy_imag_array[i, j] = g_xy_imag
+                g_yy_array[i, j]      = g_yy
+                trace_array[i, j]     = g_xx + g_yy
+
+                pbar.update(1)
+
+    # Optional clipping (upper bound only, matching QGT_grid_num behavior)
+    if z_cutoff is not None:
+        g_xx_array      = np.clip(g_xx_array,      None, z_cutoff)
+        g_xy_real_array = np.clip(g_xy_real_array, None, z_cutoff)
+        g_xy_imag_array = np.clip(g_xy_imag_array, None, z_cutoff)
+        g_yy_array      = np.clip(g_yy_array,      None, z_cutoff)
+        trace_array     = np.clip(trace_array,     None, z_cutoff)
+
+    return g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array
+
 
 def QGT_grid_analytic(
     kx, ky,
