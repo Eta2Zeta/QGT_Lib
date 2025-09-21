@@ -22,32 +22,28 @@ os.makedirs(temp_dir, exist_ok=True)
 # hamiltonian = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=0)
 # hamiltonian = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=(1-np.sqrt(2))/4)
 # hamiltonian = RhombohedralGrapheneHamiltonian(n=5, V=30)
-# hamiltonian = ChiralHamiltonian(n=5, V=30)
-hamiltonian = HaldaneHamiltonian(psi = -np.pi/2, M=0)
+hamiltonian = ChiralHamiltonian(n=5, V=-10)
+# hamiltonian = HaldaneHamiltonian(psi = -np.pi/2, M=0)
 # hamiltonian = GrapheneHamiltonian(A0=0)
 dim = hamiltonian.dim
 
 def calculation_2d(hamiltonian = hamiltonian):
     # Does the calculation on 2d 
 
-
     # Define parameters
-    # k_max = 1.25 * 355.16/542.1
-    k_max = 5
-    kx_min, kx_max = -k_max, k_max
-    ky_min, ky_max = -k_max, k_max
-   
+    k_max = 0.8 * 355.16/542.1
+
     # Create kx and ky arrays
-    kx_range = (kx_min, kx_max)
-    ky_range = (ky_min, ky_max)
+    kx_range = (-k_max, k_max)
+    ky_range = (-k_max, k_max)
     mesh_spacing = 100
 
-    kx = np.linspace(kx_min, kx_max, mesh_spacing)
-    ky = np.linspace(ky_min, ky_max, mesh_spacing)
+    kx = np.linspace(-k_max, k_max, mesh_spacing)
+    ky = np.linspace(-k_max, k_max, mesh_spacing)
     kx, ky = np.meshgrid(kx, ky)
     dkx = np.abs(kx[0, 1] - kx[0, 0])  # Spacing in the x-direction (constant for a uniform grid)
     dky = np.abs(ky[1, 0] - ky[0, 0])  # Spacing in the y-direction (constant for a uniform grid)
-    z_limit = 3
+    z_limit = 1000
 
     # Create the results directory
     file_paths, use_existing, results_subdir = setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force_new=False)
@@ -129,7 +125,7 @@ def calculation_2d(hamiltonian = hamiltonian):
 
     eigenvalues = capping_eigenvalues(eigenvalues=eigenvalues, z_limit=z_limit)
 
-    plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None)
+    plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=(4,5))
 
     # plot_individual_eigenvalues(kx, ky, eigenvalues, dim=dim, z_limit=None)
 

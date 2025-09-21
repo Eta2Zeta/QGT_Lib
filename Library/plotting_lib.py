@@ -121,53 +121,203 @@ def plot_eigenvalues_surface(kx, ky, eigenvalues, dim=6, z_limit=300, stride_siz
     plt.close()
 
 
-def plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=6, z_limit=300, norm = True, stride_size=3, color_maps='default'):
+def plot_eigenvalues_surface_colorbar(
+    kx,
+    ky,
+    eigenvalues,
+    dim=None,                 # if None, infer from eigenvalues.shape[2]
+    z_limit=300,
+    norm=True,                # if True, all bands share Normalize(-z_limit, z_limit); if False, auto per-band
+    stride_size=3,
+    color_maps='default',
+    bands_to_plot=None        # NEW: int | iterable[int] | None (None => all bands)
+):
     """
-    Plot eigenvalues as 3D surface plots, with an option to specify color maps.
+    Plot selected eigenvalue bands as 3D surfaces with individual colorbars.
 
     Parameters:
-    - kx, ky: 2D arrays for the k-space grid.
-    - eigenvalues: 3D array of eigenvalues for each (kx, ky) grid point and band.
-    - dim: Number of eigenvalue bands.
-    - z_limit: Z-axis limit for plotting.
-    - stride_size: Controls the density of plotted surfaces.
-    - color_maps: List of color maps for each band, or a single color map for all bands.
+    - kx, ky            : 2D arrays (meshgrid) for k-space
+    - eigenvalues       : 3D array, shape (Nk, Nk, Nb)
+    - dim               : number of bands; if None, inferred as eigenvalues.shape[2]
+    - z_limit           : used when norm=True (shared Normalize(-z_limit, z_limit))
+    - norm              : True -> shared Normalize; False -> per-band autoscale
+    - stride_size       : surface stride
+    - color_maps        : 'default' | str | list[str]
+    - bands_to_plot     : which band indices to plot (e.g. 0, or (0,2,5)); None -> all
     """
-    # Default color maps if none is provided
+    # Infer number of bands if not provided
+    if dim is None:
+        if eigenvalues.ndim != 3:
+            raise ValueError(f"`eigenvalues` must be 3D (Nk, Nk, Nb); got shape {eigenvalues.shape}")
+        dim = eigenvalues.shape[2]
+
+    # Resolve which bands to plot
+    if bands_to_plot is None:
+        bands = list(range(dim))
+    elif isinstance(bands_to_plot, int):
+        bands = [bands_to_plot]
+    else:
+        bands = list(bands_to_plot)
+
+    # Validate band indices
+    bad = [b for b in bands if not (0 <= b < dim)]
+    if bad:
+        raise IndexError(f"bands_to_plot contains out-of-range indices {bad}; valid range is [0, {dim-1}]")
+
+    # Prepare colormaps
     if color_maps == 'default':
         color_maps = ['viridis', 'magma', 'coolwarm', 'plasma', 'inferno', 'cividis']
     elif isinstance(color_maps, str):
-        color_maps = [color_maps] * dim  # Use the specified color map for all bands
+        color_maps = [color_maps] * max(1, len(bands))
+
+    # Shared norm (if requested)
+    shared_norm = plt.Normalize(vmin=-z_limit, vmax=z_limit) if norm else None
 
     fig = plt.figure(figsize=(24, 8))
     ax = fig.add_subplot(111, projection='3d')
 
-    # Plot each band and add a color bar
-    for band in range(dim):
+    for j, band in enumerate(bands):
         Z = replace_zeros_with_nan(eigenvalues[:, :, band])
-        cmap = plt.get_cmap(color_maps[band % len(color_maps)])
-        if norm is not None: 
-            norm = plt.Normalize(vmin=-z_limit, vmax=z_limit)
-        else: 
-            norm = None
-        
-        # Plot the surface
-        surf = ax.plot_surface(kx, ky, Z, cmap=cmap, norm=norm,
-                               rstride=stride_size, cstride=stride_size, alpha=0.8)
+        cmap = plt.get_cmap(color_maps[j % len(color_maps)])
 
-        # Add a color bar
-        mappable = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        # Per-band norm if not sharing
+        band_norm = shared_norm
+        if not norm:
+            # autoscale to this band's data
+            zmin = np.nanmin(Z)
+            zmax = np.nanmax(Z)
+            if not np.isfinite(zmin) or not np.isfinite(zmax) or zmin == zmax:
+                # fallback to symmetric window if degenerate
+                half = z_limit if np.isfinite(z_limit) else 1.0
+                band_norm = plt.Normalize(vmin=-half, vmax=half)
+            else:
+                band_norm = plt.Normalize(vmin=zmin, vmax=zmax)
+
+        # Surface
+        surf = ax.plot_surface(
+            kx, ky, Z,
+            cmap=cmap,
+            norm=band_norm,
+            rstride=stride_size,
+            cstride=stride_size,
+            alpha=0.8
+        )
+
+        # Colorbar for this band
+        mappable = plt.cm.ScalarMappable(cmap=cmap, norm=band_norm)
         mappable.set_array(Z)
-        # cbar = fig.colorbar(mappable, ax=ax, shrink=0.5, aspect=30, pad=0.01)
-        # cbar.set_label(f'Band {band + 1} Eigenvalues', fontsize=10)
+        cbar = fig.colorbar(mappable, ax=ax, shrink=0.6, aspect=30, pad=0.01)
+        cbar.set_label(f'Band {band} eigenvalues', fontsize=10)
 
-
-
-    ax.set_title('Eigenvalues for All Bands with Touching Points')
+    ax.set_title('Eigenvalues (selected bands)')
     ax.set_xlabel('kx')
     ax.set_ylabel('ky')
     ax.set_zlabel('Eigenvalue')
-    ax.set_zlim(-z_limit, z_limit)
+
+    # If using shared norm, set a symmetric z-limit for the 3D axis for consistent depth scaling
+    if norm and np.isfinite(z_limit):
+        ax.set_zlim(-z_limit, z_limit)
+
+    plt.show()
+    plt.close()
+
+
+def plot_eigenvalues_surface_colorbar(
+    kx,
+    ky,
+    eigenvalues,
+    dim=None,                 # if None, infer from eigenvalues.shape[2]
+    z_limit=300,
+    norm=True,                # if True, all bands share Normalize(-z_limit, z_limit); if False, auto per-band
+    stride_size=3,
+    color_maps='default',
+    bands_to_plot=None        # NEW: int | iterable[int] | None (None => all bands)
+):
+    """
+    Plot selected eigenvalue bands as 3D surfaces with individual colorbars.
+
+    Parameters:
+    - kx, ky            : 2D arrays (meshgrid) for k-space
+    - eigenvalues       : 3D array, shape (Nk, Nk, Nb)
+    - dim               : number of bands; if None, inferred as eigenvalues.shape[2]
+    - z_limit           : used when norm=True (shared Normalize(-z_limit, z_limit))
+    - norm              : True -> shared Normalize; False -> per-band autoscale
+    - stride_size       : surface stride
+    - color_maps        : 'default' | str | list[str]
+    - bands_to_plot     : which band indices to plot (e.g. 0, or (0,2,5)); None -> all
+    """
+    # Infer number of bands if not provided
+    if dim is None:
+        if eigenvalues.ndim != 3:
+            raise ValueError(f"`eigenvalues` must be 3D (Nk, Nk, Nb); got shape {eigenvalues.shape}")
+        dim = eigenvalues.shape[2]
+
+    # Resolve which bands to plot
+    if bands_to_plot is None:
+        bands = list(range(dim))
+    elif isinstance(bands_to_plot, int):
+        bands = [bands_to_plot]
+    else:
+        bands = list(bands_to_plot)
+
+    # Validate band indices
+    bad = [b for b in bands if not (0 <= b < dim)]
+    if bad:
+        raise IndexError(f"bands_to_plot contains out-of-range indices {bad}; valid range is [0, {dim-1}]")
+
+    # Prepare colormaps
+    if color_maps == 'default':
+        color_maps = ['viridis', 'magma', 'coolwarm', 'plasma', 'inferno', 'cividis']
+    elif isinstance(color_maps, str):
+        color_maps = [color_maps] * max(1, len(bands))
+
+    # Shared norm (if requested)
+    shared_norm = plt.Normalize(vmin=-z_limit, vmax=z_limit) if norm else None
+
+    fig = plt.figure(figsize=(24, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    for j, band in enumerate(bands):
+        Z = replace_zeros_with_nan(eigenvalues[:, :, band])
+        cmap = plt.get_cmap(color_maps[j % len(color_maps)])
+
+        # Per-band norm if not sharing
+        band_norm = shared_norm
+        if not norm:
+            # autoscale to this band's data
+            zmin = np.nanmin(Z)
+            zmax = np.nanmax(Z)
+            if not np.isfinite(zmin) or not np.isfinite(zmax) or zmin == zmax:
+                # fallback to symmetric window if degenerate
+                half = z_limit if np.isfinite(z_limit) else 1.0
+                band_norm = plt.Normalize(vmin=-half, vmax=half)
+            else:
+                band_norm = plt.Normalize(vmin=zmin, vmax=zmax)
+
+        # Surface
+        surf = ax.plot_surface(
+            kx, ky, Z,
+            cmap=cmap,
+            norm=band_norm,
+            rstride=stride_size,
+            cstride=stride_size,
+            alpha=0.8
+        )
+
+        # Colorbar for this band
+        mappable = plt.cm.ScalarMappable(cmap=cmap, norm=band_norm)
+        mappable.set_array(Z)
+        cbar = fig.colorbar(mappable, ax=ax, shrink=0.6, aspect=30, pad=0.01)
+        cbar.set_label(f'Band {band} eigenvalues', fontsize=10)
+
+    ax.set_title('Eigenvalues (selected bands)')
+    ax.set_xlabel('kx')
+    ax.set_ylabel('ky')
+    ax.set_zlabel('Eigenvalue')
+
+    # If using shared norm, set a symmetric z-limit for the 3D axis for consistent depth scaling
+    if norm and np.isfinite(z_limit):
+        ax.set_zlim(-z_limit, z_limit)
 
     plt.show()
     plt.close()

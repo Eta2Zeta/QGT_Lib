@@ -4,6 +4,7 @@ import numpy as np
 import pickle
 from tqdm import tqdm  # Import tqdm for progress bar
 import copy
+import multiprocessing as mp
 from multiprocessing import Pool, cpu_count
 from functools import partial
 
@@ -79,7 +80,7 @@ def _worker_save_eigen_point(arg,
     # per-point dir (reuse if complete)
     file_paths, used_existing, point_dir = setup_point_dir_fn(range_root_dir, param_values)
     if used_existing and os.path.exists(file_paths["eigenvalues"]) and os.path.exists(file_paths["eigenfunctions"]):
-        return point_dir  # already done
+        return point_dir, idx  # already done
 
     # allocate & compute
     eigenfunctions = np.full((mesh_spacing, mesh_spacing, dim, dim), np.nan, dtype=complex)
@@ -200,7 +201,7 @@ def compute_phase_diagram_chern_parallel(hamiltonian_template,
     dim = int(hamiltonian_template.dim)
 
     # range root
-    range_root, _ = setup_range_dir_fn(hamiltonian_template, param_ranges, decimals=2)
+    range_root, _ = setup_range_dir_fn(hamiltonian_template, param_ranges, parameter_spacing, decimals=2)
 
     # grid of parameter points
     points_with_idx, names, axes, shape = build_parameter_points(param_ranges, parameter_spacing)
@@ -223,7 +224,11 @@ def compute_phase_diagram_chern_parallel(hamiltonian_template,
         for tup in tqdm(pool.imap(worker1, points_with_idx),
                         total=len(points_with_idx),
                         desc="Eigen (2D) per point"):
-            point_dirs_with_idx.append(tup)  # (point_dir, idx)
+            if isinstance(tup, tuple) and len(tup) == 2:
+                point_dirs_with_idx.append(tup)            # (point_dir, idx)
+            else:
+                # make worker1 ALWAYS return (point_dir, idx).
+                raise RuntimeError("Stage-1 worker returned an unexpected shape.")
 
 
     chern_grid = np.full(shape, np.nan, dtype=float)
@@ -240,37 +245,59 @@ def compute_phase_diagram_chern_parallel(hamiltonian_template,
     np.savez(os.path.join(range_root, "param_axes.npz"),
             **{f"axis_{i}_{names[i]}": axes[i] for i in range(len(names))},
             names=np.array(names, dtype=object))
+    # Build a simple list of directories (same order as point grid)
+    point_dirs = [pd for (pd, _) in point_dirs_with_idx]
+    return range_root, point_dirs
 
-t2 = 1.0/3.0
 
 # --- Haldane template ---
-H_template = HaldaneHamiltonian(t1=-1.0, t2=t2, M=0.0, psi=0.0, a=1.0, omega=2*np.pi, A0=0.0)
-
+t2 = 1.0/3.0
+H_template = HaldaneHamiltonian(t1=-1.0, t2=t2, M=0.0, psi=np.pi/2, a=1.0, omega=2*np.pi, A0=0.0)
+# H_template = ChiralHamiltonian(n=5)
 # (Optional) ensure b-vectors exist on the template
 if not hasattr(H_template, "b1") or not hasattr(H_template, "b2"):
     a = getattr(H_template, "a", 1.0)
     H_template.b1 = (2*np.pi/(3*a)) * np.array([1.0,  np.sqrt(3.0)])
     H_template.b2 = (2*np.pi/(3*a)) * np.array([1.0, -np.sqrt(3.0)])
+    
+
+#^ Haldane Calculations
+# # --- parameter ranges (dict: name -> (min, max)) ---
+# param_ranges = {
+#     "M":   (-2*np.pi*t2, 2*np.pi*t2),
+#     "psi": (-np.pi, np.pi),
+# }
+# # --- spacing (dict: name -> #points) or a single int ---
+# parameter_spacing = {
+#     "M":   32,    # 5 values from -0.6..0.6
+#     "psi": 32,
+# }
 
 # --- parameter ranges (dict: name -> (min, max)) ---
 param_ranges = {
-    "M":   (-2*np.pi*t2, 2*np.pi*t2),
-    "psi": (-np.pi, np.pi),
+    "M":   (-2*np.pi*t2, 2*np.pi*t2)
 }
-
 # --- spacing (dict: name -> #points) or a single int ---
 parameter_spacing = {
-    "M":   6,    # 5 values from -0.6..0.6
-    "psi": 6,
+    "M":   100,
 }
+
+
+#^ Rhombohedral Graphene
+# # --- parameter ranges (dict: name -> (min, max)) ---
+# param_ranges = {
+#     "V":   (-10, 10),
+# }
+# # --- spacing (dict: name -> #points) or a single int ---
+# parameter_spacing = {
+#     "V":   100,
+# }
 
 # --- k-grid settings ---
 kx_range = (-np.pi, np.pi)
 ky_range = (-np.pi, np.pi)
 mesh_spacing = 64  # quick – bump to 128/256 for production
 
-# processes = cpu_count()  # or None for auto
-processes = 1  # or None for auto
 
 def main():
     # build H_template, param_ranges, parameter_spacing, kx/ky ranges, etc.
@@ -289,7 +316,6 @@ def main():
     )
 
 if __name__ == "__main__":
-    import multiprocessing as mp
     mp.freeze_support()          # safe on mac/win; no-op on linux
     # Optional, explicit (mac uses spawn by default):
     # mp.set_start_method("spawn", force=True)
