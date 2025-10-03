@@ -337,6 +337,165 @@ def dynamic_with_eigenvalues(folder_name, band_index1=0, band_index2=1):
 
     plt.show()
 
+def dynamic_with_eigenvalues_single_param(result_dir, band_index1=0, band_index2=1):
+    """
+    Visualize (vs k along the chosen line) for a single-parameter 1D sweep:
+      - two eigenvalue branches (choose indices)
+      - QGT trace
+      - perturbation
+      - Magnus operator norm (if present)
+    """
+    # Resolve directory
+    if os.path.isdir(result_dir):
+        folder_path = result_dir
+    else:
+        folder_path = os.path.join(os.getcwd(), "results", "1D_QGT_results", result_dir)
+
+    g_results_path = os.path.join(folder_path, "QGT_1D.npy")
+    meta_path      = os.path.join(folder_path, "meta_info.pkl")
+    if not os.path.exists(g_results_path):
+        raise FileNotFoundError(f"Missing '{g_results_path}'")
+    if not os.path.exists(meta_path):
+        raise FileNotFoundError(f"Missing '{meta_path}'")
+
+    # Load metadata + results
+    with open(meta_path, "rb") as f:
+        meta = pickle.load(f)
+
+    param_name   = meta.get("param_name", "omega")
+    swept_values = np.asarray(meta.get("values"))
+    num_k_points = int(meta["num_k_points"])
+    k_max        = float(meta["k_max"])
+
+    k_line = np.linspace(-k_max, k_max, num_k_points)
+    g_results = np.load(g_results_path, allow_pickle=True)
+
+    # Which bands exist?
+    sample_ev = np.asarray(g_results[0]["eigenvalues"])
+    if sample_ev.ndim != 2:
+        sample_ev = sample_ev.reshape(sample_ev.shape[0], -1)  # (Nk, nbands)
+    nbands = sample_ev.shape[1]
+    for b in (band_index1, band_index2):
+        if b < 0 or b >= nbands:
+            raise IndexError(f"Band index {b} out of range [0, {nbands-1}]")
+
+    # Global y-limits computed ONLY from the two selected bands
+    y_min_eval = np.inf; y_max_eval = -np.inf
+    y_min_trace = np.inf; y_max_trace = -np.inf
+    y_min_pert  = np.inf; y_max_pert  = -np.inf
+
+    has_magnus = all("magnus_operator_norm" in d for d in g_results)
+    y_min_mag = np.inf; y_max_mag = -np.inf
+
+    for d in g_results:
+        ev = np.asarray(d["eigenvalues"])
+        if ev.ndim != 2:
+            ev = ev.reshape(ev.shape[0], -1)    # (Nk, nbands)
+
+        sel = np.column_stack((ev[:, band_index1], ev[:, band_index2]))  # (Nk, 2)
+        y_min_eval = min(y_min_eval, np.nanmin(sel))
+        y_max_eval = max(y_max_eval, np.nanmax(sel))
+
+        y_min_trace = min(y_min_trace, np.nanmin(d["trace"]))
+        y_max_trace = max(y_max_trace, np.nanmax(d["trace"]))
+        y_min_pert  = min(y_min_pert,  np.nanmin(d["perturbation"]))
+        y_max_pert  = max(y_max_pert,  np.nanmax(d["perturbation"]))
+        if has_magnus:
+            y_min_mag = min(y_min_mag, np.nanmin(d["magnus_operator_norm"]))
+            y_max_mag = max(y_max_mag, np.nanmax(d["magnus_operator_norm"]))
+
+    eval_buf = 0.1 * (y_max_eval - y_min_eval + 1e-12)
+
+    # Figure / axes
+    fig, ax1 = plt.subplots(figsize=(12, 8))
+    fig.subplots_adjust(bottom=0.2, right=0.84)
+
+    ax2 = ax1.twinx()  # Trace
+    ax3 = ax1.twinx()  # Perturbation
+    ax3.spines['right'].set_position(('outward', 60))
+    ax3.spines['right'].set_visible(True)
+
+    ax4 = None
+    if has_magnus:
+        ax4 = ax1.twinx()
+        ax4.spines['right'].set_position(('outward', 120))
+        ax4.spines['right'].set_visible(True)
+
+    # Initial slice
+    i0 = 0
+    d0 = g_results[i0]
+    ev0 = np.asarray(d0["eigenvalues"])
+    if ev0.ndim != 2:
+        ev0 = ev0.reshape(ev0.shape[0], -1)  # (Nk, nbands)
+    ev0_T = ev0.T  # (nbands, Nk)
+
+    # Plots
+    line_e1, = ax1.plot(k_line, ev0_T[band_index1], label=f"Eigen[{band_index1}]", color='r')
+    line_e2, = ax1.plot(k_line, ev0_T[band_index2], label=f"Eigen[{band_index2}]", color='m')
+    line_tr,   = ax2.plot(k_line, d0["trace"],        label="Trace",        color='b')
+    line_pert, = ax3.plot(k_line, d0["perturbation"], label="Perturbation", color='g')
+    if has_magnus:
+        line_mag, = ax4.plot(k_line, d0["magnus_operator_norm"], label="Magnus ‖·‖", color='k')
+
+    # Axis formatting (eigen y-lims use only the selected bands)
+    ax1.set_xlabel("k (along line)")
+    ax1.set_ylabel("Eigenvalues", color='r')
+    ax1.set_ylim(y_min_eval - eval_buf, y_max_eval + eval_buf)
+    ax1.tick_params(axis='y', labelcolor='r')
+
+    ax2.set_ylabel("Trace", color='b')
+    ax2.set_ylim(y_min_trace, y_max_trace)
+    ax2.tick_params(axis='y', labelcolor='b')
+
+    ax3.set_ylabel("Perturbation", color='g')
+    ax3.set_ylim(y_min_pert, y_max_pert)
+    ax3.tick_params(axis='y', labelcolor='g')
+
+    if has_magnus:
+        ax4.set_ylabel("Magnus ‖·‖", color='k')
+        ax4.set_ylim(y_min_mag, y_max_mag)
+        ax4.tick_params(axis='y', labelcolor='k')
+
+    # Title / legend
+    def _title_for(idx):
+        pv = g_results[idx].get(param_name, swept_values[idx] if swept_values is not None else None)
+        if pv is None:
+            return f"QGT Trace, Eigenvalues, Perturbation — {param_name} [idx {idx}]"
+        return f"QGT Trace, Eigenvalues, Perturbation — {param_name} = {pv:.6g}"
+
+    lines = [line_e1, line_e2, line_tr, line_pert]
+    if has_magnus: lines.append(line_mag)
+    ax1.legend(lines, [ln.get_label() for ln in lines], loc="upper left")
+    ax1.set_title(_title_for(i0))
+    ax1.grid(True)
+
+    # Slider
+    ax_sl = plt.axes([0.15, 0.06, 0.66, 0.03], facecolor='lightgoldenrodyellow')
+    s_idx = Slider(ax_sl, f"{param_name} idx", 0, len(g_results)-1, valinit=i0, valstep=1)
+
+    # Update
+    def _update(_):
+        i = int(s_idx.val)
+        d = g_results[i]
+
+        ev = np.asarray(d["eigenvalues"])
+        if ev.ndim != 2:
+            ev = ev.reshape(ev.shape[0], -1)
+        evT = ev.T
+
+        line_e1.set_ydata(evT[band_index1])
+        line_e2.set_ydata(evT[band_index2])
+        line_tr.set_ydata(d["trace"])
+        line_pert.set_ydata(d["perturbation"])
+        if has_magnus:
+            line_mag.set_ydata(d["magnus_operator_norm"])
+
+        ax1.set_title(_title_for(i))
+        fig.canvas.draw_idle()
+
+    s_idx.on_changed(_update)
+    plt.show()
+
 def dynamic_2d_trace_vs_omega(folder_name, omega_min=None, omega_max=None):
     """
     Dynamically visualize the QGT trace (2D heatmap) as a function of omega.
@@ -487,42 +646,49 @@ def dynamic_2d_berry_vs_omega(folder_name, omega_min=None, omega_max=None):
     slider.on_changed(update)
     plt.show()
 
+def load_qgt(folder_name):
+    """Load QGT entries (np object array) and meta dict from a sweep folder."""
+    base = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", folder_name)
+    qgt_path  = os.path.join(base, "QGT_2D.npy")
+    meta_path = os.path.join(base, "meta_info.pkl")
+    if not os.path.exists(qgt_path):
+        raise FileNotFoundError(f"QGT data not found in '{base}'.")
+    with open(meta_path, "rb") as f:
+        meta = pickle.load(f)
+    entries = np.load(qgt_path, allow_pickle=True)
+    return entries, meta
+
+def filter_entries_by_omega(entries, omega_min=None, omega_max=None):
+    """Return a list of entries whose float(entry['omega']) lies in [omega_min, omega_max]."""
+    def _in_range(w):
+        if (omega_min is not None) and (w < omega_min): return False
+        if (omega_max is not None) and (w > omega_max): return False
+        return True
+    filtered = [e for e in entries if _in_range(float(e["omega"]))]
+    if len(filtered) == 0:
+        raise ValueError("No omega slices fall within the requested range.")
+    return filtered
+
+
+# --------------------- plotting routines ---------------------
 
 def plot_trace_std_vs_omega(folder_name, omega_min=None, omega_max=None):
     """
     Plot the standard deviation of QGT trace over the Brillouin zone for each omega.
-
-    Parameters:
-        folder_name (str): Subfolder in 'results/2D_QGT_omega_sweep/'.
-        omega_min (float|None): Keep slices with omega >= omega_min.
-        omega_max (float|None): Keep slices with omega <= omega_max.
     """
+    entries, _ = load_qgt(folder_name)
+    filtered = filter_entries_by_omega(entries, omega_min, omega_max)
 
-    results_path = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", folder_name)
-    qgt_data_path = os.path.join(results_path, "QGT_2D.npy")
-    meta_path = os.path.join(results_path, "meta_info.pkl")
+    # collect values
+    omegas = np.array([float(e["omega"]) for e in filtered], dtype=float)
+    trace_std = np.array([np.nanstd(e["trace"]) for e in filtered], dtype=float)
 
-    if not os.path.exists(qgt_data_path):
-        raise FileNotFoundError(f"QGT data not found in '{results_path}'.")
-
-    with open(meta_path, "rb") as f:
-        _ = pickle.load(f)  # meta_info not needed here
-    qgt_data = np.load(qgt_data_path, allow_pickle=True)
-
-
-    filtered = [entry for entry in qgt_data if in_range(float(entry["omega"]), omega_min, omega_max)]
-    if len(filtered) == 0:
-        raise ValueError("No omega slices fall within the requested range.")
-
-    omega_values = []
-    trace_std_values = []
-
-    for entry in filtered:
-        omega_values.append(float(entry["omega"]))
-        trace_std_values.append(np.nanstd(entry["trace"]))
+    # sort by omega for a clean line
+    order = np.argsort(omegas)
+    omegas, trace_std = omegas[order], trace_std[order]
 
     plt.figure(figsize=(8, 5))
-    plt.plot(omega_values, trace_std_values, marker='o', linestyle='-')
+    plt.plot(omegas, trace_std, marker='o', linestyle='-')
     plt.xscale('log')
     plt.xlabel("Drive Frequency ω")
     plt.ylabel("Std. Dev of QGT Trace over BZ")
@@ -532,45 +698,32 @@ def plot_trace_std_vs_omega(folder_name, omega_min=None, omega_max=None):
     plt.show()
 
 
-def plot_berry_std_vs_omega(folder_name, omega_min=None, omega_max=None):
+def plot_berry_std_vs_omega(folder_name, omega_min=None, omega_max=None, *,
+                            use_precomputed=False,  # set True if entries include 'berry'
+                            convert_from_imQ=True   # if not precomputed: Ω = -2 * Im(Q_xy)
+):
     """
     Plot the standard deviation of Berry curvature over the Brillouin zone for each omega.
-
-    Parameters:
-        folder_name (str): Subfolder in 'results/2D_QGT_omega_sweep/'.
-        omega_min (float|None): Keep slices with omega >= omega_min.
-        omega_max (float|None): Keep slices with omega <= omega_max.
     """
-    results_path = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", folder_name)
-    qgt_data_path = os.path.join(results_path, "QGT_2D.npy")
-    meta_path = os.path.join(results_path, "meta_info.pkl")
+    entries, _ = load_qgt(folder_name)
+    filtered = filter_entries_by_omega(entries, omega_min, omega_max)
 
-    if not os.path.exists(qgt_data_path):
-        raise FileNotFoundError(f"QGT data not found in '{results_path}'.")
+    omegas = np.array([float(e["omega"]) for e in filtered], dtype=float)
+    berry_std = []
+    for e in filtered:
+        if use_precomputed and ("berry" in e):
+            berry = np.asarray(e["berry"])
+        else:
+            gim = np.asarray(e["g_xy_imag"])
+            berry = (-2.0 * gim) if convert_from_imQ else gim  # sign choice doesn't affect std
+        berry_std.append(np.nanstd(berry))
+    berry_std = np.array(berry_std, dtype=float)
 
-    with open(meta_path, "rb") as f:
-        _ = pickle.load(f)  # meta_info not needed here
-    qgt_data = np.load(qgt_data_path, allow_pickle=True)
-
-    def _in_range(w):
-        if (omega_min is not None) and (w < omega_min): return False
-        if (omega_max is not None) and (w > omega_max): return False
-        return True
-
-    filtered = [entry for entry in qgt_data if _in_range(float(entry["omega"]))]
-    if len(filtered) == 0:
-        raise ValueError("No omega slices fall within the requested range.")
-
-    omega_values = []
-    berry_std_values = []
-
-    for entry in filtered:
-        omega_values.append(float(entry["omega"]))
-        berry_curvature = -2 * entry["g_xy_imag"]  # sign doesn't affect std
-        berry_std_values.append(np.nanstd(berry_curvature))
+    order = np.argsort(omegas)
+    omegas, berry_std = omegas[order], berry_std[order]
 
     plt.figure(figsize=(8, 5))
-    plt.plot(omega_values, berry_std_values, marker='o', linestyle='-')
+    plt.plot(omegas, berry_std, marker='o', linestyle='-')
     plt.xscale('log')
     plt.xlabel("Drive Frequency ω")
     plt.ylabel("Std. Dev of Berry Curvature over BZ")
@@ -580,55 +733,43 @@ def plot_berry_std_vs_omega(folder_name, omega_min=None, omega_max=None):
     plt.show()
 
 
-def plot_integrated_trace_minus_berry(folder_name, omega_min=None, omega_max=None):
+def plot_integrated_trace_minus_berry(folder_name, omega_min=None, omega_max=None, *,
+                                      use_precomputed=False,  # set True if entries include 'berry'
+                                      convert_from_imQ=True   # if not precomputed: Ω = -2 * Im(Q_xy)
+):
     """
-    Plot the integral over the BZ of [trace - Berry curvature] for each omega.
-
-    Parameters:
-        folder_name (str): Subfolder in 'results/2D_QGT_omega_sweep/'.
-        omega_min (float|None): Keep slices with omega >= omega_min.
-        omega_max (float|None): Keep slices with omega <= omega_max.
+    Plot ∫_{BZ} [Tr(g) − Ω] d^2k versus ω. Uses dkx,dky from meta for the area element.
     """
+    entries, meta = load_qgt(folder_name)
+    filtered = filter_entries_by_omega(entries, omega_min, omega_max)
 
-    results_path = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", folder_name)
-    qgt_data_path = os.path.join(results_path, "QGT_2D.npy")
-    meta_path = os.path.join(results_path, "meta_info.pkl")
-
-    if not os.path.exists(qgt_data_path):
-        raise FileNotFoundError(f"QGT data not found in '{results_path}'.")
-
-    with open(meta_path, "rb") as f:
-        meta_info = pickle.load(f)
-    qgt_data = np.load(qgt_data_path, allow_pickle=True)
-
-    dkx = meta_info["dkx"]
-    dky = meta_info["dky"]
+    dkx = float(meta["dkx"]); dky = float(meta["dky"])
     area_element = dkx * dky
 
-    def _in_range(w):
-        if (omega_min is not None) and (w < omega_min): return False
-        if (omega_max is not None) and (w > omega_max): return False
-        return True
+    omega_vals = []
+    integrated_vals = []
 
-    filtered = [entry for entry in qgt_data if _in_range(float(entry["omega"]))]
-    if len(filtered) == 0:
-        raise ValueError("No omega slices fall within the requested range.")
+    for e in filtered:
+        omega_vals.append(float(e["omega"]))
+        trace = np.asarray(e["trace"])
+        if use_precomputed and ("berry" in e):
+            berry = np.asarray(e["berry"])
+        else:
+            gim = np.asarray(e["g_xy_imag"])
+            berry = (-2.0 * gim) if convert_from_imQ else gim
+        integrand = trace - berry
+        total = np.nansum(integrand) * area_element
+        integrated_vals.append(total)
 
-    omega_values = []
-    integrated_values = []
+    omega_vals = np.array(omega_vals, dtype=float)
+    integrated_vals = np.array(integrated_vals, dtype=float)
 
-    for entry in filtered:
-        omega = float(entry["omega"])
-        trace = entry["trace"]
-        berry_curvature = -2 * entry["g_xy_imag"]
-        integrand = trace - berry_curvature
-        total_integral = np.nansum(integrand) * area_element
-
-        omega_values.append(omega)
-        integrated_values.append(total_integral)
+    order = np.argsort(omega_vals)
+    omega_vals, integrated_vals = omega_vals[order], integrated_vals[order]
 
     plt.figure(figsize=(8, 5))
-    plt.plot(omega_values, integrated_values, marker='o', linestyle='-')
+    plt.plot(omega_vals, integrated_vals, marker='o', linestyle='-')
+
     plt.xscale('log')
     plt.xlabel("Drive Frequency ω")
     plt.ylabel(r"$\int_{\mathrm{BZ}} \left[\mathrm{Tr}(g) - \Omega\right]\, d^2k$")
@@ -637,92 +778,10 @@ def plot_integrated_trace_minus_berry(folder_name, omega_min=None, omega_max=Non
     plt.tight_layout()
     plt.show()
 
+
 def _wrap_periodic(vals, vmin, vmax):
     L = vmax - vmin
     return (vals - vmin) % L + vmin
-
-def _line_segment_in_box(x0, y0, theta_rad, xmin, xmax, ymin, ymax, periodic=False, max_len=None):
-    """
-    Returns parametric points (x(t), y(t)) along a line with direction theta, 
-    shifted to pass through (x0,y0), clipped to the box. If periodic=True, 
-    we just create a symmetric segment of length=max_len (or box diagonal). 
-    """
-    dx, dy = np.cos(theta_rad), np.sin(theta_rad)
-
-    if periodic:
-        # On a torus, define a convenient finite segment centered at (x0,y0)
-        if max_len is None:
-            box_diag = np.hypot(xmax-xmin, ymax-ymin)
-            max_len = box_diag
-        tmin, tmax = -0.5*max_len, 0.5*max_len
-        return tmin, tmax, dx, dy
-
-    # Non-periodic: compute intersections with bounding box
-    t_candidates = []
-
-    if abs(dx) > 1e-15:
-        t_candidates += [(xmin - x0)/dx, (xmax - x0)/dx]
-    if abs(dy) > 1e-15:
-        t_candidates += [(ymin - y0)/dy, (ymax - y0)/dy]
-
-    # Filter to those actually inside the box
-    pts = []
-    for t in t_candidates:
-        x = x0 + t*dx
-        y = y0 + t*dy
-        if (xmin-1e-12) <= x <= (xmax+1e-12) and (ymin-1e-12) <= y <= (ymax+1e-12):
-            pts.append(t)
-    if len(pts) < 2:
-        # Line misses the box; return zero segment
-        return 0.0, 0.0, dx, dy
-    tmin, tmax = min(pts), max(pts)
-    return tmin, tmax, dx, dy
-
-# def _bilinear_sample(grid, x_coords, y_coords, xq, yq, periodic=False):
-#     """
-#     Bilinear sampling of 'grid' defined on rectilinear axes x_coords (len Nx) and y_coords (len Ny).
-#     xq, yq are same-shaped query arrays. Returns sampled values (same shape).
-
-#     No SciPy required. Works with monotonically increasing x_coords & y_coords.
-#     """
-#     x = np.asarray(x_coords)
-#     y = np.asarray(y_coords)
-#     Xq = np.asarray(xq)
-#     Yq = np.asarray(yq)
-
-#     xmin, xmax = x[0], x[-1]
-#     ymin, ymax = y[0], y[-1]
-#     nx, ny = x.size, y.size
-
-#     if periodic:
-#         Xq = _wrap_periodic(Xq, xmin, xmax)
-#         Yq = _wrap_periodic(Yq, ymin, ymax)
-
-#     # Clamp into valid ranges for bilinear (needs i,i+1; j,j+1)
-#     # searchsorted gives the insertion index; subtract 1 for left cell
-#     ix = np.clip(np.searchsorted(x, Xq) - 1, 0, nx-2)
-#     iy = np.clip(np.searchsorted(y, Yq) - 1, 0, ny-2)
-
-#     x0 = x[ix]
-#     x1 = x[ix+1]
-#     y0 = y[iy]
-#     y1 = y[iy+1]
-
-#     # Avoid div-by-zero if a coord array is degenerate
-#     tx = np.where(x1 > x0, (Xq - x0)/(x1 - x0), 0.0)
-#     ty = np.where(y1 > y0, (Yq - y0)/(y1 - y0), 0.0)
-
-#     # Gather corners
-#     f00 = grid[ix,   iy  ]
-#     f10 = grid[ix+1, iy  ]
-#     f01 = grid[ix,   iy+1]
-#     f11 = grid[ix+1, iy+1]
-
-#     # Bilinear blend
-#     f0 = f00*(1-tx) + f10*tx
-#     f1 = f01*(1-tx) + f11*tx
-#     f  = f0*(1-ty) + f1*ty
-#     return f
 
 def _bilinear_sample(grid, x_coords, y_coords, xq, yq, periodic=False, oob_value=None):
     """
@@ -911,7 +970,15 @@ def dynamic_2d_trace_with_line(folder_name, omega_min=None, omega_max=None,
     ax_img.set_title(f'QGT Trace — $\\omega$ = {omega_values[idx0]:.6f}')
     ax_img.set_xlabel("$k_x$")
     ax_img.set_ylabel("$k_y$")
-    cbar = plt.colorbar(im, ax=ax_img)
+    cbar = plt.colorbar(
+        im, ax=ax_img,
+        location="right",   # "right" | "left" | "top" | "bottom"
+        fraction=0.1,     # relative size of the colorbar
+        pad=0.04,           # gap between axes and colorbar (in fraction of axes)
+        shrink=1,         # shrink bar length
+        aspect=30           # length:width ratio of the bar
+    )
+
     cbar.set_label("Trace Amplitude")
     
     # Draw initial line overlay + 1D slice
@@ -1027,6 +1094,138 @@ def dynamic_2d_trace_with_line(folder_name, omega_min=None, omega_max=None,
 
     plt.show()
 
+def load_qgt_entries(folder_name):
+    """
+    Load raw QGT entries and metadata from a results folder.
+    Returns: (entries_list, kx, ky)
+    """
+    base = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", folder_name)
+    qgt_path = os.path.join(base, "QGT_2D.npy")
+    meta_path = os.path.join(base, "meta_info.pkl")
+    if not os.path.exists(qgt_path):
+        raise FileNotFoundError(f"QGT data not found in '{base}'.")
+    with open(meta_path, "rb") as f:
+        meta = pickle.load(f)
+    entries = np.load(qgt_path, allow_pickle=True)
+    kx = np.asarray(meta["kx"]); ky = np.asarray(meta["ky"])
+    return list(entries), kx, ky
+
+def dynamic_2d_qgt_vs_omega_joined(
+    left_folder_name,
+    right_folder_name,
+    *,
+    quantity="trace",            # "trace" | "berry" | "imqxy"
+    convert_berry_from_imQ=True, # if quantity="berry" and no "berry": use -2*Im(Q_xy)
+    symmetric_cbar=None,         # None -> True for non-trace; False for trace
+    omega_min_left=None,
+    omega_max_left=None,
+    omega_min_right=None,
+    omega_max_right=None,
+    tol=1e-9,
+    drop_overlap=True,
+    cmap='inferno'
+):
+    # ---- use your helpers ----
+    # expects: load_qgt(folder_name) -> (entries, meta)
+    #          filter_entries_by_omega(entries, omega_min, omega_max) -> filtered_entries
+    entries_L, meta_L = load_qgt(left_folder_name)
+    entries_R, meta_R = load_qgt(right_folder_name)
+
+    # k-grid sanity
+    kx_L, ky_L = np.asarray(meta_L["kx"]), np.asarray(meta_L["ky"])
+    kx_R, ky_R = np.asarray(meta_R["kx"]), np.asarray(meta_R["ky"])
+    if kx_L.shape != kx_R.shape or ky_L.shape != ky_R.shape \
+       or not np.allclose(kx_L, kx_R) or not np.allclose(ky_L, ky_R):
+        raise ValueError("kx/ky grids differ between folders; cannot join.")
+    kx, ky = kx_L, ky_L
+
+    # independent omega filters (value-based)
+    filt_L = filter_entries_by_omega(entries_L, omega_min_left,  omega_max_left)
+    filt_R = filter_entries_by_omega(entries_R, omega_min_right, omega_max_right)
+    if len(filt_L) == 0 or len(filt_R) == 0:
+        raise ValueError("No omega slices in range for one or both datasets.")
+
+    # extract ω arrays
+    l_om = np.array([float(e["omega"]) for e in filt_L], dtype=float)
+    r_om = np.array([float(e["omega"]) for e in filt_R], dtype=float)
+
+    # select field per entry
+    q = quantity.lower()
+    def _extract_field(entry):
+        if q == "trace":
+            return np.asarray(entry["trace"])
+        if q in ("berry", "berry_curvature", "omega"):
+            if "berry" in entry:
+                return np.asarray(entry["berry"])
+            if "g_xy_imag" in entry:
+                return (-2.0 * np.asarray(entry["g_xy_imag"])) if convert_berry_from_imQ \
+                       else np.asarray(entry["g_xy_imag"])
+            raise KeyError("Entry lacks 'berry' and 'g_xy_imag'; cannot form Berry curvature.")
+        if q in ("imqxy", "im(q_xy)", "im_qxy"):
+            return np.asarray(entry["g_xy_imag"])
+        raise ValueError(f"Unknown quantity '{quantity}'.")
+
+    l_data = [ _extract_field(e) for e in filt_L ]
+    r_data = [ _extract_field(e) for e in filt_R ]
+
+    # left asc; right desc (reverse)
+    l_ord = np.argsort(l_om); l_om = l_om[l_ord]; l_data = [l_data[i] for i in l_ord]
+    r_ord = np.argsort(r_om); r_om_sorted = r_om[r_ord]; r_data_sorted = [r_data[i] for i in r_ord]
+    r_om_rev = r_om_sorted[::-1]; r_data_rev = r_data_sorted[::-1]
+
+    # number of left slices (for labeling)
+    n_left = len(l_om)
+
+    # optional de-dup at junction (match high-ω ends)
+    if drop_overlap and r_om_sorted.size and np.isclose(l_om[-1], r_om_sorted[-1], atol=tol, rtol=0):
+        r_om_rev   = r_om_rev[1:]
+        r_data_rev = r_data_rev[1:]
+
+    # join
+    omegas_join = np.concatenate([l_om, r_om_rev])
+    fields_join = l_data + r_data_rev
+
+    # color limits
+    if symmetric_cbar is None:
+        symmetric_cbar = (q != "trace")
+    if symmetric_cbar:
+        vmax_abs = max(max(abs(np.nanmin(F)), abs(np.nanmax(F))) for F in fields_join)
+        vmin, vmax = -vmax_abs, vmax_abs
+    else:
+        vmin = min(np.nanmin(F) for F in fields_join)
+        vmax = max(np.nanmax(F) for F in fields_join)
+
+    # plotting
+    fig, ax = plt.subplots(figsize=(8, 6))
+    fig.subplots_adjust(bottom=0.2)
+    idx0 = 0
+    im = ax.imshow(
+        fields_join[idx0],
+        origin='lower',
+        extent=[kx.min(), kx.max(), ky.min(), ky.max()],
+        cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto'
+    )
+
+    title_q = {"trace":"QGT Trace", "berry":"Berry Curvature Ω", "imqxy":"Im(Q_xy)"} \
+              .get(q, "Field")
+    def _src(i): return "L" if i < n_left else "R"
+
+    ax.set_title(f'{title_q} — ω = {omegas_join[idx0]:.6f}  (src: {_src(idx0)})')
+    ax.set_xlabel("$k_x$"); ax.set_ylabel("$k_y$")
+    cbar = plt.colorbar(im, ax=ax); cbar.set_label(title_q)
+
+    # slider
+    ax_sl = plt.axes([0.15, 0.06, 0.70, 0.03], facecolor='lightgoldenrodyellow')
+    sl = Slider(ax_sl, '$\\omega$ idx', 0, len(omegas_join)-1, valinit=idx0, valstep=1)
+
+    def _update(val):
+        i = int(sl.val)
+        im.set_data(fields_join[i])
+        ax.set_title(f'{title_q} — ω = {omegas_join[i]:.6f}  (src: {_src(i)})')
+        fig.canvas.draw_idle()
+
+    sl.on_changed(_update)
+    plt.show()
 
 # TwoOrbitalUnspinful
 
@@ -1117,30 +1316,18 @@ def dynamic_2d_trace_with_line(folder_name, omega_min=None, omega_max=None,
 #~ 2D QGT
 #! Left Polarization
 # dynamic_2d_trace_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega5.00e-02_5.00e_01_spacing_log_points32_1")
-
-#! Trace std
 # plot_trace_std_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega5.00e-02_5.00e_01_spacing_log_points32_1")
-
-#! Berry std
 # plot_berry_std_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega5.00e-02_5.00e_01_spacing_log_points32_1")
-
-#! Integrated trace - Berry
 # plot_integrated_trace_minus_berry("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega5.00e-02_5.00e_01_spacing_log_points32_1")
 
 #! Right Polarization
 # dynamic_2d_trace_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
-
-#! Trace std
 # plot_trace_std_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
-
-#! Berry std
 # plot_berry_std_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
-
-#! Integrated trace - Berry
 # plot_integrated_trace_minus_berry("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
 
 
-# Rhombohedral Graphene Hamiltonian
+#@ Rhombohedral Graphene Hamiltonian
 
 #! V = 6
 #~ 1D QGT
@@ -1201,7 +1388,7 @@ def dynamic_2d_trace_with_line(folder_name, omega_min=None, omega_max=None,
 
 #! V = 30
 
-# dynamic_2d_trace_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V30_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points6_1")
+dynamic_2d_trace_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V30_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points6_1")
 # dynamic_2d_berry_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V30_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points6_1")
 
 #! Same as above but with correct? band
@@ -1216,6 +1403,7 @@ def dynamic_2d_trace_with_line(folder_name, omega_min=None, omega_max=None,
 # plot_trace_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_vF542.1_t1355.16_V0_n5_kx-0.66_0.66_ky-0.66_0.66_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
 # plot_berry_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_vF542.1_t1355.16_V0_n5_kx-0.66_0.66_ky-0.66_0.66_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
 # plot_integrated_trace_minus_berry("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_vF542.1_t1355.16_V0_n5_kx-0.66_0.66_ky-0.66_0.66_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
+
 # & Right Polarization
 # dynamic_2d_trace_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_vF542.1_t1355.16_V0_n5_kx-0.66_0.66_ky-0.66_0.66_mesh150_omega5.00e_00_5.00e_03_spacing_log_points40_1")
 # dynamic_2d_berry_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_vF542.1_t1355.16_V0_n5_kx-0.66_0.66_ky-0.66_0.66_mesh150_omega5.00e_00_5.00e_03_spacing_log_points40_1")
@@ -1227,18 +1415,20 @@ def dynamic_2d_trace_with_line(folder_name, omega_min=None, omega_max=None,
 # Full Chiral Hamiltonian
 #~ 1D QGT
 # dynamic_with_eigenvalues("ChiralHamiltonian/A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_angle0.0_kxshift0.00_kyshift0.00_points100_kmax1.57_omega5.00e_00_5.00e_03_spacing_log_points30_2", band_index1=4, band_index2=5)
-# dynamic_with_eigenvalues("ChiralHamiltonian/A0_0.10-V_30.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-polarization_right-t1_355.16-vF_542.10_angle0.0_kxshift0.00_kyshift0.00_points100_kmax1.57_omega5.00e_00_5.00e_03_spacing_log_points1_1", band_index1=4, band_index2=5)
+# dynamic_with_eigenvalues("ChiralHamiltonian/A0_0.10-V_30.00-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-polarization_right-t1_355.16-vF_542.10_angle0.0_kxshift0.00_kyshift0.00_points100_kmax1.57_omega5.00e_00_5.00e_03_spacing_log_points30_1", band_index1=4, band_index2=5)
 
-dynamic_2d_trace_with_line(
-    "ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1",
-    omega_min=33,
-    angle_deg=45.0,     # angle w.r.t +kx (in degrees)
-    shift_x=0.0,        # center/shift in kx
-    shift_y=0.0,        # center/shift in ky
-    n_samples=500,
-    k_length=1.2,
-    periodic=False      # set True if your k-grid is periodic (torus)
-)
+# dynamic_with_eigenvalues_single_param("ChiralHamiltonian/A0_0-V_20.00-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-polarization_left-t1_355.16-vF_542.10_angle0.0_kx0.00_ky0.00_kmax1.57_param_V_5_50_spacing_linear_N20_kN100_data_set1", band_index1=4, band_index2=5)
+
+# dynamic_2d_trace_with_line(
+#     "ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1",
+#     omega_min=33,
+#     angle_deg=45.0,     # angle w.r.t +kx (in degrees)
+#     shift_x=0.0,        # center/shift in kx
+#     shift_y=0.0,        # center/shift in ky
+#     n_samples=500,
+#     k_length=1.2,
+#     periodic=False      # set True if your k-grid is periodic (torus)
+# )
 
 
 # & Trial run with coarse omega grid
@@ -1248,18 +1438,24 @@ dynamic_2d_trace_with_line(
 # plot_berry_std_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points16_1")
 # plot_integrated_trace_minus_berry("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points16_1")
 
-# # & Left Polarization
+# & Left Polarization
 # dynamic_2d_trace_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=33)
 # dynamic_2d_berry_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=33)
 # plot_trace_std_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=33)
 # plot_berry_std_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=33)
 # plot_integrated_trace_minus_berry("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=33)
 
-# # & Right Polarization
+# & Right Polarization
 # dynamic_2d_trace_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=50)
 # dynamic_2d_berry_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=50)
 # plot_trace_std_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=50)
 # plot_berry_std_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=50)
 # plot_integrated_trace_minus_berry("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=50)
 
+# dynamic_2d_qgt_vs_omega_joined("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", 
+#                                  "ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", 
+#                                  quantity="trace", omega_min_left=33, omega_min_right=50)
 
+# dynamic_2d_qgt_vs_omega_joined("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", 
+#                                  "ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", 
+#                                  quantity="berry", omega_min_left=33, omega_min_right=50)

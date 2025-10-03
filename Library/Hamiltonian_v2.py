@@ -1412,7 +1412,6 @@ class ChiralHamiltonian(hamiltonian):
         self.vF = float(vF)
         self.a = a                      # Lattice constant
         self.t1 = float(t1)
-        self.V  = float(V)              # displacement-field strength (same units as energies)
 
         v = valley.lower()
         if v in ('k',):
@@ -1427,13 +1426,24 @@ class ChiralHamiltonian(hamiltonian):
         self._sigma_minus = 0.5 * (sigma_x - 1j * sigma_y)
         self._I2 = np.eye(2, dtype=complex)
 
-        # Precompute the layer potentials V_l = V * (l - (n-1)/2)
-        center = (self.n - 1) / 2.0
-        self._V_layer = np.array([self.V * (l - center) for l in range(self.n)], dtype=float)
-
+        # set V via the property to populate _V_layer
+        self.V = float(V)
+        
         # reciprocal lattice vectors that is the same as the single layer graphene lattice vectors
         self.b1 = (2*np.pi/(3*a)) * np.array([1.0,  np.sqrt(3.0)])
         self.b2 = (2*np.pi/(3*a)) * np.array([1.0, -np.sqrt(3.0)])
+
+    @property
+    def V(self) -> float:
+        return self._V
+
+    @V.setter
+    def V(self, val: float):
+        self._V = float(val)
+        center = (self.n - 1) / 2.0
+        # refresh cached per-layer onsite potentials
+        self._V_layer = np.array([self._V * (l - center) for l in range(self.n)], dtype=float)
+
 
     def _D_block(self, kx, ky):
         # D = vF * ( kx σ_x + η ky σ_y )
