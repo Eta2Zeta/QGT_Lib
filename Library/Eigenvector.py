@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import permutations
 class Eigenvector:
     def __init__(self, dimension):
         self.dimension = dimension

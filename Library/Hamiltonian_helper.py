@@ -1,5 +1,5 @@
 import numpy as np
-from .Hamiltonian_v2 import hamiltonian
+from .Hamiltonian.Hamiltonian_v2 import hamiltonian
 
 def get_Hamiltonian(Hamiltonian, kx, ky, get_first_magnus=False, get_second_magnus=False):
     """

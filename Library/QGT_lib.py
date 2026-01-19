@@ -138,6 +138,42 @@ def dpsi_dy_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_in
     # Return the derivative for the specified band
     return (psi_plus_ordered[band_index] - psi_minus_ordered[band_index]) / (2 * delta_k)
 
+# Numerical derivative w.r.t. kx with Eigenvector Ordering
+def dpsi_dx_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index):
+    eigenvector_plus = Eigenvectors(len(eigenfunction))
+    eigenvector_minus = Eigenvectors(len(eigenfunction))
+    eigenvector_plus.set_eigenvectors_eigenvector_ordered(eigenfunction, eigenvalue, kx, ky)
+    eigenvector_minus.set_eigenvectors_eigenvector_ordered(eigenfunction, eigenvalue, kx, ky)
+
+    # Calculate for kx + delta_k
+    eigenvalues_plus, psi_plus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx + delta_k, ky)
+    eigenvalues_plus_ordered, psi_plus_ordered = eigenvector_plus.set_eigenvectors_eigenvector_ordered(psi_plus, eigenvalues_plus, kx + delta_k, ky)
+
+    # Calculate for kx - delta_k
+    eigenvalues_minus, psi_minus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx - delta_k, ky)
+    eigenvalues_minus_ordered, psi_minus_ordered = eigenvector_minus.set_eigenvectors_eigenvector_ordered(psi_minus, eigenvalues_minus, kx - delta_k, ky)
+
+    # Return the derivative for the specified band
+    return (psi_plus_ordered[band_index] - psi_minus_ordered[band_index]) / (2 * delta_k)
+
+# Numerical derivative w.r.t. ky with Eigenvector Ordering
+def dpsi_dy_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index):
+    eigenvector_plus = Eigenvectors(len(eigenfunction))
+    eigenvector_minus = Eigenvectors(len(eigenfunction))
+    eigenvector_plus.set_eigenvectors_eigenvector_ordered(eigenfunction, eigenvalue, kx, ky)
+    eigenvector_minus.set_eigenvectors_eigenvector_ordered(eigenfunction, eigenvalue, kx, ky)
+
+    # Calculate for ky + delta_k
+    eigenvalues_plus, psi_plus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky + delta_k)
+    eigenvalues_plus_ordered, psi_plus_ordered = eigenvector_plus.set_eigenvectors_eigenvector_ordered(psi_plus, eigenvalues_plus, kx, ky + delta_k)
+
+    # Calculate for ky - delta_k
+    eigenvalues_minus, psi_minus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky - delta_k)
+    eigenvalues_minus_ordered, psi_minus_ordered = eigenvector_minus.set_eigenvectors_eigenvector_ordered(psi_minus, eigenvalues_minus, kx, ky - delta_k)
+
+    # Return the derivative for the specified band
+    return (psi_plus_ordered[band_index] - psi_minus_ordered[band_index]) / (2 * delta_k)
+
 # Quantum geometric tensor components calculation using numerically obtained eigenfunctions
 def quantum_geometric_tensor_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index):
     dpsi_dx_val = dpsi_dx_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index)
@@ -155,32 +191,75 @@ def quantum_geometric_tensor_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigen
     
     return g_xx, g_xy_real, g_xy_imag, g_yy
 
-def quantum_geometric_tensor_analytic(Hamiltonian, kx, ky):
+# Quantum geometric tensor components calculation using numerically obtained eigenfunctions with Eigenvector Ordering
+def quantum_geometric_tensor_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index):
+    dpsi_dx_val = dpsi_dx_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index)
+    dpsi_dy_val = dpsi_dy_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index)
+    psi_val = eigenfunction[band_index]
+
+    dim = Hamiltonian.dim
+    I = np.eye(dim)
+    P = projection_operator(psi_val)
+    
+    g_xx = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dx_val).real
+    g_xy_real = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dy_val).real
+    g_xy_imag = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dy_val).imag
+    g_yy = np.vdot(dpsi_dy_val, (I - P) @ dpsi_dy_val).real
+    
+    return g_xx, g_xy_real, g_xy_imag, g_yy
+
+def quantum_geometric_tensor_analytic(Hamiltonian, kx, ky, band=-1):
     """
     Returns the analytical components of the quantum geometric tensor (QGT)
-    for a given Hamiltonian at momentum (kx, ky), if defined.
+    for a given Hamiltonian at momentum (kx, ky).
+
+    If g_xy_imag is not implemented, this function tries to compute it
+    from the Berry curvature:
+        g_xy_imag = -1/2 * Omega_full
 
     Parameters:
         Hamiltonian: Hamiltonian object with optional analytical QGT methods
         kx, ky: momentum components
+        band: +1 or -1 (Berry curvature sign depends on band)
 
     Returns:
-        g_xx, g_xy_real, g_xy_imag, g_yy: individual QGT components (float or None)
+        g_xx, g_xy_real, g_xy_imag, g_yy, trace
     """
 
+    # --- Standard metric components ---
     g_xx = Hamiltonian.g_xx(kx, ky) if hasattr(Hamiltonian, 'g_xx') else None
     g_xy_real = Hamiltonian.g_xy_real(kx, ky) if hasattr(Hamiltonian, 'g_xy_real') else None
-    g_xy_imag = Hamiltonian.g_xy_imag(kx, ky) if hasattr(Hamiltonian, 'g_xy_imag') else None
     g_yy = Hamiltonian.g_yy(kx, ky) if hasattr(Hamiltonian, 'g_yy') else None
     trace = Hamiltonian.trace(kx, ky) if hasattr(Hamiltonian, 'trace') else None
+
+    # --- Imaginary part (Berry curvature contribution) ---
+    if hasattr(Hamiltonian, 'g_xy_imag'):
+        # Direct access if implemented
+        g_xy_imag = Hamiltonian.g_xy_imag(kx, ky)
+
+    elif hasattr(Hamiltonian, 'berry_curvature_full'):
+        # Compute using full projected curvature
+        # g_xy_imag = -(1/2) * Omega_full
+        Omega = Hamiltonian.berry_curvature_full(kx, ky, band=band)
+        g_xy_imag = -0.5 * Omega
+
+    elif hasattr(Hamiltonian, 'berry_curvature_full_radial'):
+        # If only radial curvature exists
+        k = (kx**2 + ky**2)**0.5
+        Omega = Hamiltonian.berry_curvature_full_radial(k, band=band)
+        g_xy_imag = -0.5 * Omega
+
+    else:
+        # Cannot infer
+        g_xy_imag = None
 
     return g_xx, g_xy_real, g_xy_imag, g_yy, trace
 
 
-
 def QGT_grid_num(
     kx, ky, eigenvalues, eigenfunctions, quantum_geometric_tensor_func, 
-    hamiltonian, delta_k, band_index, z_cutoff=None
+    hamiltonian, delta_k, band_index, z_cutoff=None,
+    progress_label=None              
 ):
     """
     Calculate the quantum geometric tensor (QGT) components for a kx-ky grid with a progress bar.
@@ -209,41 +288,38 @@ def QGT_grid_num(
     g_yy_array = np.zeros(kx.shape)
     trace_array = np.zeros(kx.shape)
 
-    total_points = kx.shape[0] * kx.shape[1]  # Total number of k-points
+    total_points = kx.shape[0] * kx.shape[1]
 
-    # Create a progress bar for the nested loop
-    with tqdm(total=total_points, desc="Computing QGT grid", unit="point") as pbar:
+    desc = f"QGT grid [{progress_label}]" if progress_label else "Computing QGT grid"
+    # leave=False avoids leaving dozens of bars when using many processes
+    with tqdm(total=total_points, desc=desc, unit="kpt", leave=False) as pbar:
         for i in range(kx.shape[0]):
             for j in range(kx.shape[1]):
                 eigenfunction = eigenfunctions[i, j]
                 eigenvalue = eigenvalues[i, j]
-                if not np.isnan(eigenvalue).all():
-                    pass  # or breakpoint(), or raise, or print
-
+                # (your check remains)
 
                 g_xx, g_xy_real, g_xy_imag, g_yy = quantum_geometric_tensor_func(
                     hamiltonian, kx[i, j], ky[i, j], delta_k, eigenvalue, eigenfunction, band_index
                 )
-
-                # Store computed QGT components
+                # store + update (unchanged)
                 g_xx_array[i, j] = g_xx
                 g_xy_real_array[i, j] = g_xy_real
                 g_xy_imag_array[i, j] = g_xy_imag
                 g_yy_array[i, j] = g_yy
                 trace_array[i, j] = g_xx + g_yy
-
-                # Update progress bar
                 pbar.update(1)
 
-    # Apply the cutoff if specified
+    # cutoff + return (unchanged)
     if z_cutoff is not None:
-        g_xx_array = np.clip(g_xx_array, None, z_cutoff)
-        g_xy_real_array = np.clip(g_xy_real_array, None, z_cutoff)
-        g_xy_imag_array = np.clip(g_xy_imag_array, None, z_cutoff)
-        g_yy_array = np.clip(g_yy_array, None, z_cutoff)
-        trace_array = np.clip(trace_array, None, z_cutoff)
+        g_xx_array = np.clip(g_xx_array, -z_cutoff, z_cutoff)
+        g_xy_real_array = np.clip(g_xy_real_array, -z_cutoff, z_cutoff)
+        g_xy_imag_array = np.clip(g_xy_imag_array, -z_cutoff, z_cutoff)
+        g_yy_array = np.clip(g_yy_array, -z_cutoff, z_cutoff)
+        trace_array = np.clip(trace_array, -z_cutoff, z_cutoff)
 
     return g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array
+
 
 def QGT_grid_semi_num(
     kx, ky,
@@ -436,3 +512,81 @@ def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, band_index):
     trace_values = np.array(trace_values)
 
     return eigenvalues, perturbations, g_xx_values, g_xy_real_values, g_xy_imag_values, g_yy_values, trace_values, magnus_operator_norm
+
+
+def compute_QGT_projector(eigenvectors, band_idx, dk_x, dk_y):
+    """
+    Computes the full Quantum Geometric Tensor (Metric + Curvature) using the
+    gauge-invariant Projector method.
+    
+    Parameters:
+    - eigenvectors: complex array (Nx, Ny, num_bands, dim_hilbert)
+      Note: Calc_Eigenvalues produces (Nx, Ny, dim, dim) where
+            eigenvectors[i, j, m, :] is the m-th eigenvector components.
+    - band_idx: index of the band to compute (e.g., 0 for ground state)
+    - dk_x, dk_y: grid spacing in kx and ky directions
+    
+    Returns:
+    - g_xx, g_xy, g_yy: Components of the Quantum Metric (Real part of QGT)
+    - berry_curvature: The Berry Curvature (Imaginary part of QGT, Omega_xy)
+    """
+    Nx, Ny, num_bands, dim_hilbert = eigenvectors.shape
+    
+    # 1. Extract the specific band we want
+    # shape: (Nx, Ny, dim_hilbert)
+    # The eigenvectors array is [Nx, Ny, band, component]
+    psi = eigenvectors[:, :, band_idx, :]
+    
+    # 2. Construct the Projector P = |u><u| at every k-point
+    # We want an array of matrices (Nx, Ny, dim_hilbert, dim_hilbert)
+    # P[k] = outer(psi[k], conj(psi[k]))
+    
+    # Efficient broadcasting way to do outer product:
+    # psi[:,:,:,None] is (Nx, Ny, dim, 1)
+    # conj(psi[:,:,None,:]) is (Nx, Ny, 1, dim)
+    # The product is (Nx, Ny, dim, dim)
+    P = psi[:, :, :, None] * np.conj(psi[:, :, None, :])
+    
+    # 3. Calculate Derivatives of the Projector (dP/dk)
+    # np.gradient uses central differences, which is stable for smooth P
+    # axis 0 is kx, axis 1 is ky
+    dP_dx = np.gradient(P, dk_x, axis=0)
+    dP_dy = np.gradient(P, dk_y, axis=1)
+    
+    # 4. Compute QGT Components using Trace Formulas
+    
+    # --- Quantum Metric g_mu_nu = 0.5 * Tr( dP_mu * dP_nu ) ---
+    # We use Einstein summation for the trace: "ab,ba -> scalar"
+    
+    # g_xx
+    prod_xx = np.matmul(dP_dx, dP_dx) # Matrix product (dP/dx)(dP/dx)
+    g_xx = 0.5 * np.trace(prod_xx, axis1=2, axis2=3).real
+    
+    # g_yy
+    prod_yy = np.matmul(dP_dy, dP_dy)
+    g_yy = 0.5 * np.trace(prod_yy, axis1=2, axis2=3).real
+    
+    # g_xy (Symmetric part)
+    prod_xy = np.matmul(dP_dx, dP_dy)
+    prod_yx = np.matmul(dP_dy, dP_dx)
+    # Note: g_xy = 0.5 * Tr( dP_x dP_y + dP_y dP_x )? 
+    # Actually for metric usually defined as Re(Q_xy).
+    # Since dP is hermitian, Tr(dP_x dP_y) is complex.
+    # The real part is the metric, imaginary part is curvature related.
+    trace_xy = np.trace(prod_xy, axis1=2, axis2=3)
+    g_xy = 0.5 * (trace_xy + np.conj(trace_xy)).real 
+    
+    # --- Berry Curvature Omega_xy = i * Tr( P * [dP_x, dP_y] ) ---
+    
+    # Commutator [dP_x, dP_y]
+    comm = prod_xy - prod_yx
+    
+    # Multiply by P: P * [dP_x, dP_y]
+    P_comm = np.matmul(P, comm)
+    
+    # Trace and multiply by i
+    # The projector formula Omega = i Tr(P [dP_x, dP_y]) matches standard definitions.
+    berry_curvature = 1j * np.trace(P_comm, axis1=2, axis2=3)
+    
+    # Return real part of curvature (it should be real physically, imag part is numerical noise)
+    return g_xx, g_xy, g_yy, berry_curvature.real

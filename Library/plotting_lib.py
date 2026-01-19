@@ -263,6 +263,7 @@ def plot_eigenvalues_surface_colorbar(
     # Validate band indices
     bad = [b for b in bands if not (0 <= b < dim)]
     if bad:
+        print("The bands you are asking to plot exceed the dimension of the Hamiltonian")
         raise IndexError(f"bands_to_plot contains out-of-range indices {bad}; valid range is [0, {dim-1}]")
 
     # Prepare colormaps
@@ -707,7 +708,7 @@ def plot_qmt_eig_berry_trace_3d(
     g_xy_imag,                # shape: (Nk, Nk); Im(Q_xy)
     trace_array,              # shape: (Nk, Nk)
     eigenvalue_band=0,
-    stride_size=3,
+    stride_size=2,
     convert_berry_from_imQ=True,  # If True, Ω = -2 * Im(Q_xy) by the standard convention Q_xy = g_xy - i Ω/2
     cmaps=('viridis', 'coolwarm', 'plasma'),
     zlims=(None, None, None),     # (zlim_eig, zlim_berry, zlim_trace); each entry None -> auto
