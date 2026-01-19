@@ -73,78 +73,6 @@ def pick_or_create_result_dir(
 
 
 
-# def setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force_new=False):
-#     """
-#     Creates a unique results directory for storing computed data, structured by Hamiltonian parameters and k-space info.
-#     If a directory with the same name exists and contains all necessary files, it is reused unless force_new=True.
-#     Otherwise, a new directory with an incremented number is created.
-
-#     Parameters:
-#         hamiltonian (object): The Hamiltonian object.
-#         kx_range (tuple): Tuple of (min_kx, max_kx).
-#         ky_range (tuple): Tuple of (min_ky, max_ky).
-#         mesh_spacing (int): The number of k-space points.
-#         force_new (bool): If True, force creation of a new directory even if one already exists.
-
-#     Returns:
-#         dict: Dictionary containing file paths.
-#         bool: Whether to use existing data (if all files are found and force_new=False).
-#         str: Path to the results directory used.
-#     """
-#     # Group by Hamiltonian name (fallback to generic if missing)
-#     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
-
-#     # Main results directory grouped by Hamiltonian
-#     results_dir = os.path.join(os.getcwd(), "results", "2D_Eigen_results", Hamiltonian_name)
-#     os.makedirs(results_dir, exist_ok=True)
-
-#     base_subdir_name = (
-#         f"2D_{hamiltonian.get_filename()}_"
-#         f"kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_"
-#         f"ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_mesh{mesh_spacing}"
-#     )
-#     base_subdir_name = re.sub(r'[^\w.-]', '_', base_subdir_name)
-
-#     existing_dirs = [d for d in os.listdir(results_dir) if d.startswith(base_subdir_name)]
-
-#     if not force_new:
-#         for existing_dir in sorted(existing_dirs):
-#             existing_path = os.path.join(results_dir, existing_dir)
-
-#             file_paths = {
-#                 "eigenvalues": os.path.join(existing_path, "eigenvalues.npy"),
-#                 "eigenfunctions": os.path.join(existing_path, "eigenfunctions.npy"),
-#                 "phasefactors": os.path.join(existing_path, "phasefactors.npy"),
-#                 "neighbor_phase_array": os.path.join(existing_path, "neighbor_phase_array.npy"),
-#                 "magnus_first": os.path.join(existing_path, "magnus_first.npy"),
-#                 "magnus_second": os.path.join(existing_path, "magnus_second.npy"),
-#                 "meta_info": os.path.join(existing_path, "meta_info.pkl"),
-#             }
-
-#             if all(os.path.exists(path) for path in file_paths.values()):
-#                 print(f"Using existing results directory: {existing_path}")
-#                 return file_paths, True, existing_path
-
-#     next_number = 1
-#     while os.path.exists(os.path.join(results_dir, f"{base_subdir_name}_{next_number}")):
-#         next_number += 1
-
-#     results_subdir = os.path.join(results_dir, f"{base_subdir_name}_{next_number}")
-#     os.makedirs(results_subdir, exist_ok=True)
-
-#     file_paths = {
-#         "eigenvalues": os.path.join(results_subdir, "eigenvalues.npy"),
-#         "eigenfunctions": os.path.join(results_subdir, "eigenfunctions.npy"),
-#         "phasefactors": os.path.join(results_subdir, "phasefactors.npy"),
-#         "neighbor_phase_array": os.path.join(results_subdir, "neighbor_phase_array.npy"),
-#         "magnus_first": os.path.join(results_subdir, "magnus_first.npy"),
-#         "magnus_second": os.path.join(results_subdir, "magnus_second.npy"),
-#         "meta_info": os.path.join(results_subdir, "meta_info.pkl"),
-#     }
-
-#     print(f"Created new results directory: {results_subdir}")
-#     return file_paths, False, results_subdir
-
 def setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force_new=False):
     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
     base_root = os.path.join(os.getcwd(), "results", "2D_Eigen_results", Hamiltonian_name)
@@ -159,10 +87,6 @@ def setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force
     required_files = [
         "eigenvalues.npy",
         "eigenfunctions.npy",
-        "phasefactors.npy",
-        "neighbor_phase_array.npy",
-        "magnus_first.npy",
-        "magnus_second.npy",
         "meta_info.pkl",
     ]
 
@@ -178,83 +102,12 @@ def setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force
     file_paths = {k: os.path.join(dir_path, fname) for k, fname in {
         "eigenvalues": "eigenvalues.npy",
         "eigenfunctions": "eigenfunctions.npy",
-        "phasefactors": "phasefactors.npy",
-        "neighbor_phase_array": "neighbor_phase_array.npy",
-        "magnus_first": "magnus_first.npy",
-        "magnus_second": "magnus_second.npy",
         "meta_info": "meta_info.pkl",
     }.items()}
 
     print(("Using existing results directory: " if used else "Created new results directory: ") + dir_path)
     return file_paths, used, dir_path
 
-
-# def setup_results_directory_1d(hamiltonian, k_angle, kx_shift, ky_shift, num_points, k_max):
-#     """
-#     Creates a unique results directory for storing computed data in 1D calculations.
-#     If a directory with the same name exists and contains all necessary files, it is reused.
-#     Otherwise, a new directory with an incremented number is created.
-
-#     Parameters:
-#         hamiltonian (object): The Hamiltonian object.
-#         k_angle (float): Angle of the k-line in degrees.
-#         kx_shift (float): Shift in kx.
-#         ky_shift (float): Shift in ky.
-#         num_points (int): Number of points along the line.
-
-#     Returns:
-#         dict: Dictionary containing file paths.
-#         bool: Whether to use existing data (if all files are found).
-#         str: Path to the results directory used.
-#     """
-#     # Ensure the main "results" directory exists
-#     results_dir = os.path.join(os.getcwd(), "results")
-#     os.makedirs(results_dir, exist_ok=True)
-
-#     # Get Hamiltonian parameter string
-#     hamiltonian_params = hamiltonian.get_filename()  # Uses the method to format parameter string
-
-#     # Base subdirectory name with Hamiltonian parameters and 1D settings
-#     base_subdir_name = f"1D_{hamiltonian_params}_angle{k_angle:.1f}_kxshift{kx_shift:.2f}_kyshift{ky_shift:.2f}_points{num_points}_kmax{k_max:.2f}"
-#     base_subdir_name = re.sub(r'[^\w.-]', '_', base_subdir_name)  # Sanitize filename
-
-
-#     # Check for existing directories with the same base name
-#     existing_dirs = [d for d in os.listdir(results_dir) if d.startswith(base_subdir_name)]
-    
-#     for existing_dir in sorted(existing_dirs):
-#         existing_path = os.path.join(results_dir, existing_dir)
-        
-#         # Define expected file paths within this directory
-#         file_paths = {
-#             "eigenvalues": os.path.join(existing_path, "eigenvalues.npy"),
-#             "eigenfunctions": os.path.join(existing_path, "eigenfunctions.npy"),
-#             "meta_info": os.path.join(existing_path, "meta_info.pkl"),  # Use pickle for metadata
-#         }
-
-#         # Check if all required files exist
-#         if all(os.path.exists(path) for path in file_paths.values()):
-#             print(f"Using existing results directory: {existing_path}")
-#             return file_paths, True, existing_path  # Use existing directory
-
-#     # If no suitable directory was found, create a new one with an incremented number
-#     next_number = 1
-#     while os.path.exists(os.path.join(results_dir, f"{base_subdir_name}_{next_number}")):
-#         next_number += 1
-
-#     # Define new results directory
-#     results_subdir = os.path.join(results_dir, f"{base_subdir_name}_{next_number}")
-#     os.makedirs(results_subdir, exist_ok=True)
-
-#     # Define all file paths in the new directory
-#     file_paths = {
-#         "eigenvalues": os.path.join(results_subdir, "eigenvalues.npy"),
-#         "eigenfunctions": os.path.join(results_subdir, "eigenfunctions.npy"),
-#         "meta_info": os.path.join(results_subdir, "meta_info.pkl"),  # Use pickle for metadata
-#     }
-
-#     print(f"Created new results directory: {results_subdir}")
-#     return file_paths, False, results_subdir  # New directory, so use_existing=False
 
 def setup_results_directory_1d(hamiltonian, k_angle, kx_shift, ky_shift, num_points, k_max, *, force_new=False):
     base_root = os.path.join(os.getcwd(), "results")
@@ -286,84 +139,16 @@ def setup_results_directory_1d(hamiltonian, k_angle, kx_shift, ky_shift, num_poi
 
 
 
-# def setup_QGT_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force_new=False):
-#     """
-#     Creates a results directory for storing QGT computed data, structured by Hamiltonian parameters and k-space info.
-#     If a directory with the same name exists and contains all necessary files, it is reused unless force_new=True.
-#     Otherwise, a new directory with an incremented number is created.
-
-#     Parameters:
-#         hamiltonian (object): The Hamiltonian object.
-#         kx_range (tuple): Tuple of (min_kx, max_kx).
-#         ky_range (tuple): Tuple of (min_ky, max_ky).
-#         mesh_spacing (int): The number of k-space points.
-#         force_new (bool): If True, force creation of a new directory even if one already exists.
-
-#     Returns:
-#         dict: Dictionary containing file paths.
-#         bool: Whether to use existing data (if all files are found and force_new=False).
-#         str: Path to the results directory used.
-#     """
-#     # Get Hamiltonian name for top-level grouping
-#     Hamiltonian_name = hamiltonian.name if hasattr(hamiltonian, "name") else "Hamiltonian"
-
-#     # Main result directory grouped by Hamiltonian name
-#     results_dir = os.path.join(os.getcwd(), "results", "2D_QGT_results", Hamiltonian_name)
-#     os.makedirs(results_dir, exist_ok=True)
-
-#     # Parameter string and subdir naming
-#     base_subdir_name = (
-#         f"QGT_{hamiltonian.get_filename(parameter='2D')}_"
-#         f"kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_"
-#         f"ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_mesh{mesh_spacing}"
-#     )
-#     base_subdir_name = re.sub(r'[^\w.-]', '_', base_subdir_name)
-
-#     existing_dirs = [d for d in os.listdir(results_dir) if d.startswith(base_subdir_name)]
-
-#     if not force_new:
-#         for existing_dir in sorted(existing_dirs):
-#             existing_path = os.path.join(results_dir, existing_dir)
-
-#             file_paths = {
-#                 "g_xx": os.path.join(existing_path, "g_xx.npy"),
-#                 "g_xy_real": os.path.join(existing_path, "g_xy_real.npy"),
-#                 "g_xy_imag": os.path.join(existing_path, "g_xy_imag.npy"),
-#                 "g_yy": os.path.join(existing_path, "g_yy.npy"),
-#                 "trace": os.path.join(existing_path, "trace.npy"),
-#                 "meta_info": os.path.join(existing_path, "meta_info.pkl"),
-#             }
-
-#             if all(os.path.exists(path) for path in file_paths.values()):
-#                 print(f"Using existing QGT results directory: {existing_path}")
-#                 return file_paths, True, existing_path
-
-#     next_number = 1
-#     while os.path.exists(os.path.join(results_dir, f"{base_subdir_name}_{next_number}")):
-#         next_number += 1
-
-#     results_subdir = os.path.join(results_dir, f"{base_subdir_name}_{next_number}")
-#     os.makedirs(results_subdir, exist_ok=True)
-
-#     file_paths = {
-#         "g_xx": os.path.join(results_subdir, "g_xx.npy"),
-#         "g_xy_real": os.path.join(results_subdir, "g_xy_real.npy"),
-#         "g_xy_imag": os.path.join(results_subdir, "g_xy_imag.npy"),
-#         "g_yy": os.path.join(results_subdir, "g_yy.npy"),
-#         "trace": os.path.join(results_subdir, "trace.npy"),
-#         "meta_info": os.path.join(results_subdir, "meta_info.pkl"),
-#     }
-
-#     print(f"Created new QGT results directory: {results_subdir}")
-#     return file_paths, False, results_subdir
-
-def setup_QGT_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force_new=False):
+def setup_QGT_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force_new=False, method_name=None):
     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
     base_root = os.path.join(os.getcwd(), "results", "2D_QGT_results", Hamiltonian_name)
 
+    # Sanitize method name if provided
+    method_str = f"_{method_name}" if method_name else ""
+
     base_name = re.sub(
         r'[^\w.-]', '_',
-        f"QGT_{hamiltonian.get_filename(parameter='2D')}_"
+        f"QGT{method_str}_{hamiltonian.get_filename(parameter='2D')}_"
         f"kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_"
         f"ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_mesh{mesh_spacing}"
     )
@@ -391,88 +176,6 @@ def setup_QGT_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, f
     print(("Using existing QGT results directory: " if used else "Created new QGT results directory: ") + dir_path)
     return file_paths, used, dir_path
 
-
-# def setup_QGT_results_directory_1D(
-#     hamiltonian,
-#     k_angle,
-#     kx_shift,
-#     ky_shift,
-#     num_k_points,
-#     num_omega_points,
-#     k_max,
-#     omega_min,
-#     omega_max,
-#     spacing,
-#     force_new=False,  # <-- New parameter to force directory creation
-# ):
-#     """
-#     Creates a results directory for storing 1D QGT computed data, structured by Hamiltonian parameters and k-space info.
-#     If a directory with the same name exists and contains all necessary files, it is reused.
-#     Otherwise, a new directory with an incremented number is created.
-
-#     Parameters:
-#         hamiltonian (object): The Hamiltonian object.
-#         k_angle (float): Angle of the k-line in degrees.
-#         kx_shift (float): Shift in kx.
-#         ky_shift (float): Shift in ky.
-#         num_points (int): Number of points along the line.
-#         k_max (float): Maximum k-value.
-
-#     Returns:
-#         dict: Dictionary containing the file path.
-#         bool: Whether to use existing data (if all files are found).
-#         str: Path to the results directory used.
-#     """
-#     Hamiltonian_name = hamiltonian.name
-#     # Ensure the main "QGT_results_1D" directory exists
-#     results_dir = os.path.join(os.getcwd(), "results", "1D_QGT_results", Hamiltonian_name)
-#     os.makedirs(results_dir, exist_ok=True)
-
-#     # Get Hamiltonian parameter string
-#     hamiltonian_params = hamiltonian.get_filename(parameter = "1D")  # Uses the method to format parameter string
-
-#     # Base subdirectory name with Hamiltonian parameters and 1D QGT settings
-#     base_subdir_name = (
-#     f"{hamiltonian_params}_angle{k_angle:.1f}_kxshift{kx_shift:.2f}_"
-#     f"kyshift{ky_shift:.2f}_points{num_k_points}_kmax{k_max:.2f}_"
-#     f"omega{omega_min:.2e}_{omega_max:.2e}_spacing_{str(spacing)}_points{num_omega_points}"
-#     )
-
-
-#     base_subdir_name = re.sub(r'[^\w.-]', '_', base_subdir_name)  # Sanitize filename
-
-#     # Check for existing directories with the same base name
-#     existing_dirs = [d for d in os.listdir(results_dir) if d.startswith(base_subdir_name)]
-#     if not force_new:
-#         for existing_dir in sorted(existing_dirs):
-#             existing_path = os.path.join(results_dir, existing_dir)
-
-#             # Define expected file path within this directory
-#             file_path = os.path.join(existing_path, "QGT_1D.npy")
-#             meta_info_path = os.path.join(existing_path, "meta_info.pkl")
-
-#             # Check if the required files exist
-#             if os.path.exists(file_path) and os.path.exists(meta_info_path):
-#                 print(f"Using existing QGT results directory: {existing_path}")
-#                 return {"QGT_1D": file_path, "meta_info": meta_info_path}, True, existing_path  # Use existing directory
-
-#     # If no suitable directory was found, create a new one with an incremented number
-#     next_number = 1
-#     while os.path.exists(os.path.join(results_dir, f"{base_subdir_name}_{next_number}")):
-#         next_number += 1
-
-#     # Define new results directory
-#     results_subdir = os.path.join(results_dir, f"{base_subdir_name}_{next_number}")
-#     os.makedirs(results_subdir, exist_ok=True)
-
-#     # Define the file path for the QGT result
-#     file_paths = {
-#         "QGT_1D": os.path.join(results_subdir, "QGT_1D.npy"),
-#         "meta_info": os.path.join(results_subdir, "meta_info.pkl"),  # Metadata
-#     }
-
-#     print(f"Created new QGT results directory: {results_subdir}")
-#     return file_paths, False, results_subdir  # New directory, so use_existing=False
 
 
 def setup_QGT_results_directory_1D(
@@ -575,86 +278,6 @@ def setup_QGT_results_directory_1D_single_param(
     return file_paths, used_existing, out_dir
 
 
-# def setup_QGT_results_directory_2D_omega_range(
-#     hamiltonian,
-#     kx_range,
-#     ky_range,
-#     mesh_spacing,
-#     omega_min,
-#     omega_max,
-#     num_omega_points,
-#     spacing,
-#     force_new=False,
-# ):
-#     """
-#     Creates a results directory for storing 2D QGT omega sweep data, structured by Hamiltonian parameters.
-
-#     Parameters:
-#         hamiltonian (object): The Hamiltonian object.
-#         kx_range (tuple): Tuple of (min_kx, max_kx).
-#         ky_range (tuple): Tuple of (min_ky, max_ky).
-#         mesh_spacing (int): Number of k-points along each axis.
-#         omega_min (float): Minimum omega.
-#         omega_max (float): Maximum omega.
-#         num_omega_points (int): Number of omega values to sweep.
-#         spacing (str): 'log' or 'linear'.
-#         force_new (bool): If True, always creates a new results directory.
-
-#     Returns:
-#         dict: Dictionary of file paths.
-#         bool: Whether to use existing data.
-#         str: Path to the results directory.
-#     """
-#     Hamiltonian_name = hamiltonian.name
-
-#     # Main results directory for 2D omega range sweeps
-#     results_dir = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", Hamiltonian_name)
-#     os.makedirs(results_dir, exist_ok=True)
-
-#     # Parameter string
-#     hamiltonian_params = hamiltonian.get_filename(parameter="2D")
-
-#     # Base subdir name
-#     base_subdir_name = (
-#         f"{hamiltonian_params}_kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_"
-#         f"ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_mesh{mesh_spacing}_"
-#         f"omega{omega_min:.2e}_{omega_max:.2e}_spacing_{spacing}_points{num_omega_points}"
-#     )
-
-#     base_subdir_name = re.sub(r'[^\w.-]', '_', base_subdir_name)  # Sanitize
-
-#     # Check for existing subdirectories
-#     existing_dirs = [d for d in os.listdir(results_dir) if d.startswith(base_subdir_name)]
-#     if not force_new:
-#         for existing_dir in sorted(existing_dirs):
-#             existing_path = os.path.join(results_dir, existing_dir)
-
-#             # Define expected files
-#             file_paths = {
-#                 "QGT_2D": os.path.join(existing_path, "QGT_2D.npy"),
-#                 "meta_info": os.path.join(existing_path, "meta_info.pkl"),
-#             }
-
-#             if all(os.path.exists(path) for path in file_paths.values()):
-#                 print(f"Using existing QGT 2D omega sweep directory: {existing_path}")
-#                 return file_paths, True, existing_path
-
-#     # Create new results directory with increment
-#     next_number = 1
-#     while os.path.exists(os.path.join(results_dir, f"{base_subdir_name}_{next_number}")):
-#         next_number += 1
-
-#     results_subdir = os.path.join(results_dir, f"{base_subdir_name}_{next_number}")
-#     os.makedirs(results_subdir, exist_ok=True)
-
-#     file_paths = {
-#         "QGT_2D": os.path.join(results_subdir, "QGT_2D.npy"),
-#         "meta_info": os.path.join(results_subdir, "meta_info.pkl"),
-#     }
-
-#     print(f"Created new QGT 2D omega sweep directory: {results_subdir}")
-#     return file_paths, False, results_subdir
-
 def setup_QGT_results_directory_2D_omega_range(
     hamiltonian,
     kx_range,
@@ -664,6 +287,7 @@ def setup_QGT_results_directory_2D_omega_range(
     omega_max,
     num_omega_points,
     spacing,
+    band,                 # <— NEW: required
     force_new=False,
 ):
     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
@@ -674,7 +298,8 @@ def setup_QGT_results_directory_2D_omega_range(
         f"{hamiltonian.get_filename(parameter='2D')}_"
         f"kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_"
         f"ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_mesh{mesh_spacing}_"
-        f"omega{omega_min:.2e}_{omega_max:.2e}_spacing_{spacing}_points{num_omega_points}"
+        f"omega{omega_min:.2e}_{omega_max:.2e}_spacing_{spacing}_points{num_omega_points}_"
+        f"band{int(band)}"   # <— include band in dir name
     )
 
     required_files = ["QGT_2D.npy", "meta_info.pkl"]
@@ -777,56 +402,6 @@ def _range_dir_name_with_spacing(param_ranges, parameter_spacing, decimals=2):
     return "-".join(parts)
 
 
-
-# def setup_phase_diagram_results_general(
-#     hamiltonian_template,
-#     param_ranges,
-#     parameter_spacing=None,   # <-- new argument
-#     decimals=2,
-#     force_new_range=False
-# ):
-#     """
-#     Create (or reuse) the calc-range directory under:
-#       results/phase_diagram/<HamiltonianName>/<range_dir>
-
-#     <range_dir> now encodes BOTH the parameter ranges AND the spacing, e.g.:
-#       M_-2.00_2.00_N32-psi_-3.14_3.14_N32_data_set1
-
-#     Args:
-#         hamiltonian_template: Hamiltonian instance (used for name only).
-#         param_ranges: [(name, vmin, vmax), ...] OR {name: (vmin, vmax)}.
-#         parameter_spacing: int or {name: count}. If None, defaults to 1 per param.
-#         decimals: float formatting for range labels.
-#         force_new_range: if True, always create a new numbered dir.
-
-#     Returns:
-#         (range_root_dir, used_existing: bool)
-#     """
-#     Hname = getattr(hamiltonian_template, "name", "Hamiltonian")
-#     base_root = os.path.join(os.getcwd(), "results", "phase_diagram", _sanitize(Hname))
-#     os.makedirs(base_root, exist_ok=True)
-
-#     base = _sanitize(_range_dir_name_with_spacing(param_ranges, parameter_spacing, decimals=decimals))
-
-#     if not force_new_range:
-#         # reuse exact or numbered matches
-#         for d in sorted(os.listdir(base_root)):
-#             if d == base or d.startswith(base + "_"):
-#                 existing = os.path.join(base_root, d)
-#                 print(f"Using existing phase-diagram range directory: {existing}")
-#                 return existing, True
-
-#     # create new with increment
-#     idx = 1
-#     while os.path.exists(os.path.join(base_root, f"{base}_data_set{idx}")):
-#         idx += 1
-#     range_root = os.path.join(base_root, f"{base}_data_set{idx}")
-
-#     os.makedirs(range_root, exist_ok=True)
-#     print(f"Created new phase-diagram range directory: {range_root}")
-#     return range_root, False
-
-
 def setup_phase_diagram_results_general(
     hamiltonian_template,
     param_ranges,
@@ -854,35 +429,6 @@ def setup_phase_diagram_results_general(
 
     print(("Using existing phase-diagram range directory: " if used else "Created new phase-diagram range directory: ") + dir_path)
     return dir_path, used
-
-
-# def setup_phase_point_directory_general(range_root_dir, param_values: dict, decimals=2, force_new_point=False):
-#     """
-#     Create (or reuse) a subdirectory for one parameter point under <range_root_dir>.
-#     Name is constructed from param_values dict (general, not tied to psi/M).
-
-#     Args:
-#         range_root_dir: directory returned by setup_phase_diagram_results_general.
-#         param_values: dict {param_name: value} (e.g. {"t1":-1.0, "t2":0.33, "psi":1.57, "M":0.0})
-#         decimals: float formatting of values.
-#         force_new_point: if True, do not reuse existing even if complete.
-
-#     Returns:
-#         (file_paths_dict, used_existing: bool, point_dir: str)
-#     """
-#     point_name = _sanitize(_point_dir_name_from_values(param_values, decimals=decimals))
-#     point_dir = os.path.join(range_root_dir, point_name)
-
-#     if not force_new_point and os.path.isdir(point_dir):
-#         fps = _phase_point_file_paths(point_dir)
-#         if all(os.path.exists(p) for p in fps.values()):
-#             print(f"Using existing phase-point directory: {point_dir}")
-#             return fps, True, point_dir
-
-#     os.makedirs(point_dir, exist_ok=True)
-#     fps = _phase_point_file_paths(point_dir)
-#     print(f"Created phase-point directory: {point_dir}")
-#     return fps, False, point_dir
 
 
 def setup_phase_point_directory_general(range_root_dir, param_values: dict, decimals=2, force_new_point=False):
@@ -926,11 +472,10 @@ def setup_phase_point_directory_general(range_root_dir, param_values: dict, deci
     print(("Using existing phase-point directory: " if used else "Created phase-point directory: ") + dir_path)
     return fps, used, dir_path
 
-
 def setup_qgt_nd_results_dir(
     hamiltonian_template,
     param_ranges,
-    parameter_spacing,
+    parameter_spacing,   # int OR {name: {"count":N,"scale":"linear|log|inv-linear|inv-log"}}
     kx_range,
     ky_range,
     mesh_spacing,
@@ -940,58 +485,105 @@ def setup_qgt_nd_results_dir(
     """
     Create (or reuse) the root dir to hold a single N-D QGT npz bundle.
     Reuse only when 'qgt_nd_bundle.npz' is present; otherwise make a new numbered dir.
+
+    parameter_spacing: unified spec (matches builder)
+      - int -> same count for all params, linear
+      - dict -> per-parameter spec; each value may be:
+          * int                      -> count, linear
+          * {"count": N}             -> linear
+          * {"count": N, "scale": S} -> S in {"linear","log","inv-linear","inv-log"}
+
     Returns: (root_dir, used_existing)
     """
+    # -------- helpers --------
+    def _sanitize(name: str) -> str:
+        return re.sub(r"[^\w.\-]", "_", str(name))
+
+    def _norm_ranges(ranges):
+        if isinstance(ranges, dict):
+            items = sorted(ranges.items(), key=lambda kv: kv[0])
+            return [(k, float(v[0]), float(v[1])) for k, v in items]
+        # iterable of (name, min, max)
+        items = sorted([(n, float(a), float(b)) for (n, a, b) in ranges], key=lambda x: x[0])
+        return items
+
+    def _parse_spacing_spec(spec):
+        """
+        Returns (count:int, scale_token:str)
+          scale_token ∈ {"linear","log","inv-linear","inv-log"}
+        """
+        # default
+        count = None
+        scale = "linear"
+
+        if isinstance(spec, int):
+            count = int(spec)
+        elif isinstance(spec, dict):
+            # accept a few key aliases
+            count = int(spec.get("count", spec.get("n", spec.get("points", 1))))
+            scale = str(spec.get("scale", spec.get("spacing", "linear"))).lower().strip()
+        else:
+            raise ValueError(f"Unrecognized spacing spec: {spec!r}")
+
+        # normalize scale aliases
+        alias = {
+            "lin": "linear",
+            "log10": "log",
+            "inv": "inv-linear",  # if user wrote just "inv"
+            "inverse": "inv-linear",
+            "inverse-linear": "inv-linear",
+            "inverse-log": "inv-log",
+            "invlog": "inv-log",
+            "invlin": "inv-linear",
+        }
+        scale = alias.get(scale, scale)
+        if scale not in {"linear", "log", "inv-linear", "inv-log"}:
+            raise ValueError(f"Unsupported scale '{scale}' (use 'linear','log','inv-linear','inv-log').")
+
+        return count, scale
+
+    # -------- base paths / names --------
     Hname = getattr(hamiltonian_template, "name", "Hamiltonian")
     base_root = os.path.join(os.getcwd(), "results", "QGT_ND", _sanitize(Hname))
 
-    # ---- optional Hamiltonian-specific prefix via get_filename ----
     try:
         h_prefix = str(hamiltonian_template.get_filename(parameter="ND"))
     except Exception:
-        # fall back to something stable if not available
         h_prefix = Hname
     h_prefix = _sanitize(h_prefix)
 
-    # ---- normalize parameter ranges ----
-    if isinstance(param_ranges, dict):
-        items = sorted(param_ranges.items(), key=lambda kv: kv[0])  # [(name,(min,max)),...]
-    else:
-        items = sorted([(n, (a, b)) for (n, a, b) in param_ranges], key=lambda x: x[0])
+    # -------- normalize ranges --------
+    range_items = _norm_ranges(param_ranges)  # [(name, vmin, vmax), ...]
+    range_parts = [f"{n}_{vmin:.{decimals}f}_{vmax:.{decimals}f}" for (n, vmin, vmax) in range_items]
 
-    range_parts = [
-        f"{name}_{float(vmin):.{decimals}f}_{float(vmax):.{decimals}f}"
-        for name, (vmin, vmax) in items
-    ]
-
-    # ---- spacing label: accept int or (n, 'linear'|'log') per-param ----
-    spacing_parts = []
+    # -------- normalize spacing --------
     if isinstance(parameter_spacing, int):
-        for name, _ in items:
-            spacing_parts.append(f"{name}_{int(parameter_spacing)}_linear")
+        spacing_map = {n: {"count": int(parameter_spacing), "scale": "linear"} for (n, _, _) in range_items}
     elif isinstance(parameter_spacing, dict):
-        for name, _ in items:
-            spec = parameter_spacing.get(name, 1)
-            if isinstance(spec, int):
-                n, scale = int(spec), "linear"
-            elif isinstance(spec, (tuple, list)) and len(spec) >= 2:
-                n, scale = int(spec[0]), str(spec[1]).lower()
-                if scale not in ("linear", "log"):
-                    raise ValueError(f"Unsupported scale '{scale}' for {name} (use 'linear' or 'log').")
-            else:
-                raise ValueError(f"Unsupported spacing spec for {name}: {spec}")
-            spacing_parts.append(f"{name}_{n}_{scale}")
+        spacing_map = {}
+        for (n, _, _) in range_items:
+            spec = parameter_spacing.get(n, 1)  # default linear
+            cnt, scl = _parse_spacing_spec(spec)
+            spacing_map[n] = {"count": cnt, "scale": scl}
     else:
-        raise ValueError("parameter_spacing must be int or dict")
+        raise ValueError("parameter_spacing must be int or dict (per-parameter spec).")
+
+    # For the label, compress "inv-linear" -> "invlinear", "inv-log" -> "invlog" for filesystem neatness
+    def _label_scale(s):
+        return s.replace("-", "")
+
+    spacing_parts = [
+        f"{n}_{spacing_map[n]['count']}_{_label_scale(spacing_map[n]['scale'])}"
+        for (n, _, _) in range_items
+    ]
 
     label_ranges  = "RANGES["  + "-".join(range_parts)   + "]"
     label_spacing = "SPACING[" + "-".join(spacing_parts) + "]"
     klabel = f"kx{kx_range[0]:.2f}_{kx_range[1]:.2f}__ky{ky_range[0]:.2f}_{ky_range[1]:.2f}__mesh{mesh_spacing}"
 
-    # Final base name uses the Hamiltonian filename prefix + explicit sweep metadata
     base_name = _sanitize(f"{h_prefix}-{label_ranges}-{label_spacing}-{klabel}")
 
-    # ---- reuse/create via the shared helper ----
+    # -------- reuse/create --------
     required_files = ["qgt_nd_bundle.npz"]
     dir_path, used = pick_or_create_result_dir(
         base_root=base_root,

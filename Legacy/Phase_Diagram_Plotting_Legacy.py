@@ -243,12 +243,12 @@ def plot_chern_vs_param(
     plt.show()
 
 # simplest: use the first two parameters as axes, average over the rest
-# plot_chern_phase_diagram("./results/phase_diagram/HaldaneHamiltonian/M_-2.09_2.09-psi_-3.14_3.14_data_set1")
+plot_chern_phase_diagram("./results/phase_diagram/HaldaneHamiltonian/M_-2.09_2.09-psi_-3.14_3.14_data_set1")
 
-# plot_chern_vs_param("./results/phase_diagram/HaldaneHamiltonian/M_-2.09_2.09-psi_-3.14_3.14_data_set1", x_param="M", slice_indices={"psi": np.pi/2})
+plot_chern_vs_param("./results/phase_diagram/HaldaneHamiltonian/M_-2.09_2.09-psi_-3.14_3.14_data_set1", x_param="M", slice_indices={"psi": np.pi/2})
 
-# plot_chern_vs_param("./results/phase_diagram/HaldaneHamiltonian/M_-2.09_2.09_N100_data_set1", x_param="M")
+plot_chern_vs_param("./results/phase_diagram/HaldaneHamiltonian/M_-2.09_2.09_N100_data_set1", x_param="M")
 
-# plot_chern_vs_param("./results/phase_diagram/ChiralHamiltonian/V_20.00_40.00_data_set1", x_param="V")
+plot_chern_vs_param("./results/phase_diagram/ChiralHamiltonian/V_20.00_40.00_data_set1", x_param="V")
 
-# plot_chern_vs_param("./results/phase_diagram/ChiralHamiltonian/V_-10.00_10.00_N100_data_set1", x_param="V")
+plot_chern_vs_param("./results/phase_diagram/ChiralHamiltonian/V_-10.00_10.00_N100_data_set1", x_param="V")

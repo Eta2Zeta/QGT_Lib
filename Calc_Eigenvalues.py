@@ -7,7 +7,9 @@ import shutil
 # from Library import * 
 from Library.plotting_lib import *
 from Library.Hamiltonian_v1 import *
-from Library.Hamiltonian_v2 import * 
+from Library.Hamiltonian.Hamiltonian_v2 import * 
+from Library.Hamiltonian.Chiral_Hamiltonian_Projected import *
+from Library.Hamiltonian.Altermagnet_Hamiltonian import *
 from Library.eigenvalue_calc_lib import *
 from Library.Geometry.zones import ZoneDivider
 from Library.utilities import *
@@ -21,17 +23,20 @@ os.makedirs(temp_dir, exist_ok=True)
 # hamiltonian = TwoOrbitalUnspinfulHamiltonian(zeta=1.0, omega = 10.0, A0=0.1, mu=0, magnus_order = 1)
 # hamiltonian = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=0)
 # hamiltonian = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=(1-np.sqrt(2))/4)
-hamiltonian = RhombohedralGrapheneHamiltonian(n=5, V=30)
-# hamiltonian = ChiralHamiltonian(n=5, V=20)
+# hamiltonian = ChiralHamiltonianProjected(n=5, V=30, A0=0.1, omega=1000)
+# bands = (0,1)
+# hamiltonian = ChiralHamiltonian(n=5, V=30)
+# bands = (4,5)
+hamiltonian = AltermagnetHamiltonian(t1=1.0, t2=0.5, td=2, lamb=2, J=1.0, Nz=4)
+k_max = np.pi #This is for AltermagnetHamiltonian
+bands = (0,1)
 # hamiltonian = HaldaneHamiltonian(psi = -np.pi/2, M=0)
 # hamiltonian = GrapheneHamiltonian(A0=0)
 dim = hamiltonian.dim
 
-def calculation_2d(hamiltonian = hamiltonian):
+def calculation_2d(hamiltonian = hamiltonian, force_new=True):
     # Does the calculation on 2d 
 
-    # Define parameters
-    k_max = 0.8 * 355.16/542.1
 
     # Create kx and ky arrays
     kx_range = (-k_max, k_max)
@@ -46,15 +51,12 @@ def calculation_2d(hamiltonian = hamiltonian):
     z_limit = 1000
 
     # Create the results directory
-    file_paths, use_existing, results_subdir = setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force_new=False)
+    file_paths, use_existing, results_subdir = setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force_new=force_new)
 
     if use_existing:
         # Load existing data
         eigenvalues = np.load(file_paths["eigenvalues"])
         eigenfunctions = np.load(file_paths["eigenfunctions"])
-        phasefactors = np.load(file_paths["phasefactors"])
-        magnus_first_term = np.load(file_paths["magnus_first"])
-        magnus_second_term = np.load(file_paths["magnus_second"])
 
         with open(file_paths["meta_info"], "rb") as meta_file:
             meta_info = pickle.load(meta_file)
@@ -71,14 +73,14 @@ def calculation_2d(hamiltonian = hamiltonian):
         # Initialize arrays to store eigenfunctions, eigenvalues, and Magnus terms
         eigenfunctions = np.full((mesh_spacing, mesh_spacing, dim, dim), np.nan, dtype=complex)
         eigenvalues = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
-        phasefactors = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
-        overall_neighbor_phase_array = np.full((mesh_spacing, mesh_spacing, dim), np.nan, dtype=float)
-        magnus_first_term = np.full((mesh_spacing, mesh_spacing, dim, dim), np.nan, dtype=complex)
-        magnus_second_term = np.full((mesh_spacing, mesh_spacing, dim, dim), np.nan, dtype=complex)
         
         # Calculate the eigenvalues and eigenfunctions
-        eigenvalues, eigenfunctions, phasefactors, overall_neighbor_phase_array, magnus_first_term, magnus_second_term = spiral_eigenvalues_eigenfunctions(
-            hamiltonian, kx, ky, mesh_spacing, dim=dim, phase_correction=False
+        # eigenvalues, eigenfunctions, _, _ = grid_eigenvalues_eigenfunctions_ordered(
+        #     hamiltonian, kx, ky, mesh_spacing, dim=dim
+        # )
+
+        eigenvalues, eigenfunctions, _, _ = grid_eigenvalues_eigenfunctions(
+            hamiltonian, kx, ky, mesh_spacing, dim=dim
         )
 
         # eigenvalues = analytic_eigenvalues_2d(hamiltonian, kx, ky, mesh_spacing, dim)
@@ -87,11 +89,7 @@ def calculation_2d(hamiltonian = hamiltonian):
         # Save results
         for key, array in {
             "eigenvalues": eigenvalues,
-            "eigenfunctions": eigenfunctions,
-            "phasefactors": phasefactors,
-            "neighbor_phase_array": overall_neighbor_phase_array,
-            "magnus_first": magnus_first_term,
-            "magnus_second": magnus_second_term,
+            "eigenfunctions": eigenfunctions
         }.items():
             np.save(file_paths[key], array)
             np.save(os.path.join(temp_dir, os.path.basename(file_paths[key])), array)  # Save to temp directory
@@ -125,11 +123,12 @@ def calculation_2d(hamiltonian = hamiltonian):
 
     eigenvalues = capping_eigenvalues(eigenvalues=eigenvalues, z_limit=z_limit)
 
-    plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=(4,5))
+    # plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=None)
+    plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=1)
 
     # plot_individual_eigenvalues(kx, ky, eigenvalues, dim=dim, z_limit=None)
 
-    # plot_eigenfunction_components(kx, ky, eigenfunctions, band_index=0, components_to_plot=[0])
+    # plot_eigenfunction_components(kx, ky, eigenfunctions, band_index=0, components_to_plot=[0,1,2,3])
 
     # plot_phases(kx, ky, phasefactors, dim=2)
 
@@ -196,4 +195,4 @@ def calculation_1d(hamiltonian=hamiltonian):
 
 
 # calculation_1d()
-calculation_2d()
+calculation_2d(force_new=True)

@@ -5,6 +5,18 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 import pickle
 from Library.utilities import in_range
+from Library.plotting_utils import load_qgt, filter_entries_by_omega
+import sys
+import Library.Hamiltonian.Hamiltonian_v2
+# Patch for unpickling old data that references Library.Hamiltonian_v2 (direct module)
+sys.modules["Library.Hamiltonian_v2"] = Library.Hamiltonian.Hamiltonian_v2
+
+# Also ensure ChiralHamiltonian is available in Hamiltonian_v2 for unpickling
+try:
+    from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
+    Library.Hamiltonian.Hamiltonian_v2.ChiralHamiltonian = ChiralHamiltonian
+except ImportError:
+    pass
 
 mpl.rcParams.update({
     "font.size": 8,        # base font size
@@ -17,215 +29,13 @@ mpl.rcParams.update({
 })
 
 
-def dynamic_THF():
-    k_max = 1 * (np.pi)  # Maximum k value for the first Brillouin zone
-    # Load the saved data
-    g_results = np.load("g_results_log.npy", allow_pickle=True)
-
-    # Extract the initial data for visualization
-    initial_index = 0
-    k_line = np.linspace(-k_max, k_max, 300)  # Example: same k_line as before
-    initial_data = g_results[initial_index]
-
-    # Calculate global y-axis bounds
-    y_min = min(np.min(data['trace']) for data in g_results)
-    y_max = max(np.max(data['trace']) for data in g_results)
-
-    # Plot setup
-    fig, ax = plt.subplots()
-    plt.subplots_adjust(bottom=0.25)
-
-    line, = ax.plot(k_line, initial_data['trace'], label=f'Trace (G={initial_data["G"]:.6f})')
-    ax.set_title('QGT Trace Along Line for Different G Values')
-    ax.set_xlabel('k (along line)')
-    ax.set_ylabel('Trace ($g_{xx} + g_{yy}$)')
-    ax.legend()
-    ax.grid(True)
-
-    # Set y-axis limits dynamically
-    ax.set_yscale('log')
-    ax.set_ylim(y_min, y_max)
-
-    # Slider setup
-    ax_slider = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor='lightgoldenrodyellow')
-    slider = Slider(ax_slider, 'G', 0, len(g_results) - 1, valinit=initial_index, valstep=1)
-
-    # Slider update function
-    def update(val):
-        index = int(slider.val)
-        data = g_results[index]
-        line.set_ydata(data['trace'])
-        line.set_label(f'Trace (G={data["G"]:.6f})')
-        ax.legend()
-        fig.canvas.draw_idle()
-
-    slider.on_changed(update)
-
-    plt.show()
-
-# dynamic_THF()
-
-def dynamic(folder_name):
-    k_max = 1 * (np.pi)  # Maximum k value for the first Brillouin zone
-    # Load the saved data
-    g_results_filepath = os.path.join(os.getcwd(), "results", "1D_QGT_results", folder_name, "QGT_1D.npy")
-
-
-    # Check if the file exists
-    if not os.path.exists(g_results_filepath):
-        raise FileNotFoundError(f"File '{g_results_filepath}' not found in the 'results' directory.")
-
-
-    g_results = np.load(g_results_filepath, allow_pickle=True)
-
-    # Extract the initial data for visualization
-    initial_index = 0
-    k_line = np.linspace(-k_max, k_max, 100)  # Example: same k_line as before
-    initial_data = g_results[initial_index]
-
-    # Calculate global y-axis bounds
-    y_min = min(np.min(data['trace']) for data in g_results)
-    y_max = max(np.max(data['trace']) for data in g_results)
-
-    # Plot setup
-    fig, ax = plt.subplots()
-    plt.subplots_adjust(bottom=0.25)
-
-    line, = ax.plot(k_line, initial_data['trace'], label=f'Trace ($\omega$={initial_data["omega"]:.6f})')
-    ax.set_title('QGT Trace Along Line for D          ifferent $\omega$ Values')
-    ax.set_xlabel('k (along line)')
-    ax.set_ylabel('Trace ($g_{xx} + g_{yy}$)')
-    ax.legend()
-    ax.grid(True)
-
-    # Set y-axis limits dynamically
-    ax.set_yscale('linear')
-    ax.set_ylim(y_min, y_max)
-
-    # Slider setup
-    ax_slider = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor='lightgoldenrodyellow')
-    slider = Slider(ax_slider, '$\omega$', 0, len(g_results) - 1, valinit=initial_index, valstep=1)
-
-    # Slider update function
-    def update(val):
-        index = int(slider.val)
-        data = g_results[index]
-        line.set_ydata(data['trace'])
-        line.set_label(f'Trace ($\omega$={data["omega"]:.6f})')
-        ax.legend()
-        fig.canvas.draw_idle()
-
-    slider.on_changed(update)
-
-    plt.show()
-
-def dynamic_with_eigenvalue(folder_name):
+def dynamic_with_eigenvalues(folder_name, bands=[0, 1]):
     """
-    Visualize QGT trace and eigenvalues dynamically for different omega values.
-    The Eigenvalues are just the eigenvalue of that one band specified in the calculation. 
+    Visualize QGT trace, eigenvalues (arbitrary bands), and perturbation dynamically for different omega values.
 
     Parameters:
     - folder_name (str): The folder containing the QGT results.
-    """
-    k_max = 1 * (np.pi)  # Maximum k value for the first Brillouin zone
-    
-    # Load the saved data
-    result_folder_path = os.path.join(os.getcwd(), "results", "1D_QGT_results", folder_name)
-    g_results_filepath = os.path.join(result_folder_path, "QGT_1D.npy")
-    meta_filepath = os.path.join(result_folder_path, "meta_info.pkl")
-    with open(meta_filepath, "rb") as meta_file:
-            meta_info = pickle.load(meta_file)
-
-    num_k_points = meta_info['num_k_points']
-
-
-    # Check if the file exists
-    if not os.path.exists(g_results_filepath):
-        raise FileNotFoundError(f"File '{g_results_filepath}' not found in the 'results' directory.")
-
-    g_results = np.load(g_results_filepath, allow_pickle=True)
-
-    # Extract the initial data for visualization
-    initial_index = 0
-    k_line = np.linspace(-k_max, k_max, num_k_points)  # Same k_line as before
-    initial_data = g_results[initial_index]
-
-    # Compute global y-axis bounds
-    y_min_trace = min(np.min(data['trace']) for data in g_results)
-    y_max_trace = max(np.max(data['trace']) for data in g_results)
-    y_min_perturb = min(np.min(data['perturbation']) for data in g_results)
-    y_max_perturb = max(np.max(data['perturbation']) for data in g_results)
-    y_min_eigen = min(np.min(data['eigenvalues']) for data in g_results)
-    y_max_eigen = max(np.max(data['eigenvalues']) for data in g_results)
-
-    # Create figure and axes
-    fig, ax1 = plt.subplots(figsize=(10, 6))  # Make the figure larger
-    fig.subplots_adjust(bottom=0.2, right=0.8)  # Increase as needed
-    ax2 = ax1.twinx()  # second y-axis
-    ax3 = ax1.twinx()  # third y-axis
-    ax3.spines['right'].set_position(('outward', 60))  # offset it
-    ax3.spines['right'].set_visible(True)
-
-
-
-
-    # Plot initial data
-    line_eigen, = ax1.plot(k_line, initial_data['eigenvalues'], label='Eigenvalues', color='r')
-    line_trace, = ax2.plot(k_line, initial_data['trace'], label='Trace', color='b')
-    line_perturb, = ax3.plot(k_line, initial_data['perturbation'], label='Perturbation', color='g')
-
-    # Label axes
-    ax1.set_ylabel('Eigenvalues', color='r')
-    ax1.set_xlabel('k (along line)')
-    ax1.set_ylim(y_min_eigen, y_max_eigen)
-    ax1.tick_params(axis='y', labelcolor='r')
-
-    ax2.set_ylabel('Trace Amplitude', color='b')
-    ax2.set_ylim(y_min_trace, y_max_trace)
-    ax2.tick_params(axis='y', labelcolor='b')
-
-    ax3.set_ylabel('Perturbation', color='g')
-    ax3.set_ylim(y_min_perturb, y_max_perturb)
-    ax3.tick_params(axis='y', labelcolor='g')
-
-
-    ax1.set_title('QGT Trace, Eigenvalues, and Perturbation for Different $\omega$')
-    ax1.grid(True)
-
-    # Slider
-    ax_slider = plt.axes([0.15, 0.05, 0.65, 0.03], facecolor='lightgoldenrodyellow')
-    slider = Slider(ax_slider, '$\omega$', 0, len(g_results) - 1, valinit=initial_index, valstep=1)
-
-    # Slider update function
-    def update(val):
-        index = int(slider.val)
-        data = g_results[index]
-        line_eigen.set_ydata(data['eigenvalues'])
-        line_trace.set_ydata(data['trace'])
-        line_perturb.set_ydata(data['perturbation'])
-
-        # Optional: update title or labels
-        ax1.set_title(f'QGT Trace, Eigenvalues, Perturbation — $\omega$ = {data["omega"]:.6f}')
-
-        # Combined legend
-        lines = [line_eigen, line_trace, line_perturb]
-        labels = [line.get_label() for line in lines]
-        ax1.legend(lines, labels, loc="upper left")
-
-        fig.canvas.draw_idle()
-
-    slider.on_changed(update)
-
-    plt.show()
-
-
-
-def dynamic_with_eigenvalues(folder_name, band_index1=0, band_index2=1):
-    """
-    Visualize QGT trace, eigenvalues (2 bands), and perturbation dynamically for different omega values.
-
-    Parameters:
-    - folder_name (str): The folder containing the QGT results.
+    - bands (list): List of band indices to plot, e.g., [0, 1, 2, 3].
     """
     k_max = np.pi  # Maximum k value for the first Brillouin zone
 
@@ -253,12 +63,34 @@ def dynamic_with_eigenvalues(folder_name, band_index1=0, band_index2=1):
     y_max_trace = np.nanmax([np.nanmax(data['trace']) for data in g_results])
     y_min_perturb = np.nanmin([np.nanmin(data['perturbation']) for data in g_results])
     y_max_perturb = np.nanmax([np.nanmax(data['perturbation']) for data in g_results])
-    y_min_eigen = np.nanmin([np.nanmin(data['eigenvalues']) for data in g_results])
-    y_max_eigen = np.nanmax([np.nanmax(data['eigenvalues']) for data in g_results])
+
+    # Compute eigenbounds across ONLY the selected bands for all data
+    # (assuming data['eigenvalues'] is [N, nbands] or [N, 2] etc.)
+    all_selected_eigs = []
+    for data in g_results:
+        evs = np.array(data['eigenvalues']) # Shape (N_k, N_bands) usually
+        if evs.ndim == 2:
+            # Check bands validity
+            n_avail = evs.shape[1]
+            for b in bands:
+                 if b < 0 or b >= n_avail:
+                     raise ValueError(f"Band {b} out of range [0, {n_avail-1}]")
+            # Select specific bands
+            sel = evs[:, bands]
+            all_selected_eigs.append(sel)
+    
+    if len(all_selected_eigs) > 0:
+        flat_sel = np.concatenate([x.flatten() for x in all_selected_eigs])
+        y_min_eigen = np.nanmin(flat_sel)
+        y_max_eigen = np.nanmax(flat_sel)
+    else:
+        y_min_eigen = 0
+        y_max_eigen = 1
+
     y_min_magnus_operator_norm = np.nanmin([np.nanmin(data['magnus_operator_norm']) for data in g_results if 'magnus_operator_norm' in data])
     y_max_magnus_operator_norm = np.nanmax([np.nanmax(data['magnus_operator_norm']) for data in g_results if 'magnus_operator_norm' in data])
 
-    eigen_buffer = 0.1 * (y_max_eigen - y_min_eigen)  # Buffer for eigenvalues
+    eigen_buffer = 0.1 * (y_max_eigen - y_min_eigen) if (y_max_eigen != y_min_eigen) else 0.1
 
     # Create figure and axes
     fig, ax1 = plt.subplots(figsize=(12, 8))
@@ -272,18 +104,22 @@ def dynamic_with_eigenvalues(folder_name, band_index1=0, band_index2=1):
     ax4.spines['right'].set_position(('outward', 120))
     ax4.spines['right'].set_visible(True)
 
+    eigenvalues = np.array(initial_data['eigenvalues']).T  # Transpose from (N, nbands) → (nbands, N)
 
-    eigenvalues = np.array(initial_data['eigenvalues']).T  # Transpose from (N, 2) → (2, N)
+    # Plot initial data for selected bands
+    line_eigens = []
+    # Use a color cycle or map
+    colors = plt.cm.jet(np.linspace(0, 1, len(bands)))
+    
+    for i, b in enumerate(bands):
+        # We can try to cycle distinct colors or just use the index
+        ln, = ax1.plot(k_line, eigenvalues[b], label=f'Eigenvalue {b}', color=colors[i])
+        line_eigens.append(ln)
 
+    line_trace, = ax2.plot(k_line, initial_data['trace'], label='Trace', color='b', linestyle='--')
+    line_perturb, = ax3.plot(k_line, initial_data['perturbation'], label='Perturbation', color='g', linestyle=':')
 
-    # Plot initial data (eigenvalues now has shape [2, N])
-    line_eigen1, = ax1.plot(k_line, eigenvalues[band_index1], label='Eigenvalue 1', color='r')
-    line_eigen2, = ax1.plot(k_line, eigenvalues[band_index2], label='Eigenvalue 2', color='m')
-
-    line_trace, = ax2.plot(k_line, initial_data['trace'], label='Trace', color='b')
-    line_perturb, = ax3.plot(k_line, initial_data['perturbation'], label='Perturbation', color='g')
-
-    line_magnus, = ax4.plot(k_line, initial_data['magnus_operator_norm'], label='Magnus op. norm', color='k')
+    line_magnus, = ax4.plot(k_line, initial_data['magnus_operator_norm'], label='Magnus op. norm', color='k', alpha=0.5)
 
     # Axis formatting
     ax1.set_ylabel('Eigenvalues', color='r')
@@ -303,8 +139,6 @@ def dynamic_with_eigenvalues(folder_name, band_index1=0, band_index2=1):
     ax4.set_ylim(y_min_magnus_operator_norm, y_max_magnus_operator_norm)
     ax4.tick_params(axis='y', labelcolor='k')
 
-
-
     ax1.set_title('QGT Trace, Eigenvalues, and Perturbation for Different $\omega$')
     ax1.grid(True)
 
@@ -318,8 +152,11 @@ def dynamic_with_eigenvalues(folder_name, band_index1=0, band_index2=1):
         data = g_results[index]
 
         eigenvalues = np.array(data['eigenvalues']).T
-        line_eigen1.set_ydata(eigenvalues[band_index1])
-        line_eigen2.set_ydata(eigenvalues[band_index2])
+        # Update lines for each band
+        for i, ln in enumerate(line_eigens):
+            # bands[i] gives the band index
+            b_idx = bands[i]
+            ln.set_ydata(eigenvalues[b_idx])
 
         line_trace.set_ydata(data['trace'])
         line_perturb.set_ydata(data['perturbation'])
@@ -327,7 +164,9 @@ def dynamic_with_eigenvalues(folder_name, band_index1=0, band_index2=1):
 
         ax1.set_title(f'QGT Trace, Eigenvalues, Perturbation — $\omega$ = {data["omega"]:.6f}')
 
-        lines = [line_eigen1, line_eigen2, line_trace, line_perturb, line_magnus]
+        # Legend might need refreshing if labels changed (they don't here)
+        # Just gather handles
+        lines = line_eigens + [line_trace, line_perturb, line_magnus]
         labels = [line.get_label() for line in lines]
         ax1.legend(lines, labels, loc="upper left")
 
@@ -496,6 +335,8 @@ def dynamic_with_eigenvalues_single_param(result_dir, band_index1=0, band_index2
     s_idx.on_changed(_update)
     plt.show()
 
+
+#@ 2D QGT single-parameter omega sweep dynamic plotting
 def dynamic_2d_trace_vs_omega(folder_name, omega_min=None, omega_max=None):
     """
     Dynamically visualize the QGT trace (2D heatmap) as a function of omega.
@@ -573,6 +414,401 @@ def dynamic_2d_trace_vs_omega(folder_name, omega_min=None, omega_max=None):
     plt.show()
 
 
+def dynamic_2d_trace_hprime_eigs_vs_omega(folder_name, omega_min=None, omega_max=None):
+    """
+    Layout:
+      ┌───────────────────────────────────────────────┐
+      │   (slim) eigenvalues vs k_x at k_y≈0          │  <-- 1 row
+      ├───────────────────────────┬───────────────────┤
+      │       QGT Trace (2D)      │  Re[H'(0,0)] (2D) │  <-- big 2x1
+      └───────────────────────────┴───────────────────┘
+                     [  ω index slider at bottom  ]
+
+    Assumes each saved entry has:
+      - 'trace' : (Ny, Nx)
+      - 'eigenvalues' : (Ny, Nx, Nb)
+      - 'hamiltonian_prime_array' or 'H_prime_array' : (Ny, Nx, dim, dim)
+    """
+    # ---- load data ----
+    results_path = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", folder_name)
+    qgt_data_path = os.path.join(results_path, "QGT_2.npy")  # sometimes people use this name
+    if not os.path.exists(qgt_data_path):
+        qgt_data_path = os.path.join(results_path, "QGT_2D.npy")
+    meta_path = os.path.join(results_path, "meta_info.pkl")
+
+    if not os.path.exists(qgt_data_path):
+        raise FileNotFoundError(f"QGT data not found in '{results_path}'.")
+    with open(meta_path, "rb") as f:
+        meta_info = pickle.load(f)
+    entries = np.load(qgt_data_path, allow_pickle=True)
+
+    # ---- omega filtering ----
+    def _in_range(w):
+        if (omega_min is not None) and (w < omega_min): return False
+        if (omega_max is not None) and (w > omega_max): return False
+        return True
+
+    entries = [e for e in entries if _in_range(float(e["omega"]))]
+    if len(entries) == 0:
+        raise ValueError("No omega slices fall within the requested range.")
+
+    kx = np.asarray(meta_info["kx"])
+    ky = np.asarray(meta_info["ky"])
+    omega_values = np.array([float(e["omega"]) for e in entries], dtype=float)
+
+    # choose ky index closest to 0 for the 1D eigenvalue slice
+    ky_vals_1d = ky[:, 0] if ky.ndim == 2 else ky
+    ky_idx = int(np.argmin(np.abs(ky_vals_1d - 0.0)))
+
+    # get H' array key and precompute Re H'00 for all ω (and global color limits)
+    def _get_hprime(entry):
+        if "hamiltonian_prime_array" in entry:
+            return np.asarray(entry["hamiltonian_prime_array"])
+        if "H_prime_array" in entry:
+            return np.asarray(entry["H_prime_array"])
+        raise KeyError("Entry lacks 'hamiltonian_prime_array' / 'H_prime_array'.")
+
+    hprime00_list = [np.real(_get_hprime(e)[..., 0, 0]) for e in entries]
+    hprime_vmin = float(np.nanmin([np.nanmin(h) for h in hprime00_list]))
+    hprime_vmax = float(np.nanmax([np.nanmax(h) for h in hprime00_list]))
+
+    trace_vmin = float(np.nanmin([np.nanmin(e["trace"]) for e in entries]))
+    trace_vmax = float(np.nanmax([np.nanmax(e["trace"]) for e in entries]))
+
+    # initial index and data
+    i0 = 0
+    trace0 = np.asarray(entries[i0]["trace"])
+    h00_0  = hprime00_list[i0]
+    evals0 = np.asarray(entries[i0]["eigenvalues"])  # (Ny, Nx, Nb)
+
+    # 1D eigenvalues vs kx (take the ky≈0 row and sort by kx)
+    kx_line = kx[ky_idx, :] if kx.ndim == 2 else kx
+    sort_idx = np.argsort(kx_line)
+    kx_line_sorted = kx_line[sort_idx]
+    eig_line0 = evals0[ky_idx, :, :]         # (Nx, Nb)
+    eig_line0_sorted = eig_line0[sort_idx, :]
+    nbands = eig_line0_sorted.shape[1]
+
+    # ---- figure layout ----
+    fig = plt.figure(figsize=(25, 13))
+    # leave room for slider at bottom
+    fig.subplots_adjust(bottom=0.11)
+
+    # slim top bar for eigenvalues
+    gs = fig.add_gridspec(nrows=2, ncols=2, height_ratios=[1, 7], width_ratios=[1, 1], hspace=0.35, wspace=0.20)
+
+    ax_eigs   = fig.add_subplot(gs[0, :])   # spans both columns
+    ax_trace  = fig.add_subplot(gs[1, 0])   # bottom-left
+    ax_hprime = fig.add_subplot(gs[1, 1])   # bottom-right
+
+    # --- top: eigenvalues vs kx (all bands) ---
+    eig_lines = []
+    for b in range(nbands):
+        ln, = ax_eigs.plot(kx_line_sorted, eig_line0_sorted[:, b], lw=0.9)
+        eig_lines.append(ln)
+    ax_eigs.set_title(r"Eigenvalues vs $k_x$ (slice at $k_y \approx 0$)")
+    ax_eigs.set_xlabel(r"$k_x$")
+    ax_eigs.set_ylabel("Eigenvalue")
+    ax_eigs.grid(True)
+
+    # --- bottom-left: trace heatmap (+ std readout) ---
+    im_trace = ax_trace.imshow(
+        trace0,
+        origin="lower",
+        extent=[kx.min(), kx.max(), ky.min(), ky.max()],
+        cmap="inferno",
+        vmin=trace_vmin, vmax=trace_vmax,
+        aspect="auto"
+    )
+    ax_trace.set_title(f'QGT Trace — ω = {omega_values[i0]:.6f}')
+    ax_trace.set_xlabel(r"$k_x$")
+    ax_trace.set_ylabel(r"$k_y$")
+    cbar_trace = fig.colorbar(im_trace, ax=ax_trace, fraction=0.047, pad=0.03)
+    cbar_trace.set_label("Trace")
+    std_text = ax_trace.text(
+        0.02, 0.98, f"std[Trace] = {np.nanstd(trace0):.4g}",
+        transform=ax_trace.transAxes, va="top", ha="left",
+        bbox=dict(facecolor="white", alpha=0.8, edgecolor="none")
+    )
+
+    # --- bottom-right: Re[H'(0,0)] heatmap ---
+    im_hprime = ax_hprime.imshow(
+        h00_0,
+        origin="lower",
+        extent=[kx.min(), kx.max(), ky.min(), ky.max()],
+        cmap="viridis",
+        vmin=hprime_vmin, vmax=hprime_vmax,
+        aspect="auto"
+    )
+    ax_hprime.set_title(r"$\mathrm{Re}\,H'_{00}$" + f" — ω = {omega_values[i0]:.6f}")
+    ax_hprime.set_xlabel(r"$k_x$")
+    ax_hprime.set_ylabel(r"$k_y$")
+    cbar_hprime = fig.colorbar(im_hprime, ax=ax_hprime, fraction=0.047, pad=0.03)
+    cbar_hprime.set_label(r"$\mathrm{Re}\,H'_{00}$")
+
+    # ---- slider (bottom) ----
+    ax_slider = plt.axes([0.16, 0.04, 0.68, 0.03], facecolor="lightgoldenrodyellow")
+    slider = Slider(ax_slider, r'$\omega$ idx', 0, len(omega_values) - 1, valinit=i0, valstep=1)
+
+    # ---- update handler ----
+    def _update(_):
+        idx = int(slider.val)
+
+        # eigenvalues
+        ev = np.asarray(entries[idx]["eigenvalues"])   # (Ny, Nx, Nb)
+        line = ev[ky_idx, :, :]                        # (Nx, Nb)
+        line_sorted = line[sort_idx, :]
+        nb = min(nbands, line_sorted.shape[1])
+        for b in range(nb):
+            eig_lines[b].set_ydata(line_sorted[:, b])
+
+        # trace
+        tr = np.asarray(entries[idx]["trace"])
+        im_trace.set_data(tr)
+        ax_trace.set_title(f'QGT Trace — ω = {omega_values[idx]:.6f}')
+        std_text.set_text(f"std[Trace] = {np.nanstd(tr):.4g}")
+
+        # H'00
+        im_hprime.set_data(hprime00_list[idx])
+        ax_hprime.set_title(r"$\mathrm{Re}\,H'_{00}$" + f" — ω = {omega_values[idx]:.6f}")
+
+        fig.canvas.draw_idle()
+
+    slider.on_changed(_update)
+    plt.show()
+
+
+
+
+def _get_hprime_array(entry):
+    if "hamiltonian_prime_array" in entry:
+        return np.asarray(entry["hamiltonian_prime_array"])
+    if "H_prime_array" in entry:
+        return np.asarray(entry["H_prime_array"])
+    raise KeyError("Entry lacks 'hamiltonian_prime_array' / 'H_prime_array'.")
+
+
+def dynamic_2d_trace_hprime_eigs_vs_omega_dual(
+    folder_name_left, folder_name_right,
+    *,
+    omega_min=None, omega_max=None,
+    label_left="numerical", label_right="analytical"
+):
+    """
+    Compare TWO 2D QGT sweeps side-by-side.
+    Layout (3 rows x 2 cols):
+      Row 1: (slim) eigenvalues vs kx at ky≈0   [left | right]
+      Row 2: Trace heatmap                      [left | right]
+      Row 3: Re(H'00) heatmap                   [left | right]
+    One slider (bottom) selects ω index in LEFT dataset; RIGHT snaps to nearest ω.
+    """
+
+    # ---- load both datasets ----
+    entries_L, meta_L = load_qgt(folder_name_left)
+    entries_R, meta_R = load_qgt(folder_name_right)
+
+    # filter by ω range (independently)
+    entries_L = filter_entries_by_omega(entries_L, omega_min, omega_max)
+    entries_R = filter_entries_by_omega(entries_R, omega_min, omega_max)
+
+    # extract k grids
+    kx_L = np.asarray(meta_L["kx"]);  ky_L = np.asarray(meta_L["ky"])
+    kx_R = np.asarray(meta_R["kx"]);  ky_R = np.asarray(meta_R["ky"])
+
+    # collect ω arrays
+    omegas_L = np.array([float(e["omega"]) for e in entries_L], dtype=float)
+    omegas_R = np.array([float(e["omega"]) for e in entries_R], dtype=float)
+
+    # choose ky index near 0 for each dataset
+    ky_vals_L = ky_L[:, 0] if ky_L.ndim == 2 else ky_L
+    ky_vals_R = ky_R[:, 0] if ky_R.ndim == 2 else ky_R
+    ky_idx_L = int(np.argmin(np.abs(ky_vals_L - 0.0)))
+    ky_idx_R = int(np.argmin(np.abs(ky_vals_R - 0.0)))
+
+    # precompute Re(H'00) lists for global color limits
+    h00_L_list = [np.real(_get_hprime_array(e)[..., 0, 0]) for e in entries_L]
+    h00_R_list = [np.real(_get_hprime_array(e)[..., 0, 0]) for e in entries_R]
+
+    # trace limits across both datasets
+    trace_min = float(np.nanmin([np.nanmin(e["trace"]) for e in entries_L] +
+                                [np.nanmin(e["trace"]) for e in entries_R]))
+    trace_max = float(np.nanmax([np.nanmax(e["trace"]) for e in entries_L] +
+                                [np.nanmax(e["trace"]) for e in entries_R]))
+
+    # H'00 limits across both datasets
+    h00_min = float(np.nanmin([np.nanmin(h) for h in h00_L_list] +
+                              [np.nanmin(h) for h in h00_R_list]))
+    h00_max = float(np.nanmax([np.nanmax(h) for h in h00_L_list] +
+                              [np.nanmax(h) for h in h00_R_list]))
+
+    # initial indices
+    iL0 = 0
+    # find nearest ω in R for initial left ω
+    iR0 = int(np.argmin(np.abs(omegas_R - omegas_L[iL0])))
+
+    # ---- prepare eigenvalue lines for each dataset (sorted by kx) ----
+    def _prep_eig_line(entry, kx, ky, ky_idx):
+        evals = np.asarray(entry["eigenvalues"])  # (Ny, Nx, Nb)
+        kx_line = kx[ky_idx, :] if kx.ndim == 2 else kx
+        order = np.argsort(kx_line)
+        kx_sorted = kx_line[order]
+        eig_line  = evals[ky_idx, :, :]   # (Nx, Nb)
+        eig_sorted = eig_line[order, :]
+        return kx_sorted, eig_sorted
+
+    kxs_L0, eigs_L0 = _prep_eig_line(entries_L[iL0], kx_L, ky_L, ky_idx_L)
+    kxs_R0, eigs_R0 = _prep_eig_line(entries_R[iR0], kx_R, ky_R, ky_idx_R)
+    nb_L = eigs_L0.shape[1]
+    nb_R = eigs_R0.shape[1]
+
+    # ---- figure & layout ----
+    fig = plt.figure(figsize=(16, 14))
+    # leave some space at bottom for slider
+    fig.subplots_adjust(top=0.96, bottom=0.10)
+
+    # 3 rows, 2 cols; top row short, bottom two equal heights
+    gs = fig.add_gridspec(
+        nrows=3, ncols=2,
+        height_ratios=[1, 5, 5], width_ratios=[1, 1],
+        hspace=0.2, wspace=0.20
+    )
+
+
+    # Row 1: eigenvalues (left, right)
+    ax_eigs_L = fig.add_subplot(gs[0, 0])
+    ax_eigs_R = fig.add_subplot(gs[0, 1])
+
+    # Row 2: trace (left, right)
+    ax_trace_L = fig.add_subplot(gs[1, 0])
+    ax_trace_R = fig.add_subplot(gs[1, 1])
+
+    # Row 3: H'00 (left, right)
+    ax_h_L = fig.add_subplot(gs[2, 0])
+    ax_h_R = fig.add_subplot(gs[2, 1])
+
+    # ---- draw initial eigenvalues ----
+    lines_L = []
+    for b in range(nb_L):
+        ln, = ax_eigs_L.plot(kxs_L0, eigs_L0[:, b], lw=0.9)
+        lines_L.append(ln)
+    ax_eigs_L.set_title(f"{label_left}: Eigenvalues vs $k_x$ (slice at $k_y\\approx 0$)")
+    ax_eigs_L.set_xlabel("$k_x$")
+    ax_eigs_L.set_ylabel("Eigenvalue")
+    ax_eigs_L.grid(True)
+
+    lines_R = []
+    for b in range(nb_R):
+        ln, = ax_eigs_R.plot(kxs_R0, eigs_R0[:, b], lw=0.9)
+        lines_R.append(ln)
+    ax_eigs_R.set_title(f"{label_right}: Eigenvalues vs $k_x$ (slice at $k_y\\approx 0$)")
+    ax_eigs_R.set_xlabel("$k_x$")
+    ax_eigs_R.set_ylabel("Eigenvalue")
+    ax_eigs_R.grid(True)
+
+    # ---- draw initial trace heatmaps ----
+    im_tr_L = ax_trace_L.imshow(
+        np.asarray(entries_L[iL0]["trace"]),
+        origin="lower",
+        extent=[kx_L.min(), kx_L.max(), ky_L.min(), ky_L.max()],
+        cmap="inferno", vmin=trace_min, vmax=trace_max, aspect="auto"
+    )
+    ax_trace_L.set_title(f"{label_left}: QGT Trace — $\\omega$ = {omegas_L[iL0]:.6f}")
+    ax_trace_L.set_xlabel("$k_x$")
+    ax_trace_L.set_ylabel("$k_y$")
+    cbar_tr_L = fig.colorbar(im_tr_L, ax=ax_trace_L, fraction=0.047, pad=0.03)
+    cbar_tr_L.set_label("Trace")
+    std_txt_L = ax_trace_L.text(0.02, 0.98, f"std[Trace] = {np.nanstd(entries_L[iL0]['trace']):.4g}",
+                                transform=ax_trace_L.transAxes, va="top", ha="left",
+                                bbox=dict(facecolor="white", alpha=0.8, edgecolor="none"))
+
+    im_tr_R = ax_trace_R.imshow(
+        np.asarray(entries_R[iR0]["trace"]),
+        origin="lower",
+        extent=[kx_R.min(), kx_R.max(), ky_R.min(), ky_R.max()],
+        cmap="inferno", vmin=trace_min, vmax=trace_max, aspect="auto"
+    )
+    ax_trace_R.set_title(f"{label_right}: QGT Trace — $\\omega$ = {omegas_R[iR0]:.6f}")
+    ax_trace_R.set_xlabel("$k_x$")
+    ax_trace_R.set_ylabel("$k_y$")
+    cbar_tr_R = fig.colorbar(im_tr_R, ax=ax_trace_R, fraction=0.047, pad=0.03)
+    cbar_tr_R.set_label("Trace")
+    std_txt_R = ax_trace_R.text(0.02, 0.98, f"std[Trace] = {np.nanstd(entries_R[iR0]['trace']):.4g}",
+                                transform=ax_trace_R.transAxes, va="top", ha="left",
+                                bbox=dict(facecolor="white", alpha=0.8, edgecolor="none"))
+
+    # ---- draw initial H'00 heatmaps ----
+    im_h_L = ax_h_L.imshow(
+        h00_L_list[iL0],
+        origin="lower",
+        extent=[kx_L.min(), kx_L.max(), ky_L.min(), ky_L.max()],
+        cmap="viridis", vmin=h00_min, vmax=h00_max, aspect="auto"
+    )
+    ax_h_L.set_title(f"{label_left}: $\\Re\,H'_{ {0},{0} }$ — $\\omega$ = {omegas_L[iL0]:.6f}".replace(" {0}{0} ","{00}"))
+    ax_h_L.set_xlabel("$k_x$")
+    ax_h_L.set_ylabel("$k_y$")
+    cbar_h_L = fig.colorbar(im_h_L, ax=ax_h_L, fraction=0.047, pad=0.03)
+    cbar_h_L.set_label(r"$\Re\,H'_{00}$")
+
+    im_h_R = ax_h_R.imshow(
+        h00_R_list[iR0],
+        origin="lower",
+        extent=[kx_R.min(), kx_R.max(), ky_R.min(), ky_R.max()],
+        cmap="viridis", vmin=h00_min, vmax=h00_max, aspect="auto"
+    )
+    ax_h_R.set_title(f"{label_right}: $\\Re\,H'_{ {0},{0} }$ — $\\omega$ = {omegas_R[iR0]:.6f}".replace(" {0}{0} ","{00}"))
+    ax_h_R.set_xlabel("$k_x$")
+    ax_h_R.set_ylabel("$k_y$")
+    cbar_h_R = fig.colorbar(im_h_R, ax=ax_h_R, fraction=0.047, pad=0.03)
+    cbar_h_R.set_label(r"$\Re\,H'_{00}$")
+
+    # ---- slider (bottom) controls LEFT; RIGHT snaps to nearest ω ----
+    ax_sl = plt.axes([0.16, 0.03, 0.68, 0.03], facecolor="lightgoldenrodyellow")
+    slider = Slider(ax_sl, r'left $\omega$ index', 0, len(omegas_L) - 1, valinit=iL0, valstep=1)
+
+    # Pre-sort kx orderers for both datasets (so we don't recompute each update)
+    order_L = np.argsort(kx_L[ky_idx_L, :] if kx_L.ndim == 2 else kx_L)
+    order_R = np.argsort(kx_R[ky_idx_R, :] if kx_R.ndim == 2 else kx_R)
+    kxs_L = (kx_L[ky_idx_L, :] if kx_L.ndim == 2 else kx_L)[order_L]
+    kxs_R = (kx_R[ky_idx_R, :] if kx_R.ndim == 2 else kx_R)[order_R]
+
+    def _update(_):
+        iL = int(slider.val)
+        # find closest ω in right dataset
+        iR = int(np.argmin(np.abs(omegas_R - omegas_L[iL])))
+
+        # eigenvalues (left)
+        evL = np.asarray(entries_L[iL]["eigenvalues"])  # (Ny,Nx,Nb)
+        lineL = evL[ky_idx_L, :, :][order_L, :]
+        for b in range(min(nb_L, lineL.shape[1])):
+            lines_L[b].set_data(kxs_L, lineL[:, b])
+
+        # eigenvalues (right)
+        evR = np.asarray(entries_R[iR]["eigenvalues"])
+        lineR = evR[ky_idx_R, :, :][order_R, :]
+        for b in range(min(nb_R, lineR.shape[1])):
+            lines_R[b].set_data(kxs_R, lineR[:, b])
+
+        # traces
+        trL = np.asarray(entries_L[iL]["trace"])
+        trR = np.asarray(entries_R[iR]["trace"])
+        im_tr_L.set_data(trL)
+        im_tr_R.set_data(trR)
+        ax_trace_L.set_title(f"{label_left}: QGT Trace — $\\omega$ = {omegas_L[iL]:.6f}")
+        ax_trace_R.set_title(f"{label_right}: QGT Trace — $\\omega$ = {omegas_R[iR]:.6f}")
+        std_txt_L.set_text(f"std[Trace] = {np.nanstd(trL):.4g}")
+        std_txt_R.set_text(f"std[Trace] = {np.nanstd(trR):.4g}")
+
+        # H'00
+        im_h_L.set_data(h00_L_list[iL])
+        im_h_R.set_data(h00_R_list[iR])
+        ax_h_L.set_title(f"{label_left}: $\\Re\,H'_{ {0},{0} }$ — $\\omega$ = {omegas_L[iL]:.6f}".replace(" {0}{0} ","{00}"))
+        ax_h_R.set_title(f"{label_right}: $\\Re\,H'_{ {0},{0} }$ — $\\omega$ = {omegas_R[iR]:.6f}".replace(" {0}{0} ","{00}"))
+
+        fig.canvas.draw_idle()
+
+    slider.on_changed(_update)
+    plt.show()
+
 def dynamic_2d_berry_vs_omega(folder_name, omega_min=None, omega_max=None):
     """
     Dynamically visualize the Berry curvature (2D heatmap) as a function of omega.
@@ -646,138 +882,110 @@ def dynamic_2d_berry_vs_omega(folder_name, omega_min=None, omega_max=None):
     slider.on_changed(update)
     plt.show()
 
-def load_qgt(folder_name):
-    """Load QGT entries (np object array) and meta dict from a sweep folder."""
-    base = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", folder_name)
-    qgt_path  = os.path.join(base, "QGT_2D.npy")
-    meta_path = os.path.join(base, "meta_info.pkl")
-    if not os.path.exists(qgt_path):
-        raise FileNotFoundError(f"QGT data not found in '{base}'.")
-    with open(meta_path, "rb") as f:
-        meta = pickle.load(f)
-    entries = np.load(qgt_path, allow_pickle=True)
-    return entries, meta
-
-def filter_entries_by_omega(entries, omega_min=None, omega_max=None):
-    """Return a list of entries whose float(entry['omega']) lies in [omega_min, omega_max]."""
-    def _in_range(w):
-        if (omega_min is not None) and (w < omega_min): return False
-        if (omega_max is not None) and (w > omega_max): return False
-        return True
-    filtered = [e for e in entries if _in_range(float(e["omega"]))]
-    if len(filtered) == 0:
-        raise ValueError("No omega slices fall within the requested range.")
-    return filtered
 
 
-# --------------------- plotting routines ---------------------
-
-def plot_trace_std_vs_omega(folder_name, omega_min=None, omega_max=None):
-    """
-    Plot the standard deviation of QGT trace over the Brillouin zone for each omega.
-    """
-    entries, _ = load_qgt(folder_name)
-    filtered = filter_entries_by_omega(entries, omega_min, omega_max)
-
-    # collect values
-    omegas = np.array([float(e["omega"]) for e in filtered], dtype=float)
-    trace_std = np.array([np.nanstd(e["trace"]) for e in filtered], dtype=float)
-
-    # sort by omega for a clean line
-    order = np.argsort(omegas)
-    omegas, trace_std = omegas[order], trace_std[order]
-
-    plt.figure(figsize=(8, 5))
-    plt.plot(omegas, trace_std, marker='o', linestyle='-')
-    plt.xscale('log')
-    plt.xlabel("Drive Frequency ω")
-    plt.ylabel("Std. Dev of QGT Trace over BZ")
-    plt.title("Fluctuation of QGT Trace vs ω")
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_berry_std_vs_omega(folder_name, omega_min=None, omega_max=None, *,
-                            use_precomputed=False,  # set True if entries include 'berry'
-                            convert_from_imQ=True   # if not precomputed: Ω = -2 * Im(Q_xy)
+#@ 1D plots vs omega
+def plot_metric_vs_omega(
+    folder_name,
+    metric="trace",                 # "trace" | "berry" | "trg-berry"
+    omega_min=None,
+    omega_max=None,
+    *,
+    use_precomputed=False,          # if entries already include 'berry'
+    convert_from_imQ=True,          # if not precomputed: Ω = -2 * Im(Q_xy)
+    return_data=False               # optionally return (omegas, values)
 ):
     """
-    Plot the standard deviation of Berry curvature over the Brillouin zone for each omega.
+    Unified plotting for:
+      - metric="trace":  std_BZ[ Tr(g) ] vs ω
+      - metric="berry":  std_BZ[ Ω ] vs ω  (Ω from entry['berry'] or -2*Im(Q_xy))
+      - metric="trg-berry": ∫_BZ [Tr(g) - Ω] d^2k vs ω  (needs meta['dkx'], meta['dky'])
+
+    Parameters
+    ----------
+    folder_name : str
+        Path fed to load_qgt(folder_name).
+    metric : {"trace", "berry", "trg-berry"}
+        Quantity to aggregate/plot.
+    omega_min, omega_max : float or None
+        Optional frequency filter (inclusive).
+    use_precomputed : bool
+        If True and entries contain 'berry', use it; else derive Ω from g_xy_imag.
+    convert_from_imQ : bool
+        When deriving Ω from g_xy_imag, use Ω = -2 * Im(Q_xy) if True; else Ω = Im(Q_xy).
+        (Sign choice does not affect std but matters for integrals.)
+    return_data : bool
+        If True, return (omegas_sorted, values_sorted) instead of just plotting.
+
+    Notes
+    -----
+    Expects:
+      entries[i] with keys: "omega", "trace", and either "berry" or "g_xy_imag"
+      meta with keys: "dkx", "dky" (only required for metric="trg-berry").
     """
-    entries, _ = load_qgt(folder_name)
-    filtered = filter_entries_by_omega(entries, omega_min, omega_max)
-
-    omegas = np.array([float(e["omega"]) for e in filtered], dtype=float)
-    berry_std = []
-    for e in filtered:
-        if use_precomputed and ("berry" in e):
-            berry = np.asarray(e["berry"])
-        else:
-            gim = np.asarray(e["g_xy_imag"])
-            berry = (-2.0 * gim) if convert_from_imQ else gim  # sign choice doesn't affect std
-        berry_std.append(np.nanstd(berry))
-    berry_std = np.array(berry_std, dtype=float)
-
-    order = np.argsort(omegas)
-    omegas, berry_std = omegas[order], berry_std[order]
-
-    plt.figure(figsize=(8, 5))
-    plt.plot(omegas, berry_std, marker='o', linestyle='-')
-    plt.xscale('log')
-    plt.xlabel("Drive Frequency ω")
-    plt.ylabel("Std. Dev of Berry Curvature over BZ")
-    plt.title("Fluctuation of Berry Curvature vs ω")
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_integrated_trace_minus_berry(folder_name, omega_min=None, omega_max=None, *,
-                                      use_precomputed=False,  # set True if entries include 'berry'
-                                      convert_from_imQ=True   # if not precomputed: Ω = -2 * Im(Q_xy)
-):
-    """
-    Plot ∫_{BZ} [Tr(g) − Ω] d^2k versus ω. Uses dkx,dky from meta for the area element.
-    """
+    # Load & filter
     entries, meta = load_qgt(folder_name)
     filtered = filter_entries_by_omega(entries, omega_min, omega_max)
 
-    dkx = float(meta["dkx"]); dky = float(meta["dky"])
-    area_element = dkx * dky
+    if len(filtered) == 0:
+        raise ValueError("No entries after omega filtering; check omega_min/max or data.")
 
-    omega_vals = []
-    integrated_vals = []
+    # Helper to get Berry curvature array for an entry
+    def _get_berry(entry):
+        if use_precomputed and ("berry" in entry):
+            return np.asarray(entry["berry"])
+        gim = np.asarray(entry["g_xy_imag"])
+        return (-2.0 * gim) if convert_from_imQ else gim
 
-    for e in filtered:
-        omega_vals.append(float(e["omega"]))
-        trace = np.asarray(e["trace"])
-        if use_precomputed and ("berry" in e):
-            berry = np.asarray(e["berry"])
-        else:
-            gim = np.asarray(e["g_xy_imag"])
-            berry = (-2.0 * gim) if convert_from_imQ else gim
-        integrand = trace - berry
-        total = np.nansum(integrand) * area_element
-        integrated_vals.append(total)
+    omegas = np.array([float(e["omega"]) for e in filtered], dtype=float)
 
-    omega_vals = np.array(omega_vals, dtype=float)
-    integrated_vals = np.array(integrated_vals, dtype=float)
+    if metric == "trace":
+        # std over BZ of Tr(g)
+        vals = np.array([np.nanstd(np.asarray(e["trace"])) for e in filtered], dtype=float)
+        ylab = "Std. Dev over BZ"
+        title = "Fluctuation of QGT Trace vs ω"
+    elif metric == "berry":
+        # std over BZ of Ω
+        vals = np.array([np.nanstd(_get_berry(e)) for e in filtered], dtype=float)
+        ylab = "Std. Dev over BZ"
+        title = "Fluctuation of Berry Curvature vs ω"
+    elif metric == "trg-berry":
+        # integral over BZ of [Tr(g) − Ω]
+        try:
+            dkx = float(meta["dkx"]); dky = float(meta["dky"])
+        except Exception as exc:
+            raise KeyError("meta must contain 'dkx' and 'dky' to integrate over the BZ.") from exc
+        area_element = dkx * dky
+        vals = []
+        for e in filtered:
+            trace = np.asarray(e["trace"])
+            berry = _get_berry(e)
+            integrand = trace - berry
+            vals.append(np.nansum(integrand) * area_element)
+        vals = np.array(vals, dtype=float)
+        ylab = r"$\int_{\mathrm{BZ}} [\mathrm{Tr}(g) - \Omega]\, d^2k$"
+        title = r"Integrated $\mathrm{Tr}(g) - \Omega$ vs $\omega$"
+    else:
+        raise ValueError("metric must be one of: 'trace', 'berry', 'trg-berry'.")
 
-    order = np.argsort(omega_vals)
-    omega_vals, integrated_vals = omega_vals[order], integrated_vals[order]
+    # Sort by omega for a clean line
+    order = np.argsort(omegas)
+    omegas_sorted = omegas[order]
+    vals_sorted = vals[order]
 
+    # Plot
     plt.figure(figsize=(8, 5))
-    plt.plot(omega_vals, integrated_vals, marker='o', linestyle='-')
-
+    plt.plot(omegas_sorted, vals_sorted, marker='o', linestyle='-')
     plt.xscale('log')
     plt.xlabel("Drive Frequency ω")
-    plt.ylabel(r"$\int_{\mathrm{BZ}} \left[\mathrm{Tr}(g) - \Omega\right]\, d^2k$")
-    plt.title("Integrated Tr(g) − Ω vs ω")
+    plt.ylabel(ylab)
+    plt.title(title)
     plt.grid(True)
     plt.tight_layout()
     plt.show()
 
+    if return_data:
+        return omegas_sorted, vals_sorted
 
 def _wrap_periodic(vals, vmin, vmax):
     L = vmax - vmin
@@ -1110,6 +1318,7 @@ def load_qgt_entries(folder_name):
     kx = np.asarray(meta["kx"]); ky = np.asarray(meta["ky"])
     return list(entries), kx, ky
 
+#@ 2D joined plots
 def dynamic_2d_qgt_vs_omega_joined(
     left_folder_name,
     right_folder_name,
@@ -1227,8 +1436,7 @@ def dynamic_2d_qgt_vs_omega_joined(
     sl.on_changed(_update)
     plt.show()
 
-# TwoOrbitalUnspinful
-
+#! TwoOrbitalUnspinful
 # 1D QGT
 
 # 22.5 degrees
@@ -1246,8 +1454,8 @@ def dynamic_2d_qgt_vs_omega_joined(
 #! Conclusion: There is practically no shift in the QGT trace. 
 
 
-# Sqaure Lattice
-#& t5=0
+#! Sqaure Lattice
+#@ t5=0
 #~ 1D QGT
 #* Centered around at (0, -pi/2)
 #^ Along 45 degree line
@@ -1266,42 +1474,29 @@ def dynamic_2d_qgt_vs_omega_joined(
 #~ 2D QGT
 #! Left Polarization
 # dynamic_2d_trace_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t50_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
-
-#! Trace std
 # plot_trace_std_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t50_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
-
-#! Berry std
 # plot_berry_std_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t50_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
-
-#! Integrated trace - Berry
 # plot_integrated_trace_minus_berry("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t50_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
-
 
 #! Right Polarization
 # dynamic_2d_trace_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t50_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
 
-
-
-#& t5=(1-np.sqrt(2))/4
+#@ t5=(1-np.sqrt(2))/4
 #~ 1D QGT
 #* Centered around at (0, -pi/2)
 #^ Along 45 degree line
 #! Left Polarization
 # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle45.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega5.00e-02_5.00e_01_spacing_log_points100_1")
-
 #! Right Polarization
 # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle45.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega1.00e-01_5.00e_01_spacing_log_points100_1")
-
 #! x Linear Polarization
 # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationlinear_x_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle45.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega1.00e-01_5.00e_01_spacing_log_points100_1")
 
 #^ Along 0 degree line 
 #! Left Polarization
 # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle0.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega1.00e-01_5.00e_01_spacing_log_points100_1")
-
 #! Right Polarization
 # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle0.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega1.00e-01_5.00e_01_spacing_log_points100_1")
-
 #! x Linear Polarization
 # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationlinear_x_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle0.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega1.00e-01_5.00e_01_spacing_log_points100_1")
 
@@ -1329,93 +1524,22 @@ def dynamic_2d_qgt_vs_omega_joined(
 
 #@ Rhombohedral Graphene Hamiltonian
 
-#! V = 6
-#~ 1D QGT
-# dynamic_with_eigenvalues("RhombohedralGrapheneHamiltonian/A00.1_polarizationleft_magnus_order1_vF542.1_t1355.16_V6_n5_angle0.0_kxshift0.00_kyshift0.00_points100_kmax1.57_omega5.00e_00_5.00e_03_spacing_log_points30_1")
-
-# dynamic_with_eigenvalues("RhombohedralGrapheneHamiltonian/A00.1_polarizationright_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_angle0.0_kxshift0.00_kyshift0.00_points100_kmax1.57_omega5.00e_00_5.00e_03_spacing_log_points30_1")
-
-
-#~ 2D QGT
-#! Left Polarization
-
-# Analytic Magnus Expansion
-
-# dynamic_2d_trace_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusTrue_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-
-# Valid k 
-
-# dynamic_2d_trace_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-# dynamic_2d_berry_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-# plot_trace_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-# plot_berry_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-# plot_integrated_trace_minus_berry("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-
-# square k range
-# dynamic_2d_trace_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-# dynamic_2d_berry_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-# plot_trace_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-# plot_berry_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-# plot_integrated_trace_minus_berry("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-
-
-#! Right Polarization
-
-# Valid k 
-
-# dynamic_2d_trace_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-# dynamic_2d_berry_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-# plot_trace_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-# plot_berry_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")     
-# plot_integrated_trace_minus_berry("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-
-
-# Higher z limit
-
-# dynamic_2d_trace_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_2")
-# dynamic_2d_berry_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_2")
-# plot_trace_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_2")
-# plot_berry_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_2")
-# plot_integrated_trace_minus_berry("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_2")
-
-# square k range
-# dynamic_2d_trace_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points40_1")
-# dynamic_2d_berry_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points40_1")
-# plot_trace_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points40_1")
-# plot_berry_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points40_1")
-# plot_integrated_trace_minus_berry("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_vF542.1_t1355.16_V6_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points40_1")
-
-
 #! V = 30
+# dynamic_2d_trace_hprime_eigs_vs_omega("ChiralHamiltonianProjected/A0_0.10-V_30-analytic_magnus_True-magnus_order_1-n_5-omega_1000-polarization_right-t1_355.16-vF_542.10_kx-0.80_0.80_ky-0.80_0.80_mesh100_omega3.00e_01_5.00e_03_spacing_log_points14_band0_data_set1")
 
-dynamic_2d_trace_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V30_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points6_1")
-# dynamic_2d_berry_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V30_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points6_1")
+# dynamic_2d_trace_hprime_eigs_vs_omega("RhombohedralGrapheneHamiltonian/A0_0.10-V_60-analytic_magnus_False-magnus_order_1-n_4-omega_1000-polarization_right-t1_355.16-vF_542.10_kx-0.80_0.80_ky-0.80_0.80_mesh100_omega3.00e_01_5.00e_03_spacing_log_points32_band0_data_set1", omega_min=50)
 
-#! Same as above but with correct? band
+# dynamic_2d_trace_hprime_eigs_vs_omega("RhombohedralGrapheneHamiltonian/A0_0.10-V_60-analytic_magnus_False-magnus_order_1-n_3-omega_1000-polarization_right-t1_355.16-vF_542.10_kx-0.80_0.80_ky-0.80_0.80_mesh100_omega3.00e_01_5.00e_03_spacing_log_points32_band0_data_set1", omega_min=50)
 
-# dynamic_2d_trace_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V30_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points14_1")
-# dynamic_2d_berry_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_vF542.1_t1355.16_V30_n5_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points14_1")
-
-#! V = 0
-# & Left Polarization
-# dynamic_2d_trace_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_vF542.1_t1355.16_V0_n5_kx-0.66_0.66_ky-0.66_0.66_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-# dynamic_2d_berry_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_vF542.1_t1355.16_V0_n5_kx-0.66_0.66_ky-0.66_0.66_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-# plot_trace_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_vF542.1_t1355.16_V0_n5_kx-0.66_0.66_ky-0.66_0.66_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-# plot_berry_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_vF542.1_t1355.16_V0_n5_kx-0.66_0.66_ky-0.66_0.66_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-# plot_integrated_trace_minus_berry("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_vF542.1_t1355.16_V0_n5_kx-0.66_0.66_ky-0.66_0.66_mesh150_omega5.00e_00_5.00e_03_spacing_log_points32_1")
-
-# & Right Polarization
-# dynamic_2d_trace_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_vF542.1_t1355.16_V0_n5_kx-0.66_0.66_ky-0.66_0.66_mesh150_omega5.00e_00_5.00e_03_spacing_log_points40_1")
-# dynamic_2d_berry_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_vF542.1_t1355.16_V0_n5_kx-0.66_0.66_ky-0.66_0.66_mesh150_omega5.00e_00_5.00e_03_spacing_log_points40_1")
-# plot_trace_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_vF542.1_t1355.16_V0_n5_kx-0.66_0.66_ky-0.66_0.66_mesh150_omega5.00e_00_5.00e_03_spacing_log_points40_1")
-# plot_berry_std_vs_omega("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_vF542.1_t1355.16_V0_n5_kx-0.66_0.66_ky-0.66_0.66_mesh150_omega5.00e_00_5.00e_03_spacing_log_points40_1")
-# plot_integrated_trace_minus_berry("RhombohedralGrapheneHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_vF542.1_t1355.16_V0_n5_kx-0.66_0.66_ky-0.66_0.66_mesh150_omega5.00e_00_5.00e_03_spacing_log_points40_1")
+#@ Both numerical and analytical calcualtions
+# dynamic_2d_trace_hprime_eigs_vs_omega_dual("RhombohedralGrapheneHamiltonian/A0_0.10-V_30-analytic_magnus_False-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10_kx-0.80_0.80_ky-0.80_0.80_mesh100_omega2.50e_01_5.00e_03_spacing_log_points84_data_set1",
+#                                            "RhombohedralGrapheneHamiltonian/A0_0.10-V_30-analytic_magnus_True-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10_kx-0.80_0.80_ky-0.80_0.80_mesh100_omega2.50e_01_5.00e_03_spacing_log_points12_band0_data_set3")
 
 
-# Full Chiral Hamiltonian
+#! Full Chiral Hamiltonian
 #~ 1D QGT
-# dynamic_with_eigenvalues("ChiralHamiltonian/A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_angle0.0_kxshift0.00_kyshift0.00_points100_kmax1.57_omega5.00e_00_5.00e_03_spacing_log_points30_2", band_index1=4, band_index2=5)
-# dynamic_with_eigenvalues("ChiralHamiltonian/A0_0.10-V_30.00-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-polarization_right-t1_355.16-vF_542.10_angle0.0_kxshift0.00_kyshift0.00_points100_kmax1.57_omega5.00e_00_5.00e_03_spacing_log_points30_1", band_index1=4, band_index2=5)
+dynamic_with_eigenvalues("ChiralHamiltonian/A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_angle0.0_kxshift0.00_kyshift0.00_points100_kmax1.57_omega5.00e_00_5.00e_03_spacing_log_points30_2", bands=[0,1,2,3,4, 5,6,7,8,9])
+dynamic_with_eigenvalues("ChiralHamiltonian/A0_0.10-V_30.00-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-polarization_right-t1_355.16-vF_542.10_angle0.0_kxshift0.00_kyshift0.00_points100_kmax1.57_omega5.00e_00_5.00e_03_spacing_log_points30_1", bands=[4, 5])
 
 # dynamic_with_eigenvalues_single_param("ChiralHamiltonian/A0_0-V_20.00-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-polarization_left-t1_355.16-vF_542.10_angle0.0_kx0.00_ky0.00_kmax1.57_param_V_5_50_spacing_linear_N20_kN100_data_set1", band_index1=4, band_index2=5)
 
@@ -1431,19 +1555,10 @@ dynamic_2d_trace_vs_omega("RhombohedralGrapheneHamiltonian/omega6.28318530717958
 # )
 
 
-# & Trial run with coarse omega grid
-# dynamic_2d_trace_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points16_1")
-# dynamic_2d_berry_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points16_1")
-# plot_trace_std_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points16_1")
-# plot_berry_std_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points16_1")
-# plot_integrated_trace_minus_berry("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points16_1")
-
 # & Left Polarization
 # dynamic_2d_trace_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=33)
 # dynamic_2d_berry_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=33)
-# plot_trace_std_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=33)
-# plot_berry_std_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=33)
-# plot_integrated_trace_minus_berry("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=33)
+# plot_metric_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=33, metric="berry")
 
 # & Right Polarization
 # dynamic_2d_trace_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=50)
