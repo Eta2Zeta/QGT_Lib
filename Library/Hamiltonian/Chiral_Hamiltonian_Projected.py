@@ -16,8 +16,8 @@ class ChiralHamiltonianProjected(hamiltonian):
     Minimal chiral effective Hamiltonian for n-layer rhombohedral graphene in the chiral basis,
     projected onto low-energy subspace, with a displacement field included.
     """
-    def __init__(self, vF=542.1, t1=355.16, V=30.0, n=2, omega=2 * np.pi, A0=0):
-        super().__init__(dim=2, omega=omega, A0=A0)
+    def __init__(self, vF=542.1, t1=355.16, V=30.0, n=2, omega=2 * np.pi, A0=0, polarization='left'):
+        super().__init__(dim=2, omega=omega, A0=A0, polarization=polarization)
         self.vF = vF
         self.t1 = t1
         self.V = V
@@ -33,6 +33,13 @@ class ChiralHamiltonianProjected(hamiltonian):
     
     def theta(self, kx, ky):
         return np.arctan2(ky, kx)  # angle of k-vector
+
+# ... (omitted methods to avoid overly long replacement if not needed, but replace_file_content replaces chunks)
+# I should probably target specific chunks or include the methods in between if they are small, 
+# but here I am targeting __init__ which is at the top, and analytic_magnus is further down.
+# I will use separate calls or a multi_replace?
+# The tool description says "Use this tool ONLY when you are making a SINGLE CONTIGUOUS block of edits".
+# So I must use multi_replace.
 
 
     def N_k(self, k):
@@ -71,7 +78,7 @@ class ChiralHamiltonianProjected(hamiltonian):
         return self.V * (-0.5 * (n - 1) + num * inv_den)
 
 #@ Essentials 
-    def compute_static(self, kx, ky):
+    def compute_static(self, kx, ky, kz=0):
         k = np.sqrt(kx**2 + ky**2)
         k_plus = kx + 1j * ky
         k_minus = kx - 1j * ky
@@ -84,7 +91,7 @@ class ChiralHamiltonianProjected(hamiltonian):
             [off_diag, -V_k]
         ], dtype=complex)
         
-    def compute_static_vectorized(self, kx_arr, ky_arr):
+    def compute_static_vectorized(self, kx_arr, ky_arr, kz_arr=0):
         kx_arr = np.asarray(kx_arr, dtype=float)
         ky_arr = np.asarray(ky_arr, dtype=float)
         M = kx_arr.shape[0]
@@ -485,7 +492,7 @@ class ChiralHamiltonianProjected(hamiltonian):
 
         return dlnN_minus, dlnN_plus
 
-    def analytic_magnus_first_term(self, kx, ky, return_parts=False):
+    def analytic_magnus_first_term_direct(self, kx, ky, return_parts=False):
         """
         Correct first-order Magnus term for the circular A_+ drive:
 
@@ -531,6 +538,22 @@ class ChiralHamiltonianProjected(hamiltonian):
             return H_orb_orb, H_cross
         else:
             return H_orb_orb + H_cross
+
+    def analytic_magnus_first_term(self, kx, ky):
+        """
+        Projected first-order Floquet correction from full Hamiltonian projection:
+        H_F^(1), 2x2 = -((vF * A0)^2 / omega) * sigma_z
+        (Simple constant term, valid for A_+ helicity).
+        
+        If right polarization (A_- helicity), sign is reversed.
+        """
+        # Constant term independent of k
+        val = -((self.vF * self.A0) ** 2) / self.omega
+        
+        if self.polarization == 'right':
+            val = -val  # Flip sign for right polarization
+            
+        return val * sigma_z
 
 # @ Analytic Berry Curvature corrected with projection terms
     # Helper functions

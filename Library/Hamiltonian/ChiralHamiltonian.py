@@ -1,5 +1,5 @@
 import numpy as np
-from .Hamiltonian_v2 import hamiltonian
+from .Hamiltonian_v2 import hamiltonian, sigma_x, sigma_y, sigma_z
 
 
 
@@ -9,8 +9,8 @@ class ChiralHamiltonian(hamiltonian):
     Basis: (layer 0: A,B; layer 1: A,B; ...; layer n-1: A,B).
     """
     def __init__(self, n=2, a=1.0, vF=542.1, t1=355.16, V=0.0,
-                 valley='K', omega=2*np.pi, A0=0):
-        super().__init__(dim=2*n, omega=omega, A0=A0)
+                 valley='K', omega=2*np.pi, A0=0, **kwargs):
+        super().__init__(dim=2*n, omega=omega, A0=A0, **kwargs)
         self.n = int(n)
         self.vF = float(vF)
         self.a = a                      # Lattice constant
@@ -60,7 +60,7 @@ class ChiralHamiltonian(hamiltonian):
         # U = t1 σ^-
         return self.t1 * self._sigma_minus
 
-    def compute_static(self, kx, ky):
+    def compute_static(self, kx, ky, kz=0):
         """
         H(k) = h_n(k) + H_D
         h_n(k): block-tridiagonal chiral Hamiltonian

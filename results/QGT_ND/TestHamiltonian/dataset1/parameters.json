@@ -1,0 +1,24 @@
+{
+    "hamiltonian_name": "TestHamiltonian",
+    "scan_ranges": [
+        [
+            "V",
+            -10.0,
+            10.0
+        ]
+    ],
+    "scan_spacing": {
+        "V": {
+            "count": 10,
+            "scale": "linear"
+        }
+    },
+    "k_grid": {
+        "kx_min": -1.0,
+        "kx_max": 1.0,
+        "ky_min": -1.0,
+        "ky_max": 1.0,
+        "mesh": 50
+    },
+    "band_index": 1
+}

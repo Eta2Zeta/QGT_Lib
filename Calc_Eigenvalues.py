@@ -10,6 +10,8 @@ from Library.Hamiltonian_v1 import *
 from Library.Hamiltonian.Hamiltonian_v2 import * 
 from Library.Hamiltonian.Chiral_Hamiltonian_Projected import *
 from Library.Hamiltonian.Altermagnet_Hamiltonian import *
+from Library.Hamiltonian.RuO2Hamiltonian import *
+from Library.plotting_lib_3d import *
 from Library.eigenvalue_calc_lib import *
 from Library.Geometry.zones import ZoneDivider
 from Library.utilities import *
@@ -27,11 +29,14 @@ os.makedirs(temp_dir, exist_ok=True)
 # bands = (0,1)
 # hamiltonian = ChiralHamiltonian(n=5, V=30)
 # bands = (4,5)
-hamiltonian = AltermagnetHamiltonian(t1=1.0, t2=0.5, td=2, lamb=2, J=1.0, Nz=4)
-k_max = np.pi #This is for AltermagnetHamiltonian
-bands = (0,1)
+# hamiltonian = AltermagnetHamiltonian(t1=1.0, t2=0.5, td=2, lamb=2, J=1.0, Nz=4)
+# k_max = np.pi #This is for AltermagnetHamiltonian
+# bands = (0,1)
 # hamiltonian = HaldaneHamiltonian(psi = -np.pi/2, M=0)
 # hamiltonian = GrapheneHamiltonian(A0=0)
+hamiltonian = RuO2Hamiltonian()
+k_max = np.pi
+bands = (0,1)
 dim = hamiltonian.dim
 
 def calculation_2d(hamiltonian = hamiltonian, force_new=True):
@@ -194,5 +199,77 @@ def calculation_1d(hamiltonian=hamiltonian):
     plot_eigenvalues_line(k_line, eigenvalues, dim = None, bands_to_plot=(0,))
 
 
+def calculation_3d(hamiltonian=hamiltonian, force_new=True):
+    print("Performing 3D calculation...")
+    
+    # 3D Grid Parameters
+    mesh_size = 100
+    k_range = np.pi
+    
+    kx_vals = np.linspace(-k_range, k_range, mesh_size)
+    ky_vals = np.linspace(-k_range, k_range, mesh_size)
+    kz_vals = np.linspace(-k_range, k_range, mesh_size)
+    
+    # Setup results path
+    subfolder = f"{hamiltonian.name}_3D_mesh_{mesh_size}"
+    results_dir = os.path.join(os.getcwd(), "results", subfolder)
+    os.makedirs(results_dir, exist_ok=True)
+    
+    filename_eig = os.path.join(results_dir, "eigenvalues_3d.npy")
+    
+    # Check if calculation exists
+    if not force_new and os.path.exists(filename_eig):
+        print("Loading existing 3D results...")
+        eigenvalues_3d = np.load(filename_eig)
+    else:
+        # Use the new function from library
+        eigenvalues_3d, _ = compute_eigenvalues_3d(hamiltonian, kx_vals, ky_vals, kz_vals)
+        np.save(filename_eig, eigenvalues_3d)
+        print("Calculation complete and saved.")
+
+    # --- Plotting ---
+    print("Generating plots...")
+    
+    band_idx = 0
+    eig_band = eigenvalues_3d[:, :, :, band_idx] # [x, y, z]
+    
+    # 1. Stacked Slices
+    # Use the new helper function
+    # plot_3d_stacked_slices_from_volume(eigenvalues_3d, kx_vals, ky_vals, kz_vals, 
+    #                                    band_index=band_idx, num_slices=10, 
+    #                                    title=f"RuO2 Band {band_idx} Eigenvalues (10 Z-Slices)")
+
+    # print("Generating isosurface plot...")
+    # 2. Isosurface
+    min_e = np.min(eig_band)
+    max_e = np.max(eig_band)
+    avg_e = (min_e + max_e) / 2
+    
+    print(f"Band {band_idx} Energy Range: [{min_e:.3f}, {max_e:.3f}]")
+    
+    
+    plot_isosurface(eig_band, avg_e, kx_vals, ky_vals, kz_vals, band_index=band_idx, 
+                    title=f"RuO2 Band {band_idx} Isosurface (E={avg_e:.3f})", step_size=3)
+
+    print("Generating arbitrary slice plots...")
+    orientation = 'x'
+    # Define shifts: for xyz, max range is larger (sqrt(3)*pi), for others pi or sqrt(2)*pi
+    # Let's just pick a shift = 0 for central slice and one offset
+    
+    shift_val = np.pi/3
+    plot_arbitrary_slice(eigenvalues_3d, orientation, shift_val, kx_vals, ky_vals, kz_vals, 
+                            title=f"Slice {orientation} (shift=pi/3)")
+
+    print("Generating volumetric cloud plot...")
+    # 4. Volumetric Cloud
+    cloud_filename = os.path.join(results_dir, f"volumetric_cloud_band_{band_idx}.html")
+    plot_volumetric_cloud(eigenvalues_3d, kx_vals, ky_vals, kz_vals, band_index=band_idx, 
+                          opacity=0.1, surface_count=20, 
+                          title=f"RuO2 Band {band_idx} Cloud", filename=cloud_filename)
+
+
 # calculation_1d()
-calculation_2d(force_new=True)
+# calculation_2d(force_new=True)
+
+
+calculation_3d(hamiltonian, force_new=False)

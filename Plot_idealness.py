@@ -8,7 +8,10 @@ import Library.Hamiltonian.ChiralHamiltonian
 import sys
 sys.modules["Library.Hamiltonian_v2"] = Library.Hamiltonian.Hamiltonian_v2
 sys.modules["Library.Hamiltonian_v2.ChiralHamiltonian"] = Library.Hamiltonian.ChiralHamiltonian
-# ---------- small internal join helper ----------
+# Fix pickle loading error by patching the module directly
+# We need to assign the CLASS, not the module.
+Library.Hamiltonian.Hamiltonian_v2.ChiralHamiltonian = Library.Hamiltonian.ChiralHamiltonian.ChiralHamiltonian
+
 
 def _join_by_signed_inverse_omega(omegas_left, vals_left, omegas_right, vals_right,
                                   *, drop_overlap=True, tol=1e-9,
@@ -435,8 +438,102 @@ def prepare_joined_signed_invomega_data(
     Helper to load and mesh two datasets for signed 1/omega plotting.
     Returns: (x, y_values, Z, metadata_dict)
     """
-    # ----- load both bundles -----
+    
+    def _calc_field(bundle, result_dir):
+        if quantity.lower() == "chern":
+            # Load b-vectors and z_cutoff
+            import pickle
+            if os.path.isdir(result_dir):
+                mpath = os.path.join(result_dir, "meta.pkl")
+            else:
+                mpath = os.path.join(os.path.dirname(result_dir), "meta.pkl")
+            
+            b1, b2 = None, None
+            z_cutoff = 1e9 # default high if not found
+            
+            if os.path.exists(mpath):
+                with open(mpath, "rb") as f:
+                    meta_dict = pickle.load(f)
+                    H = meta_dict.get("Hamiltonian_Template")
+                    if H and hasattr(H, "b1") and hasattr(H, "b2"):
+                        b1, b2 = H.b1, H.b2
+                    if "z_cutoff" in meta_dict:
+                        z_cutoff = float(meta_dict["z_cutoff"])
+            
+            if b1 is None or b2 is None:
+                raise ValueError(f"Cannot calculate Chern for {result_dir}: missing b1/b2 in meta.pkl")
+            
+            # Load G_xy_imag
+            g_xy_i = np.asarray(bundle["g_xy_imag_grid"]) # (N0, N1, Ny, Nx)
+            kx_grid = np.asarray(bundle["kx"])
+            ky_grid = np.asarray(bundle["ky"])
+            
+            dkx = float(bundle["dkx"]) if "dkx" in bundle else abs(kx_grid[0,1]-kx_grid[0,0])
+            dky = float(bundle["dky"]) if "dky" in bundle else abs(ky_grid[1,0]-ky_grid[0,0])
+            
+            # Compute Chern for each parameter point
+            dims = g_xy_i.shape[:-2] # (N0, N1)
+            chern_grid = np.zeros(dims)
+            
+            # Saturation threshold
+            sat_thresh = z_cutoff * 0.999
+            
+            for idx in np.ndindex(dims):
+                 g_slice = g_xy_i[idx] 
+                 if np.max(np.abs(g_slice)) >= sat_thresh:
+                     chern_grid[idx] = np.nan
+                 else:
+                     ch = compute_chern_number(g_slice, dkx, dky, kx_grid, ky_grid, b1, b2)
+                     chern_grid[idx] = ch
+                 
+            return chern_grid # already reduced
+            
+        else:
+            # Standard fields (Trace, Berry, etc.) -> (N0, N1, Ny, Nx)
+            f_grid = _pick_field_grid(bundle, quantity, convert_berry_from_imQ)
+            return np.nanstd(f_grid, axis=(-2, -1))
+
+    # ----- load left bundle -----
     L = _load_bundle(left_result_dir)
+    names_L = [str(n) for n in L["names"]]
+    
+    # Handle single-sided (left only) case
+    if right_result_dir is None:
+        if len(names_L) != 2:
+            raise ValueError(f"Expected 2 parameters, got {len(names_L)}")
+        if "omega" not in names_L or y_param not in names_L:
+             raise KeyError("Bundle must have 'omega' and y_param")
+             
+        idxL = {n: i for i, n in enumerate(names_L)}
+        iωL, iyL = idxL["omega"], idxL[y_param]
+        
+        ωL = _axis_for(L, iωL, "omega")
+        yL = _axis_for(L, iyL, y_param)
+        y_values = yL
+        
+        stdL = _calc_field(L, left_result_dir)
+        
+        def _to_y_by_omega(std, iω, iy):
+            if (iω, iy) == (0, 1): return std.T
+            return std
+            
+        ZL = _to_y_by_omega(stdL, iωL, iyL)
+        
+        idxL_sort = np.argsort(ωL)
+        ωL_sorted = ωL[idxL_sort]
+        ZL_sorted = ZL[:, idxL_sort]
+        
+        x = -1.0 / ωL_sorted
+        Z = ZL_sorted
+        
+        metadata = {
+            "omega_left_sorted": ωL_sorted,
+            "omega_right_sorted": np.array([]),
+            "x_left": x,
+            "x_right": np.array([])
+        }
+        return x, y_values, Z, metadata
+
     R = _load_bundle(right_result_dir)
 
     # ----- basic checks -----
@@ -484,71 +581,7 @@ def prepare_joined_signed_invomega_data(
              raise ValueError("The non-ω parameter axis (y) differs between bundles; cannot join.")
     y_values = yL  # shared
 
-    # ----- pull chosen field and reduce with std over BZ -----
-    # ----- pull chosen field and reduce with std over BZ -----
-    # NEW: Handle Chern calculation on-the-fly or standard field pick
-    
-    def _calc_field(bundle, result_dir):
-        if quantity.lower() == "chern":
-            # Load b-vectors and z_cutoff
-            import pickle
-            if os.path.isdir(result_dir):
-                mpath = os.path.join(result_dir, "meta.pkl")
-            else:
-                mpath = os.path.join(os.path.dirname(result_dir), "meta.pkl")
-            
-            b1, b2 = None, None
-            z_cutoff = 1e9 # default high if not found
-            
-            if os.path.exists(mpath):
-                with open(mpath, "rb") as f:
-                    meta_dict = pickle.load(f)
-                    H = meta_dict.get("Hamiltonian_Template")
-                    if H and hasattr(H, "b1") and hasattr(H, "b2"):
-                        b1, b2 = H.b1, H.b2
-                    if "z_cutoff" in meta_dict:
-                        z_cutoff = float(meta_dict["z_cutoff"])
-            
-            if b1 is None or b2 is None:
-                raise ValueError(f"Cannot calculate Chern for {result_dir}: missing b1/b2 in meta.pkl")
-            
-            # Load G_xy_imag
-            g_xy_i = np.asarray(bundle["g_xy_imag_grid"]) # (N0, N1, Ny, Nx)
-            kx_grid = np.asarray(bundle["kx"])
-            ky_grid = np.asarray(bundle["ky"])
-            
-            dkx = float(bundle["dkx"]) if "dkx" in bundle else abs(kx_grid[0,1]-kx_grid[0,0])
-            dky = float(bundle["dky"]) if "dky" in bundle else abs(ky_grid[1,0]-ky_grid[0,0])
-            
-            # Compute Chern for each parameter point
-            dims = g_xy_i.shape[:-2] # (N0, N1)
-            chern_grid = np.zeros(dims)
-            
-            # Saturation threshold (slightly below cutoff to be safe)
-            sat_thresh = z_cutoff * 0.999
-            
-            # It might be slow to loop in python, but grid is typically small (32x48)
-            for idx in np.ndindex(dims):
-                 # idx is (i, j)
-                 g_slice = g_xy_i[idx] 
-                 
-                 # Check for saturation
-                 # Berry curvature Omega = -2 * g_xy_i
-                 # If |Omega| >= z_cutoff, or |g_xy_i| >= z_cutoff/2 (?)
-                 # The z_cutoff usually applies to the components directly in Calc code.
-                 # Let's check max abs val.
-                 if np.max(np.abs(g_slice)) >= sat_thresh:
-                     chern_grid[idx] = np.nan
-                 else:
-                     ch = compute_chern_number(g_slice, dkx, dky, kx_grid, ky_grid, b1, b2)
-                     chern_grid[idx] = ch
-                 
-            return chern_grid # already reduced
-            
-        else:
-            # Standard fields (Trace, Berry, etc.) -> (N0, N1, Ny, Nx)
-            f_grid = _pick_field_grid(bundle, quantity, convert_berry_from_imQ)
-            return np.nanstd(f_grid, axis=(-2, -1))
+
 
     stdL = _calc_field(L, left_result_dir)
     stdR = _calc_field(R, right_result_dir)
@@ -836,13 +869,13 @@ def plot_slices_qgt_std_param2d_signed_invomega_joined(
 full_Chiral_Hamiltonian_left_drive_dir = "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
 full_Chiral_Hamiltonian_right_drive_dir = "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
 
-# plot_qgt_std_param2d_signed_invomega_joined(
-#     left_result_dir  ="results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1",
-#     right_result_dir ="results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1",
-#     y_param="V",            # the shared second parameter
-#     quantity="trace",      # "trace" | "berry" | "trace_minus_berry"
-#     drop_overlap=True,      # typical when both include the same max ω
-# )
+plot_qgt_std_param2d_signed_invomega_joined(
+    left_result_dir  ="results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1",
+    right_result_dir ="results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1",
+    y_param="V",            # the shared second parameter
+    quantity="trace",      # "trace" | "berry" | "trace_minus_berry"
+    drop_overlap=True,      # typical when both include the same max ω
+)
 
 plot_qgt_std_param2d_signed_invomega_joined(
     left_result_dir  = full_Chiral_Hamiltonian_left_drive_dir,
@@ -859,6 +892,15 @@ plot_qgt_std_param2d_signed_invomega_joined(
     right_result_dir = full_Chiral_Hamiltonian_right_drive_dir,
     y_param="V",            # the shared second parameter
     quantity="trace_minus_berry",      # "trace" | "berry" | "trace_minus_berry"
+    drop_overlap=True,      # typical when both include the same max ω
+    show=True
+)
+
+plot_qgt_std_param2d_signed_invomega_joined(
+    left_result_dir  = full_Chiral_Hamiltonian_left_drive_dir,
+    right_result_dir = full_Chiral_Hamiltonian_right_drive_dir,
+    y_param="V",            # the shared second parameter
+    quantity="chern",      # "trace" | "berry" | "trace_minus_berry" | "chern"
     drop_overlap=True,      # typical when both include the same max ω
     show=True
 )
@@ -885,14 +927,7 @@ left_drive_strong = "results/QGT_ND/RhombohedralGrapheneHamiltonian/A0_0.10-V_30
 #     show=False
 # )
 
-plot_qgt_std_param2d_signed_invomega_joined(
-    left_result_dir  = full_Chiral_Hamiltonian_left_drive_dir,
-    right_result_dir = full_Chiral_Hamiltonian_right_drive_dir,
-    y_param="V",            # the shared second parameter
-    quantity="chern",      # "trace" | "berry" | "trace_minus_berry" | "chern"
-    drop_overlap=True,      # typical when both include the same max ω
-    show=True
-)
+
 # plot_qgt_std_param2d_signed_invomega_joined(
 #     left_result_dir   = left_drive_strong,
 #     right_result_dir = right_drive_strong,
@@ -912,4 +947,15 @@ plot_qgt_std_param2d_signed_invomega_joined(
 #     quantity="berry",
 #     export_slice_path="results/1d_idealness_resutls/slice_data_export.npz",
 #     show=False
+# )
+
+large_k_left = "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_20.000_5000.000_-SPACING_V_3_linear-omega_3_linear_-kx-2.50_2.50__ky-2.50_2.50__mesh300_data_set1"
+
+# plot_qgt_std_param2d_signed_invomega_joined(
+#     left_result_dir  = large_k_left,
+#     right_result_dir = None,
+#     y_param="V",            # the shared second parameter
+#     quantity="chern",      # "trace" | "berry" | "trace_minus_berry" | "chern"
+#     drop_overlap=True,      # typical when both include the same max ω
+#     show=True
 # )

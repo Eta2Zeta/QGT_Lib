@@ -11,11 +11,13 @@ from functools import partial
 
 # from Library import * 
 from Library.Hamiltonian_v1 import *
-from Hamiltonian.Hamiltonian_v2 import * 
+from Library.Hamiltonian.Hamiltonian_v2 import * 
+from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian 
 from Library.eigenvalue_calc_lib import *
 from Library.QGT_lib import *
 from Library.topology import *
-from Library.utilities import *
+from Library.utilities import setup_qgt_nd_results_dir_json, setup_qgt_nd_results_dir
+
 from Library.plotting_lib import *
 
 def build_parameter_points(
@@ -261,8 +263,9 @@ def compute_qgt_nd_parallel(hamiltonian_template,
 
 
     # directory
-    root, used = setup_qgt_nd_results_dir(H_template, param_ranges, parameter_spacing,
+    root, used = setup_qgt_nd_results_dir_json(H_template, param_ranges, parameter_spacing,
                                           kx_range, ky_range, mesh_spacing,
+                                          band_index=band,
                                           force_new=force_new_dir)
     bundle_path = os.path.join(root, "qgt_nd_bundle.npz")
     meta_path   = os.path.join(root, "meta.pkl")
@@ -352,7 +355,7 @@ def compute_qgt_nd_parallel(hamiltonian_template,
 
 # --- Build Hamiltonian template ---
 # H_template = ChiralHamiltonian(A0=0.1, n=5)
-H_template = RhombohedralGrapheneHamiltonian(n=5, V=30, A0=0.1)
+H_template = ChiralHamiltonian(n=5, V=30, A0=0.1)
 H_template.polarization = "left"
 
 # ensure b-vectors exist
@@ -368,15 +371,15 @@ param_ranges = {
 }
 
 parameter_spacing = {
-    "omega": {"n": 48, "scale": "linear", "inverse": True},
-    "V":     {"n": 32, "scale": "linear"}
+    "omega": {"n": 2, "scale": "linear", "inverse": True},
+    "V":     {"n": 2, "scale": "linear"}
 }
 
 # --- k-grid ---
-k = 0.9
+k = 2.5
 kx_range = (-k, k)
 ky_range = (-k, k)
-mesh_spacing = 100   # bump up for production
+mesh_spacing = 20   # bump up for production
 
 def main():
     root, bundle_path = compute_qgt_nd_parallel(
@@ -386,7 +389,7 @@ def main():
         kx_range=kx_range,
         ky_range=ky_range,
         mesh_spacing=mesh_spacing,
-        band=1,            # which band to evaluate
+        band=4,            # which band to evaluate
         z_cutoff=1e2,
         processes=None,    # auto-choose CPU count
         force_new_dir=False,

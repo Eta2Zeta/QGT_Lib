@@ -1,0 +1,46 @@
+{
+    "hamiltonian_name": "ChiralHamiltonian",
+    "parameters": {
+        "A0": 0.1,
+        "V": 30.0,
+        "a": 1.0,
+        "analytic_magnus": false,
+        "eta": 1.0,
+        "magnus_order": 1,
+        "n": 5,
+        "omega": 6.283185307179586,
+        "polarization": "left",
+        "t1": 355.16,
+        "vF": 542.1
+    },
+    "scan_ranges": [
+        [
+            "V",
+            -10.0,
+            50.0
+        ],
+        [
+            "omega",
+            20.0,
+            5000.0
+        ]
+    ],
+    "scan_spacing": {
+        "V": {
+            "count": 2,
+            "scale": "linear"
+        },
+        "omega": {
+            "count": 2,
+            "scale": "linear"
+        }
+    },
+    "k_grid": {
+        "kx_min": -2.5,
+        "kx_max": 2.5,
+        "ky_min": -2.5,
+        "ky_max": 2.5,
+        "mesh": 20
+    },
+    "band_index": 4
+}

@@ -54,7 +54,7 @@ delta_k = min(dkx, dky)
 
 def calculate_2d():
     # Define method name for directory naming ("analytic", "numerical", etc.)
-    method_name = "array_analytic"
+    method_name = "numerical"
     file_paths, use_existing, results_subdir = setup_QGT_results_directory(
         Hamiltonian_Obj, kx_range, ky_range, mesh_spacing, 
         force_new=True, method_name=method_name
@@ -189,7 +189,106 @@ def calculate_2d():
     )
 
 
+def calculate_3d(hamiltonian=None):
+    if hamiltonian is None:
+        hamiltonian = Hamiltonian_Obj # Fallback to loaded object
+        
+    print(f"Starting 3D QGT Calculation for {hamiltonian.name}...")
+    
+    # Define 3D grid parameters (matching RuO2_Hamiltonian logic typically)
+    # Using specific range for 3D
+    mesh_size = 20 # Reduced for 3D speed, or reuse meta_info["mesh_spacing"] if appropriate
+    k_range = np.pi 
+    
+    kx_vals = np.linspace(-k_range, k_range, mesh_size)
+    ky_vals = np.linspace(-k_range, k_range, mesh_size)
+    kz_vals = np.linspace(-k_range, k_range, mesh_size)
+    
+    dkx = kx_vals[1] - kx_vals[0]
+    # dky = ky_vals[1] - ky_vals[0]
+    # dkz = kz_vals[1] - kz_vals[0]
+    delta_k = dkx # Uniform assumption
+
+    # Setup directories using the new utility function
+    file_paths, use_existing, results_dir = setup_3D_QGT_results_directory(
+        hamiltonian, 
+        [kx_vals[0], kx_vals[-1]], 
+        [ky_vals[0], ky_vals[-1]], 
+        [kz_vals[0], kz_vals[-1]], 
+        mesh_size, 
+        force_new=True
+    )
+    
+    # 1. Load or Compute Eigenvalues/Eigenvectors
+    # We still use temp_dir for intermediate heavy files if needed, or save to results_dir
+    # Let's save to results_dir to be self-contained
+    eig_file = os.path.join(results_dir, "eigenvalues_3d.npy")
+    vec_file = os.path.join(results_dir, "eigenvectors_3d.npy")
+    
+    if os.path.exists(eig_file) and os.path.exists(vec_file) and use_existing:
+        print("Loading 3D eigenvalues and eigenvectors...")
+        eigenvalues_3d = np.load(eig_file)
+        eigenvectors_3d = np.load(vec_file)
+    else:
+        print("Computing 3D eigenvalues and eigenvectors...")
+        eigenvalues_3d, eigenvectors_3d = compute_eigenvalues_3d(hamiltonian, kx_vals, ky_vals, kz_vals)
+        np.save(eig_file, eigenvalues_3d)
+        np.save(vec_file, eigenvectors_3d)
+
+    # 2. Compute QGT
+    if use_existing and all(os.path.exists(p) for p in file_paths.values()):
+         print("Loading existing QGT results...")
+         g_xx_arr = np.load(file_paths["g_xx"])
+         g_yy_arr = np.load(file_paths["g_yy"])
+         g_zz_arr = np.load(file_paths["g_zz"])
+         g_xy_real_arr = np.load(file_paths["g_xy_real"])
+         g_xy_imag_arr = np.load(file_paths["g_xy_imag"])
+         g_xz_real_arr = np.load(file_paths["g_xz_real"])
+         g_xz_imag_arr = np.load(file_paths["g_xz_imag"])
+         g_yz_real_arr = np.load(file_paths["g_yz_real"])
+         g_yz_imag_arr = np.load(file_paths["g_yz_imag"])
+    else:
+        # We use QGT_grid_3d_num
+        print("Computing 3D QGT Grid...")
+        results = QGT_grid_3d_num(
+            kx_vals, ky_vals, kz_vals, eigenvalues_3d, eigenvectors_3d, 
+            quantum_geometric_tensor_3d_num_eigenvector_ordered, # Use ordered version
+            hamiltonian, delta_k=delta_k, band_index=band, z_cutoff=z_cutoff
+        )
+        
+        (g_xx_arr, g_yy_arr, g_zz_arr, 
+         g_xy_real_arr, g_xy_imag_arr, 
+         g_xz_real_arr, g_xz_imag_arr, 
+         g_yz_real_arr, g_yz_imag_arr) = results
+     
+        # 3. Save Results
+        print("Saving 3D QGT Results...")
+        save_dict = {
+            "g_xx": g_xx_arr, "g_yy": g_yy_arr, "g_zz": g_zz_arr,
+            "g_xy_real": g_xy_real_arr, "g_xy_imag": g_xy_imag_arr,
+            "g_xz_real": g_xz_real_arr, "g_xz_imag": g_xz_imag_arr,
+            "g_yz_real": g_yz_real_arr, "g_yz_imag": g_yz_imag_arr
+        }
+        
+        for key, val in save_dict.items():
+            np.save(file_paths[key], val)
+            
+        # Save QGT metadata
+        qgt_meta_info = {
+            "kx_vals": kx_vals,
+            "ky_vals": ky_vals,
+            "kz_vals": kz_vals,
+            "mesh_spacing": mesh_size,
+            "Hamiltonian_Obj": hamiltonian  
+        }
+        with open(file_paths["meta_info"], "wb") as meta_file:
+            pickle.dump(qgt_meta_info, meta_file)
+        
+    print(f"3D QGT calculation complete. Results saved to {results_dir}")
+
 
 if __name__ == '__main__':
 
-    calculate_2d()
+    # calculate_2d()
+    run_hamiltonian = RuO2Hamiltonian()
+    calculate_3d(hamiltonian=run_hamiltonian)

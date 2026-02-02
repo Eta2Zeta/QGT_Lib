@@ -177,6 +177,54 @@ def setup_QGT_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, f
     return file_paths, used, dir_path
 
 
+def setup_3D_QGT_results_directory(hamiltonian, kx_range, ky_range, kz_range, mesh_spacing, force_new=False):
+    Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
+    # New base root as requested: results/3D_QGT_results
+    base_root = os.path.join(os.getcwd(), "results", "3D_QGT_results", Hamiltonian_name)
+
+    base_name = re.sub(
+        r'[^\w.-]', '_',
+        f"3D_{hamiltonian.get_filename(parameter='2D')}_" # Use 2D param string as base or implement 3D if available
+        f"kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_"
+        f"ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_"
+        f"kz{kz_range[0]:.2f}_{kz_range[1]:.2f}_"
+        f"mesh{mesh_spacing}"
+    )
+
+    required_files = [
+        "g_xx.npy", "g_yy.npy", "g_zz.npy",
+        "g_xy_real.npy", "g_xy_imag.npy",
+        "g_xz_real.npy", "g_xz_imag.npy",
+        "g_yz_real.npy", "g_yz_imag.npy",
+        "meta_info.pkl"
+    ]
+
+    dir_path, used = pick_or_create_result_dir(
+        base_root, base_name,
+        required_files=required_files,
+        validator=None,
+        force_new=force_new,
+        suffix_template="_data_set{n}",
+        start_index=1
+    )
+
+    file_paths = {k: os.path.join(dir_path, fname) for k, fname in {
+        "g_xx": "g_xx.npy",
+        "g_yy": "g_yy.npy",
+        "g_zz": "g_zz.npy",
+        "g_xy_real": "g_xy_real.npy",
+        "g_xy_imag": "g_xy_imag.npy",
+        "g_xz_real": "g_xz_real.npy",
+        "g_xz_imag": "g_xz_imag.npy",
+        "g_yz_real": "g_yz_real.npy",
+        "g_yz_imag": "g_yz_imag.npy",
+        "meta_info": "meta_info.pkl",
+    }.items()}
+
+    print(("Using existing 3D QGT results directory: " if used else "Created new 3D QGT results directory: ") + dir_path)
+    return file_paths, used, dir_path
+
+
 
 def setup_QGT_results_directory_1D(
     hamiltonian,
@@ -597,3 +645,188 @@ def setup_qgt_nd_results_dir(
 
     print(("Using existing QGT N-D sweep directory: " if used else "Created QGT N-D sweep directory: ") + dir_path)
     return dir_path, used
+
+
+# =============================================================================
+# NEW: Simplified Dataset Storage with JSON Metadata
+# =============================================================================
+
+import json
+
+def pick_or_create_result_dir_simple(
+    base_root: str,
+    base_name: str = "dataset",
+    required_params: Optional[dict] = None,
+    force_new: bool = False,
+) -> Tuple[str, bool]:
+    """
+    Creates or picks a directory named '{base_name}1', '{base_name}2', ...
+    
+    Logic:
+    1. Scan for directories matching pattern f"{base_name}N".
+    2. Ideally sorted by N.
+    3. If not force_new and required_params provided:
+       - Open 'parameters.json' in each candidate.
+       - If param dict matches required_params, REUSE that dir.
+       
+    4. If no match found (or force_new), find first available N.
+       - Create default empty dir.
+       - Caller is responsible for writing parameters.json immediately after.
+       
+    Returns: (dir_path, used_existing)
+    """
+    os.makedirs(base_root, exist_ok=True)
+    
+    # 1. Gather candidates
+    candidates = []
+    if os.path.exists(base_root):
+        for d in os.listdir(base_root):
+            if d.startswith(base_name):
+                try:
+                    # Extract number suffix
+                    suffix = d[len(base_name):]
+                    if suffix.isdigit():
+                        n = int(suffix)
+                        candidates.append((n, d))
+                except ValueError:
+                    pass
+    
+    # Sort by number
+    candidates.sort(key=lambda x: x[0])
+    
+    # 2. Check for reuse
+    if not force_new and required_params is not None:
+        for n, d_name in candidates:
+            d_path = os.path.join(base_root, d_name)
+            json_path = os.path.join(d_path, "parameters.json")
+            
+            if os.path.exists(json_path):
+                try:
+                    with open(json_path, 'r') as f:
+                        existing_params = json.load(f)
+                    
+                    # Compare dictionaries (subset match logic)
+                    match = True
+                    for k, v in required_params.items():
+                        if k not in existing_params:
+                            match = False
+                            break
+                        # Simple equality check
+                        if existing_params[k] != v:
+                            match = False
+                            break
+                    
+                    if match:
+                        return d_path, True
+                        
+                except Exception as e:
+                    print(f"Warning: Failed to read {json_path}: {e}")
+                    continue
+
+    # 3. Create new
+    if candidates:
+        last_n = candidates[-1][0]
+        new_n = last_n + 1
+    else:
+        new_n = 1
+        
+    new_dir_name = f"{base_name}{new_n}"
+    new_dir_path = os.path.join(base_root, new_dir_name)
+    os.makedirs(new_dir_path, exist_ok=True)
+    
+    # Write parameters.json immediately
+    if required_params:
+        with open(os.path.join(new_dir_path, "parameters.json"), 'w') as f:
+            json.dump(required_params, f, indent=4, default=str)
+            
+    return new_dir_path, False
+
+def setup_qgt_nd_results_dir_json(
+    hamiltonian_template,
+    param_ranges,
+    parameter_spacing,
+    kx_range,
+    ky_range,
+    mesh_spacing,
+    band_index=None,
+    decimals=3,
+    force_new=False
+):
+    """
+    New version of setup that uses 'datasetN' folders and 'parameters.json'.
+    Includes band_index in metadata check!
+    """
+    Hname = getattr(hamiltonian_template, "name", "Hamiltonian")
+    
+    def _sanitize(name: str) -> str:
+        return re.sub(r"[^\w.\-]", "_", str(name))
+        
+    base_root = os.path.join(os.getcwd(), "results", "QGT_ND", _sanitize(Hname))
+    
+    # 1. Normalize ranges
+    def _norm_ranges_list(ranges):
+         if isinstance(ranges, dict):
+            items = sorted(ranges.items(), key=lambda kv: kv[0])
+            return [[k, float(v[0]), float(v[1])] for k, v in items]
+         items = sorted([[n, float(a), float(b)] for (n, a, b) in ranges], key=lambda x: x[0])
+         return items
+    
+    range_list = _norm_ranges_list(param_ranges)
+    
+    # 2. Normalize spacing
+    def _parse_spacing(spec):
+        if isinstance(spec, int): return int(spec), "linear"
+        if isinstance(spec, dict):
+            c = int(spec.get("count", spec.get("n", spec.get("points", 1))))
+            s = str(spec.get("scale", spec.get("spacing", "linear"))).lower().strip()
+            return c, s
+        return 1, "linear"
+
+    spacing_dict = {}
+    if isinstance(parameter_spacing, int):
+         spacing_dict = {n: {"count": int(parameter_spacing), "scale": "linear"} for (n, _, _) in range_list}
+    elif isinstance(parameter_spacing, dict):
+        for (n, _, _) in range_list:
+             spec = parameter_spacing.get(n, 1)
+             cnt, scl = _parse_spacing(spec)
+             spacing_dict[n] = {"count": cnt, "scale": scl}
+            
+
+    # Collect all public, simple attributes AND properties
+    params = {}
+    for k in dir(hamiltonian_template):
+        if k.startswith('_') or k in ('name', 'dim', 'get_filename'):
+            continue
+        try:
+            val = getattr(hamiltonian_template, k)
+            if not callable(val) and isinstance(val, (int, float, str, bool)):
+                params[k] = val
+        except Exception:
+            pass
+
+    metadata = {
+        "hamiltonian_name": Hname,
+        "parameters": params,
+        "scan_ranges": range_list, 
+        "scan_spacing": spacing_dict,
+        "k_grid": {
+            "kx_min": float(kx_range[0]), "kx_max": float(kx_range[1]),
+            "ky_min": float(ky_range[0]), "ky_max": float(ky_range[1]),
+            "mesh": int(mesh_spacing)
+        }
+    }
+    
+    if band_index is not None:
+        metadata["band_index"] = int(band_index)
+        
+    # Attempt to find or create
+    dir_path, used = pick_or_create_result_dir_simple(
+        base_root=base_root,
+        base_name="dataset",
+        required_params=metadata,
+        force_new=force_new
+    )
+    
+    print(("Using existing (JSON) QGT directory: " if used else "Created new (JSON) QGT directory: ") + dir_path)
+    return dir_path, used
+

@@ -1,7 +1,7 @@
 import numpy as np
 from .Hamiltonian.Hamiltonian_v2 import hamiltonian
 
-def get_Hamiltonian(Hamiltonian, kx, ky, get_first_magnus=False, get_second_magnus=False):
+def get_Hamiltonian(Hamiltonian, kx, ky, kz=0, get_first_magnus=False, get_second_magnus=False):
     """
     Get the Hamiltonian matrix for a given kx, ky. Optionally return the first 
     and/or second Magnus terms along with the effective Hamiltonian.
@@ -9,6 +9,7 @@ def get_Hamiltonian(Hamiltonian, kx, ky, get_first_magnus=False, get_second_magn
     Parameters:
     - Hamiltonian: The Hamiltonian object, function, or array.
     - kx, ky: The k-space coordinates.
+    - kz: The z component of the momentum (default 0).
     - get_first_magnus (bool): If True, return the first Magnus term.
     - get_second_magnus (bool): If True, return the second Magnus term.
 
@@ -17,7 +18,20 @@ def get_Hamiltonian(Hamiltonian, kx, ky, get_first_magnus=False, get_second_magn
     - If additional terms are requested, returns a tuple with the effective Hamiltonian and the requested Magnus terms.
     """
     if isinstance(Hamiltonian, hamiltonian):  # Check if it's a Hamiltonian class object
-        H_k, H_prime = Hamiltonian.effective_hamiltonian(kx, ky)
+        # Note: Hamiltonian_v2 currently only supports kx, ky in effective_hamiltonian likely.
+        # But if we are doing 3D, the underlying hamiltonian might accept it? 
+        # For now, we assume effective_hamiltonian MIGHT support it or we ignore it if it's strictly 2D class.
+        # However, the user is focusing on 3D, so likely the Hamiltonian passed is a function or supports it.
+        # Let's try to pass kz if the method signature accepts it, or just pass it if it's a callable.
+        
+        # Actually, let's look at how Calc_Eigenvalues uses it. It passes 'hamiltonian' which is often a function from RuO2_Hamiltonian.
+        # If it's the class 'hamiltonian' from Hamiltonian_v2, it might not support kz yet.
+        # But for 'callable(Hamiltonian)', we should definitely pass kz.
+        
+        try:
+            H_k, H_prime = Hamiltonian.effective_hamiltonian(kx, ky, kz)
+        except TypeError:
+             H_k, H_prime = Hamiltonian.effective_hamiltonian(kx, ky) # Fallback to 2D
         
         # Initialize a list for additional results
         results = [H_k]
@@ -35,7 +49,10 @@ def get_Hamiltonian(Hamiltonian, kx, ky, get_first_magnus=False, get_second_magn
         return tuple(results) if len(results) > 1 else (H_k, H_prime)
 
     elif callable(Hamiltonian):  # If it's a callable function
-        H_k = Hamiltonian(kx, ky)
+        try:
+            H_k = Hamiltonian(kx, ky, kz)
+        except TypeError:
+            H_k = Hamiltonian(kx, ky)
         return H_k
 
     elif isinstance(Hamiltonian, np.ndarray):  # If it's a static numpy array
