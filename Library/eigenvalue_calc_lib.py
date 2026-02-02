@@ -205,7 +205,7 @@ def eigenvalues_and_vectors_eigenvector_ordering(Hamiltonian, kx, ky, eigenvecto
     return eigenvalues, eigenvectors
 
 def eigenvalues_and_vectors_eigenvalue_ordering(
-    Hamiltonian, kx, ky, eigenvector: 'Eigenvectors' = None, band_index=None, calculate_perturbation=False
+    Hamiltonian, kx, ky, kz=0, eigenvector: 'Eigenvectors' = None, band_index=None, calculate_perturbation=False
     ):
     """
     Calculate eigenvalues and eigenvectors, with optional reordering based on the zone number.
@@ -215,6 +215,7 @@ def eigenvalues_and_vectors_eigenvalue_ordering(
     - Hamiltonian: The Hamiltonian object.
     - kx: A number representing the kx value.
     - ky: A number representing the ky value.
+    - kz: A number representing the kz value (default 0).
     - eigenvector: An optional Eigenvector object for phase correction.
     - band_index: Index of the band to compute perturbation strength.
 
@@ -224,13 +225,13 @@ def eigenvalues_and_vectors_eigenvalue_ordering(
     - max_perturbation: Maximum perturbation strength for the given band (or None if band_index is None).
     """
 
-    H_k, H_prime = get_Hamiltonian(Hamiltonian, kx, ky)
+    H_k, H_prime = get_Hamiltonian(Hamiltonian, kx, ky, kz=kz)
 
     # Calculate eigenvalues and eigenvectors
     eigenvalues, eigenvectors = get_eigenvalues_and_eigenvectors(H_k)
 
-    # Sort the eigenvalues and eigenvectors in descending order
-    idx = np.argsort(eigenvalues)[::-1]
+    # Sort the eigenvalues and eigenvectors in ascending order
+    idx = np.argsort(eigenvalues)
     eigenvalues = eigenvalues[idx]
     eigenvectors = eigenvectors[idx, :]
     
@@ -577,7 +578,77 @@ def spiral_eigenvalues_eigenfunctions(
 
 # * Miscellaenous 
 
-def capping_eigenvalues(eigenvalues, z_limit):
-    eigenvalues[eigenvalues > z_limit] = z_limit
     eigenvalues[eigenvalues < -z_limit] = -z_limit
     return eigenvalues
+
+def compute_eigenvalues_3d(hamiltonian, kx_vals, ky_vals, kz_vals):
+    """
+    Compute 3D eigenvalues and eigenvectors on a grid defined by kx_vals, ky_vals, kz_vals.
+    Uses vectorized computation slice-by-slice along kz.
+    
+    Parameters:
+    - hamiltonian: The Hamiltonian object (must support compute_static_vectorized).
+    - kx_vals, ky_vals, kz_vals: 1D arrays defining the grid.
+    
+    Returns:
+    - eigenvalues_3d: 4D array [nkx, nky, nkz, dim]
+    - eigenvectors_3d: 5D array [nkx, nky, nkz, dim, dim] (last dim is vector component, 2nd to last is band)
+    """
+    mesh_size_x = len(kx_vals)
+    mesh_size_y = len(ky_vals)
+    mesh_size_z = len(kz_vals)
+    
+    print("Computing 3D eigenvalues and eigenvectors (vectorized batching)...")
+    # Initialize full 3D array
+    # Shape: (nx, ny, nz, dim)    
+    try:
+        dim = hamiltonian.dim
+    except AttributeError:
+        # Compute one point to get dim
+        dim = hamiltonian(0,0,0).shape[0]
+
+    eigenvalues_3d = np.zeros((mesh_size_x, mesh_size_y, mesh_size_z, dim))
+    eigenvectors_3d = np.zeros((mesh_size_x, mesh_size_y, mesh_size_z, dim, dim), dtype=complex)
+    
+    # Iterate over kz to save memory and process slice by slice
+    # Use indexing='ij' to match (nx, ny) shape of arrays
+    kx_grid_2d, ky_grid_2d = np.meshgrid(kx_vals, ky_vals, indexing='ij') 
+    kx_flat = kx_grid_2d.flatten()
+    ky_flat = ky_grid_2d.flatten()
+    
+    for i, kz in enumerate(kz_vals):
+        # Compute for this z-slice
+        kz_flat = np.full_like(kx_flat, kz)
+        
+        # Compute vectorized
+        if hasattr(hamiltonian, 'compute_static_vectorized'):
+            H_slice = hamiltonian.compute_static_vectorized(kx_flat, ky_flat, kz_flat) # (N*N, dim, dim)
+        else:
+             # Fallback to loop if needed, but here we assume vectorized for speed as per previous logic
+             # Or implement fallback
+            H_slice = np.zeros((len(kx_flat), dim, dim), dtype=complex)
+            for idx in range(len(kx_flat)):
+                H_slice[idx] = hamiltonian(kx_flat[idx], ky_flat[idx], kz)
+
+        
+        # Diagonalize
+        # eigh for eigenvectors
+        evals, evecs = np.linalg.eigh(H_slice) # (N*N, dim), (N*N, dim, dim)
+        
+        # Reshape back to 2D slice
+        eigenvalues_3d[:, :, i, :] = evals.reshape(mesh_size_x, mesh_size_y, dim)
+        
+        # Reshape vectors
+        # evecs is [pixel, component, band]
+        # We want [x, y, band, component] (or [x, y, dimension_index(component), band_index])
+        # "rows are vectors" -> band index is first?
+        # In this lib, it seems "rows are vectors" usually means v[band, component].
+        # numpy returns v[component, band].
+        # So we transpose the last two dimensions.
+        evecs_reshaped = evecs.reshape(mesh_size_x, mesh_size_y, dim, dim) # [x, y, component, band]
+        eigenvectors_3d[:, :, i, :, :] = np.swapaxes(evecs_reshaped, -1, -2) # [x, y, band, component]
+        
+        if i % 10 == 0:
+            print(f"Processed slice {i}/{mesh_size_z}")
+            
+    return eigenvalues_3d, eigenvectors_3d

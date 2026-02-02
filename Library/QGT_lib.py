@@ -103,81 +103,120 @@ def quantum_geometric_tensor_term2(psi, kx, ky, delta_k):
 
 # & Calculation with numerical eigenfunctions
 # Numerical derivative w.r.t. kx
-def dpsi_dx_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index):
+# Numerical derivative w.r.t. kx
+def dpsi_dx_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=0):
     eigenvector_plus = Eigenvectors(len(eigenfunction))
     eigenvector_minus = Eigenvectors(len(eigenfunction))
-    eigenvector_plus.set_eigenvectors_eigenvalue_preordered(eigenfunction, eigenvalue, kx, ky)
-    eigenvector_minus.set_eigenvectors_eigenvalue_preordered(eigenfunction, eigenvalue, kx, ky)
+    eigenvector_plus.set_eigenvectors_eigenvalue_preordered(eigenfunction, eigenvalue, kx, ky, kz=kz)
+    eigenvector_minus.set_eigenvectors_eigenvalue_preordered(eigenfunction, eigenvalue, kx, ky, kz=kz)
 
     # Calculate for kx + delta_k
-    eigenvalues_plus, psi_plus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx + delta_k, ky)
-    psi_plus_ordered = eigenvector_plus.set_eigenvectors_eigenvalue_preordered(psi_plus, eigenvalues_plus, kx + delta_k, ky)
+    eigenvalues_plus, psi_plus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx + delta_k, ky, kz=kz)
+    psi_plus_ordered = eigenvector_plus.set_eigenvectors_eigenvalue_preordered(psi_plus, eigenvalues_plus, kx + delta_k, ky, kz=kz)
 
     # Calculate for kx - delta_k
-    eigenvalues_minus, psi_minus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx - delta_k, ky)
-    psi_minus_ordered = eigenvector_minus.set_eigenvectors_eigenvalue_preordered(psi_minus, eigenvalues_minus, kx - delta_k, ky)
+    eigenvalues_minus, psi_minus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx - delta_k, ky, kz=kz)
+    psi_minus_ordered = eigenvector_minus.set_eigenvectors_eigenvalue_preordered(psi_minus, eigenvalues_minus, kx - delta_k, ky, kz=kz)
 
     # Return the derivative for the specified band
     return (psi_plus_ordered[band_index] - psi_minus_ordered[band_index]) / (2 * delta_k)
 
 # Numerical derivative w.r.t. ky
-def dpsi_dy_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index):
+def dpsi_dy_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=0):
     eigenvector_plus = Eigenvectors(len(eigenfunction))
     eigenvector_minus = Eigenvectors(len(eigenfunction))
-    eigenvector_plus.set_eigenvectors_eigenvalue_preordered(eigenfunction, eigenvalue, kx, ky)
-    eigenvector_minus.set_eigenvectors_eigenvalue_preordered(eigenfunction, eigenvalue, kx, ky)
+    eigenvector_plus.set_eigenvectors_eigenvalue_preordered(eigenfunction, eigenvalue, kx, ky, kz=kz)
+    eigenvector_minus.set_eigenvectors_eigenvalue_preordered(eigenfunction, eigenvalue, kx, ky, kz=kz)
 
     # Calculate for ky + delta_k
-    eigenvalues_plus, psi_plus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky + delta_k)
-    psi_plus_ordered = eigenvector_plus.set_eigenvectors_eigenvalue_preordered(psi_plus, eigenvalues_plus, kx, ky + delta_k)
+    eigenvalues_plus, psi_plus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky + delta_k, kz=kz)
+    psi_plus_ordered = eigenvector_plus.set_eigenvectors_eigenvalue_preordered(psi_plus, eigenvalues_plus, kx, ky + delta_k, kz=kz)
 
     # Calculate for ky - delta_k
-    eigenvalues_minus, psi_minus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky - delta_k)
-    psi_minus_ordered = eigenvector_minus.set_eigenvectors_eigenvalue_preordered(psi_minus, eigenvalues_minus, kx, ky - delta_k)
+    eigenvalues_minus, psi_minus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky - delta_k, kz=kz)
+    psi_minus_ordered = eigenvector_minus.set_eigenvectors_eigenvalue_preordered(psi_minus, eigenvalues_minus, kx, ky - delta_k, kz=kz)
 
     # Return the derivative for the specified band
     return (psi_plus_ordered[band_index] - psi_minus_ordered[band_index]) / (2 * delta_k)
 
 # Numerical derivative w.r.t. kx with Eigenvector Ordering
-def dpsi_dx_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index):
+def dpsi_dx_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=0):
     eigenvector_plus = Eigenvectors(len(eigenfunction))
     eigenvector_minus = Eigenvectors(len(eigenfunction))
-    eigenvector_plus.set_eigenvectors_eigenvector_ordered(eigenfunction, eigenvalue, kx, ky)
-    eigenvector_minus.set_eigenvectors_eigenvector_ordered(eigenfunction, eigenvalue, kx, ky)
+    eigenvector_plus.set_eigenvectors_eigenvector_ordered(eigenfunction, eigenvalue, kx, ky, kz=kz)
+    eigenvector_minus.set_eigenvectors_eigenvector_ordered(eigenfunction, eigenvalue, kx, ky, kz=kz)
 
     # Calculate for kx + delta_k
-    eigenvalues_plus, psi_plus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx + delta_k, ky)
-    eigenvalues_plus_ordered, psi_plus_ordered = eigenvector_plus.set_eigenvectors_eigenvector_ordered(psi_plus, eigenvalues_plus, kx + delta_k, ky)
+    eigenvalues_plus, psi_plus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx + delta_k, ky, kz=kz)
+    eigenvalues_plus_ordered, psi_plus_ordered = eigenvector_plus.set_eigenvectors_eigenvector_ordered(psi_plus, eigenvalues_plus, kx + delta_k, ky, kz=kz)
 
     # Calculate for kx - delta_k
-    eigenvalues_minus, psi_minus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx - delta_k, ky)
-    eigenvalues_minus_ordered, psi_minus_ordered = eigenvector_minus.set_eigenvectors_eigenvector_ordered(psi_minus, eigenvalues_minus, kx - delta_k, ky)
+    eigenvalues_minus, psi_minus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx - delta_k, ky, kz=kz)
+    eigenvalues_minus_ordered, psi_minus_ordered = eigenvector_minus.set_eigenvectors_eigenvector_ordered(psi_minus, eigenvalues_minus, kx - delta_k, ky, kz=kz)
 
     # Return the derivative for the specified band
     return (psi_plus_ordered[band_index] - psi_minus_ordered[band_index]) / (2 * delta_k)
 
 # Numerical derivative w.r.t. ky with Eigenvector Ordering
-def dpsi_dy_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index):
+def dpsi_dy_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=0):
     eigenvector_plus = Eigenvectors(len(eigenfunction))
     eigenvector_minus = Eigenvectors(len(eigenfunction))
-    eigenvector_plus.set_eigenvectors_eigenvector_ordered(eigenfunction, eigenvalue, kx, ky)
-    eigenvector_minus.set_eigenvectors_eigenvector_ordered(eigenfunction, eigenvalue, kx, ky)
+    eigenvector_plus.set_eigenvectors_eigenvector_ordered(eigenfunction, eigenvalue, kx, ky, kz=kz)
+    eigenvector_minus.set_eigenvectors_eigenvector_ordered(eigenfunction, eigenvalue, kx, ky, kz=kz)
 
     # Calculate for ky + delta_k
-    eigenvalues_plus, psi_plus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky + delta_k)
-    eigenvalues_plus_ordered, psi_plus_ordered = eigenvector_plus.set_eigenvectors_eigenvector_ordered(psi_plus, eigenvalues_plus, kx, ky + delta_k)
+    eigenvalues_plus, psi_plus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky + delta_k, kz=kz)
+    eigenvalues_plus_ordered, psi_plus_ordered = eigenvector_plus.set_eigenvectors_eigenvector_ordered(psi_plus, eigenvalues_plus, kx, ky + delta_k, kz=kz)
 
     # Calculate for ky - delta_k
-    eigenvalues_minus, psi_minus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky - delta_k)
-    eigenvalues_minus_ordered, psi_minus_ordered = eigenvector_minus.set_eigenvectors_eigenvector_ordered(psi_minus, eigenvalues_minus, kx, ky - delta_k)
+    eigenvalues_minus, psi_minus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky - delta_k, kz=kz)
+    eigenvalues_minus_ordered, psi_minus_ordered = eigenvector_minus.set_eigenvectors_eigenvector_ordered(psi_minus, eigenvalues_minus, kx, ky - delta_k, kz=kz)
+
+    # Return the derivative for the specified band
+    return (psi_plus_ordered[band_index] - psi_minus_ordered[band_index]) / (2 * delta_k)
+
+
+# Numerical derivative w.r.t. kz
+def dpsi_dz_num(Hamiltonian, kx, ky, kz, delta_k, eigenvalue, eigenfunction, band_index):
+    eigenvector_plus = Eigenvectors(len(eigenfunction))
+    eigenvector_minus = Eigenvectors(len(eigenfunction))
+    eigenvector_plus.set_eigenvectors_eigenvalue_preordered(eigenfunction, eigenvalue, kx, ky, kz=kz)
+    eigenvector_minus.set_eigenvectors_eigenvalue_preordered(eigenfunction, eigenvalue, kx, ky, kz=kz)
+
+    # Calculate for kz + delta_k
+    eigenvalues_plus, psi_plus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, kz=kz + delta_k)
+    psi_plus_ordered = eigenvector_plus.set_eigenvectors_eigenvalue_preordered(psi_plus, eigenvalues_plus, kx, ky, kz=kz + delta_k)
+
+    # Calculate for kz - delta_k
+    eigenvalues_minus, psi_minus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, kz=kz - delta_k)
+    psi_minus_ordered = eigenvector_minus.set_eigenvectors_eigenvalue_preordered(psi_minus, eigenvalues_minus, kx, ky, kz=kz - delta_k)
+
+    # Return the derivative for the specified band
+    return (psi_plus_ordered[band_index] - psi_minus_ordered[band_index]) / (2 * delta_k)
+
+
+# Numerical derivative w.r.t. kz with Eigenvector Ordering
+def dpsi_dz_num_eigenvector_ordered(Hamiltonian, kx, ky, kz, delta_k, eigenvalue, eigenfunction, band_index):
+    eigenvector_plus = Eigenvectors(len(eigenfunction))
+    eigenvector_minus = Eigenvectors(len(eigenfunction))
+    eigenvector_plus.set_eigenvectors_eigenvector_ordered(eigenfunction, eigenvalue, kx, ky, kz=kz)
+    eigenvector_minus.set_eigenvectors_eigenvector_ordered(eigenfunction, eigenvalue, kx, ky, kz=kz)
+
+    # Calculate for kz + delta_k
+    eigenvalues_plus, psi_plus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, kz=kz + delta_k)
+    eigenvalues_plus_ordered, psi_plus_ordered = eigenvector_plus.set_eigenvectors_eigenvector_ordered(psi_plus, eigenvalues_plus, kx, ky, kz=kz + delta_k)
+
+    # Calculate for kz - delta_k
+    eigenvalues_minus, psi_minus = eigenvalues_and_vectors_eigenvalue_ordering(Hamiltonian, kx, ky, kz=kz - delta_k)
+    eigenvalues_minus_ordered, psi_minus_ordered = eigenvector_minus.set_eigenvectors_eigenvector_ordered(psi_minus, eigenvalues_minus, kx, ky, kz=kz - delta_k)
 
     # Return the derivative for the specified band
     return (psi_plus_ordered[band_index] - psi_minus_ordered[band_index]) / (2 * delta_k)
 
 # Quantum geometric tensor components calculation using numerically obtained eigenfunctions
-def quantum_geometric_tensor_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index):
-    dpsi_dx_val = dpsi_dx_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index)
-    dpsi_dy_val = dpsi_dy_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index)
+def quantum_geometric_tensor_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=0):
+    dpsi_dx_val = dpsi_dx_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=kz)
+    dpsi_dy_val = dpsi_dy_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=kz)
     psi_val = eigenfunction[band_index]
 
     dim = Hamiltonian.dim
@@ -192,9 +231,9 @@ def quantum_geometric_tensor_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigen
     return g_xx, g_xy_real, g_xy_imag, g_yy
 
 # Quantum geometric tensor components calculation using numerically obtained eigenfunctions with Eigenvector Ordering
-def quantum_geometric_tensor_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index):
-    dpsi_dx_val = dpsi_dx_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index)
-    dpsi_dy_val = dpsi_dy_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index)
+def quantum_geometric_tensor_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=0):
+    dpsi_dx_val = dpsi_dx_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=kz)
+    dpsi_dy_val = dpsi_dy_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=kz)
     psi_val = eigenfunction[band_index]
 
     dim = Hamiltonian.dim
@@ -207,6 +246,64 @@ def quantum_geometric_tensor_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_
     g_yy = np.vdot(dpsi_dy_val, (I - P) @ dpsi_dy_val).real
     
     return g_xx, g_xy_real, g_xy_imag, g_yy
+
+
+# 3D Quantum Geometric Tensor Num
+def quantum_geometric_tensor_3d_num(Hamiltonian, kx, ky, kz, delta_k, eigenvalue, eigenfunction, band_index):
+    dpsi_dx_val = dpsi_dx_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=kz)
+    dpsi_dy_val = dpsi_dy_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=kz)
+    dpsi_dz_val = dpsi_dz_num(Hamiltonian, kx, ky, kz, delta_k, eigenvalue, eigenfunction, band_index)
+    psi_val = eigenfunction[band_index]
+
+    dim = Hamiltonian.dim
+    I = np.eye(dim)
+    P = projection_operator(psi_val)
+
+    # XY components
+    g_xx = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dx_val).real
+    g_xy_real = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dy_val).real
+    g_xy_imag = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dy_val).imag
+    g_yy = np.vdot(dpsi_dy_val, (I - P) @ dpsi_dy_val).real
+
+    # XZ components
+    g_xz_real = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dz_val).real
+    g_xz_imag = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dz_val).imag
+    g_zz = np.vdot(dpsi_dz_val, (I - P) @ dpsi_dz_val).real
+
+    # YZ components
+    g_yz_real = np.vdot(dpsi_dy_val, (I - P) @ dpsi_dz_val).real
+    g_yz_imag = np.vdot(dpsi_dy_val, (I - P) @ dpsi_dz_val).imag
+
+    return g_xx, g_yy, g_zz, g_xy_real, g_xy_imag, g_xz_real, g_xz_imag, g_yz_real, g_yz_imag
+
+
+# 3D Quantum Geometric Tensor Num Eigenvector Ordered
+def quantum_geometric_tensor_3d_num_eigenvector_ordered(Hamiltonian, kx, ky, kz, delta_k, eigenvalue, eigenfunction, band_index):
+    dpsi_dx_val = dpsi_dx_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=kz)
+    dpsi_dy_val = dpsi_dy_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=kz)
+    dpsi_dz_val = dpsi_dz_num_eigenvector_ordered(Hamiltonian, kx, ky, kz, delta_k, eigenvalue, eigenfunction, band_index)
+    psi_val = eigenfunction[band_index]
+
+    dim = Hamiltonian.dim
+    I = np.eye(dim)
+    P = projection_operator(psi_val)
+
+    # XY components
+    g_xx = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dx_val).real
+    g_xy_real = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dy_val).real
+    g_xy_imag = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dy_val).imag
+    g_yy = np.vdot(dpsi_dy_val, (I - P) @ dpsi_dy_val).real
+
+    # XZ components
+    g_xz_real = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dz_val).real
+    g_xz_imag = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dz_val).imag
+    g_zz = np.vdot(dpsi_dz_val, (I - P) @ dpsi_dz_val).real
+
+    # YZ components
+    g_yz_real = np.vdot(dpsi_dy_val, (I - P) @ dpsi_dz_val).real
+    g_yz_imag = np.vdot(dpsi_dy_val, (I - P) @ dpsi_dz_val).imag
+
+    return g_xx, g_yy, g_zz, g_xy_real, g_xy_imag, g_xz_real, g_xz_imag, g_yz_real, g_yz_imag
 
 def quantum_geometric_tensor_analytic(Hamiltonian, kx, ky, band=-1):
     """
@@ -319,6 +416,87 @@ def QGT_grid_num(
         trace_array = np.clip(trace_array, -z_cutoff, z_cutoff)
 
     return g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array
+
+
+
+def QGT_grid_3d_num(
+    kx_vals, ky_vals, kz_vals, eigenvalues_3d, eigenfunctions_3d, quantum_geometric_tensor_func, 
+    hamiltonian, delta_k, band_index, z_cutoff=None
+):
+    """
+    Calculate the 3D quantum geometric tensor (QGT) components for a kx-ky-kz grid.
+    
+    Parameters:
+    - kx_vals, ky_vals, kz_vals: 1D arrays defining the grid.
+    - eigenvalues_3d: 3D array of eigenvalues [nkx, nky, nkz].
+    - eigenfunctions_3d: 3D array of eigenfunctions [nkx, nky, nkz].
+    - quantum_geometric_tensor_func: Function to calculate 3D QGT components.
+    - hamiltonian: The Hamiltonian function.
+    - delta_k: Small step for numerical differentiation.
+    - band_index: Band index for which QGT is calculated.
+    - z_cutoff: Optional maximum value for clipping.
+    
+    Returns:
+    - 9 arrays of shape [nkx, nky, nkz] for metric components.
+    """
+    nkx = len(kx_vals)
+    nky = len(ky_vals)
+    nkz = len(kz_vals)
+    
+    # Initialize arrays
+    g_xx_arr = np.zeros((nkx, nky, nkz))
+    g_yy_arr = np.zeros((nkx, nky, nkz))
+    g_zz_arr = np.zeros((nkx, nky, nkz))
+    
+    g_xy_real_arr = np.zeros((nkx, nky, nkz))
+    g_xy_imag_arr = np.zeros((nkx, nky, nkz))
+    
+    g_xz_real_arr = np.zeros((nkx, nky, nkz))
+    g_xz_imag_arr = np.zeros((nkx, nky, nkz))
+    
+    g_yz_real_arr = np.zeros((nkx, nky, nkz))
+    g_yz_imag_arr = np.zeros((nkx, nky, nkz))
+    
+    total_points = nkx * nky * nkz
+    
+    with tqdm(total=total_points, desc="Computing 3D QGT Grid", unit="kpt") as pbar:
+        for i, kx in enumerate(kx_vals):
+            for j, ky in enumerate(ky_vals):
+                for k, kz in enumerate(kz_vals):
+                    eigenfunction = eigenfunctions_3d[i, j, k]
+                    eigenvalue = eigenvalues_3d[i, j, k]
+                    
+                    g_xx, g_yy, g_zz, g_xy_real, g_xy_imag, g_xz_real, g_xz_imag, g_yz_real, g_yz_imag = quantum_geometric_tensor_func(
+                        hamiltonian, kx, ky, kz, delta_k, eigenvalue, eigenfunction, band_index
+                    )
+                    
+                    g_xx_arr[i, j, k] = g_xx
+                    g_yy_arr[i, j, k] = g_yy
+                    g_zz_arr[i, j, k] = g_zz
+                    
+                    g_xy_real_arr[i, j, k] = g_xy_real
+                    g_xy_imag_arr[i, j, k] = g_xy_imag
+                    
+                    g_xz_real_arr[i, j, k] = g_xz_real
+                    g_xz_imag_arr[i, j, k] = g_xz_imag
+                    
+                    g_yz_real_arr[i, j, k] = g_yz_real
+                    g_yz_imag_arr[i, j, k] = g_yz_imag
+                    
+                    pbar.update(1)
+                    
+    # Clipping
+    if z_cutoff is not None:
+         # Helper to clip in place or return clipped
+         arrays = [g_xx_arr, g_yy_arr, g_zz_arr, g_xy_real_arr, g_xy_imag_arr, g_xz_real_arr, g_xz_imag_arr, g_yz_real_arr, g_yz_imag_arr]
+         for idx, arr in enumerate(arrays):
+             arrays[idx] = np.clip(arr, -z_cutoff, z_cutoff)
+         return tuple(arrays)
+         
+    return (g_xx_arr, g_yy_arr, g_zz_arr, 
+            g_xy_real_arr, g_xy_imag_arr, 
+            g_xz_real_arr, g_xz_imag_arr, 
+            g_yz_real_arr, g_yz_imag_arr)
 
 
 def QGT_grid_semi_num(

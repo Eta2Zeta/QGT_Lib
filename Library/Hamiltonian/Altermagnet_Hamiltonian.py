@@ -72,7 +72,7 @@ class AltermagnetHamiltonian(hamiltonian):
         # tau_z \otimes sigma_z (for magnetic term)
         self.tau_z_sigma_z = np.kron(sigma_z, sigma_z)
 
-    def compute_static(self, kx, ky):
+    def compute_static(self, kx, ky, kz=0):
         """
         Compute the static Hamiltonian H_k at a single k point.
         """
@@ -97,7 +97,7 @@ class AltermagnetHamiltonian(hamiltonian):
         H = term1 + term2 + term3 + term4 + magnetic_term
         return H
         
-    def compute_static_vectorized(self, kx_arr, ky_arr):
+    def compute_static_vectorized(self, kx_arr, ky_arr, kz_arr=0):
         """
         Vectorized computation of the Hamiltonian for arrays of k points.
         Returns array of shape (N, 4, 4).
@@ -151,6 +151,7 @@ class AltermagnetHamiltonian(hamiltonian):
         H += coeff_N * self.tau_z_sigma_z[None, :, :]
         
         # Reshape if input was not 1D
+        return H
         
     def compute_qgt_analytic(self, kx_arr, ky_arr, band_index):
         """

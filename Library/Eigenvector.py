@@ -6,6 +6,7 @@ class Eigenvector:
         self.previous_eigenvector = None
         self.previous_kx = None
         self.previous_ky = None
+        self.previous_kz = None
         self.phase_factor = None
 
     def set_dimension(self, dim):
@@ -30,13 +31,14 @@ class Eigenvectors:
         self.previous_eigenvalues = None
         self.previous_kx = None
         self.previous_ky = None
+        self.previous_kz = None
         self.phase_factor = None
 
     def set_dimension(self, dim):
         self.dimension = dim
 
     # If the solutions are already ordered by eigenvalues, you can use this to just correct the phase factor of the eigenvalues
-    def set_eigenvectors_eigenvalue_preordered(self, new_eigenvectors, new_eigenvalues, kx, ky, ignore_small_phase_diff=False, phase_diff_threshold=0.2):
+    def set_eigenvectors_eigenvalue_preordered(self, new_eigenvectors, new_eigenvalues, kx, ky, kz=0, ignore_small_phase_diff=False, phase_diff_threshold=0.2):
         # Initialize phase_factor_array with the correct dimension
         phase_factor_array = np.zeros(self.dimension, dtype=complex)
         
@@ -55,20 +57,21 @@ class Eigenvectors:
                 new_eigenvectors[i] = new_eigenvectors[i] * phase_factor
         else:
             # Sort by the real part of eigenvalues for the first set
-            sorted_indices = np.argsort(-np.real(new_eigenvalues))
+            sorted_indices = np.argsort(np.real(new_eigenvalues))
             new_eigenvectors = [new_eigenvectors[i] for i in sorted_indices]
             new_eigenvalues = [new_eigenvalues[i] for i in sorted_indices]
         
         self.previous_eigenvectors = new_eigenvectors
         self.previous_kx = kx
         self.previous_ky = ky
+        self.previous_kz = kz
         self.phase_factor = phase_factor_array
         
         return new_eigenvectors
 
 
     # Eigenvector ordered
-    def set_eigenvectors_eigenvector_ordered(self, new_eigenvectors, new_eigenvalues, kx, ky):
+    def set_eigenvectors_eigenvector_ordered(self, new_eigenvectors, new_eigenvalues, kx, ky, kz=0):
         # Initialize phase_factor_array with the correct dimension
         phase_factor_array = np.zeros(self.dimension, dtype=complex)
         
@@ -107,7 +110,7 @@ class Eigenvectors:
 
         else:
             # Sort by the real part of eigenvalues for the first set
-            sorted_indices = np.argsort(-np.real(new_eigenvalues))
+            sorted_indices = np.argsort(np.real(new_eigenvalues))
             new_eigenvectors = [new_eigenvectors[i] for i in sorted_indices]
             new_eigenvalues = [new_eigenvalues[i] for i in sorted_indices]
 
@@ -115,12 +118,13 @@ class Eigenvectors:
         self.previous_eigenvalues = new_eigenvalues
         self.previous_kx = kx
         self.previous_ky = ky
+        self.previous_kz = kz
         self.phase_factor = phase_factor_array
         return new_eigenvalues, new_eigenvectors
     
 
     
-    def set_eigenvectors_eigenvector_reordered(self, new_eigenvectors, new_eigenvalues, kx, ky):
+    def set_eigenvectors_eigenvector_reordered(self, new_eigenvectors, new_eigenvalues, kx, ky, kz=0):
         """
         Reorder only the third and fourth eigenvectors (and corresponding eigenvalues) based on the phase continuity condition.
         """
@@ -149,6 +153,7 @@ class Eigenvectors:
         self.previous_eigenvalues = new_eigenvalues
         self.previous_kx = kx
         self.previous_ky = ky
+        self.previous_kz = kz
         
         return new_eigenvectors, new_eigenvalues
 

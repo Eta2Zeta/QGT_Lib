@@ -71,16 +71,16 @@ class hamiltonian:
         return "-".join(parts)
 
     
-    def compute_static(self, kx, ky):
+    def compute_static(self, kx, ky, kz=0):
         """
-        Compute the static Hamiltonian matrix for a given (kx, ky).
+        Compute the static Hamiltonian matrix for a given (kx, ky, kz).
         Subclasses must implement this method.
         """
         raise NotImplementedError("Subclasses must implement the 'compute_static' method.")
 
-    def compute_driven(self, t, kx, ky):
+    def compute_driven(self, t, kx, ky, kz=0):
         """
-        Compute the time-dependent Hamiltonian matrix for a given time t and (kx, ky),
+        Compute the time-dependent Hamiltonian matrix for a given time t and (kx, ky, kz),
         based on the polarization type.
         """
         if self.polarization == 'left':
@@ -103,7 +103,7 @@ class hamiltonian:
             raise ValueError("Invalid polarization type. Choose 'left', 'right', 'linear_x', or 'linear_y'.")
 
         # Return the static Hamiltonian evaluated at the transformed kx, ky
-        return self.compute_static(kx_t, ky_t)
+        return self.compute_static(kx_t, ky_t, kz)
 
     # def numerical_fourier_component(self, n, kx, ky):
     #     """
@@ -143,7 +143,7 @@ class hamiltonian:
 
 
     # ---- Vectorized sampler over one period (M time samples) ----
-    def _kt_over_period(self, kx, ky, M):
+    def _kt_over_period(self, kx, ky, M, kz=0):
         """Return kx_t, ky_t arrays of shape (M,) over one period."""
         T = 2 * np.pi / self.omega
         t = np.linspace(0.0, T, M, endpoint=False)
@@ -163,7 +163,7 @@ class hamiltonian:
             raise ValueError("Invalid polarization type.")
         return kx_t, ky_t
 
-    def compute_static_vectorized(self, kx_arr, ky_arr):
+    def compute_static_vectorized(self, kx_arr, ky_arr, kz_arr=0):
         """
         Default vectorized fallback: loops. Subclasses should override with
         a fully vectorized implementation (no Python loop) for speed.
@@ -173,15 +173,16 @@ class hamiltonian:
         M = kx_arr.shape[0]
         H = np.empty((M, self.dim, self.dim), dtype=complex)
         for m in range(M):
-            H[m] = self.compute_static(kx_arr[m], ky_arr[m])
+            kz_val = kz_arr[m] if isinstance(kz_arr, (np.ndarray, list)) else kz_arr
+            H[m] = self.compute_static(kx_arr[m], ky_arr[m], kz_val)
         return H
 
-    def _H_stack_over_period(self, kx, ky, M):
+    def _H_stack_over_period(self, kx, ky, M, kz=0):
         """Build H(t_m) stack with shape (M, dim, dim), preferably vectorized."""
-        kx_t, ky_t = self._kt_over_period(kx, ky, M)
-        return self.compute_static_vectorized(kx_t, ky_t)
+        kx_t, ky_t = self._kt_over_period(kx, ky, M, kz)
+        return self.compute_static_vectorized(kx_t, ky_t, kz)
 
-    def fourier_components_fft(self, ns, kx, ky, M=512):
+    def fourier_components_fft(self, ns, kx, ky, kz=0, M=512):
         """
         Compute multiple harmonics H_n in one shot via FFT.
         Args:
@@ -192,7 +193,7 @@ class hamiltonian:
             dict {n: (dim,dim) complex ndarray}
         """
         # Sample H(t) over one period (vectorized)
-        Ht = self._H_stack_over_period(kx, ky, M)  # (M, dim, dim)
+        Ht = self._H_stack_over_period(kx, ky, M, kz)  # (M, dim, dim)
 
         # FFT along time axis. Convention of np/scipy FFT matches
         # sum_{m=0}^{M-1} H(t_m) * exp(-i 2π m k / M).
@@ -207,11 +208,11 @@ class hamiltonian:
         return out
 
     # Backward-compatible single-harmonic API
-    def numerical_fourier_component(self, n, kx, ky, M=512):
-        return self.fourier_components_fft([n], kx, ky, M=M)[n]
+    def numerical_fourier_component(self, n, kx, ky, kz=0, M=512):
+        return self.fourier_components_fft([n], kx, ky, kz, M=M)[n]
 
 
-    def numerical_fourier_component_rounding(self, n, kx, ky):
+    def numerical_fourier_component_rounding(self, n, kx, ky, kz=0):
         """
         Compute the nth Fourier component of the time-dependent Hamiltonian,
         integrating each matrix element independently with proper error-aware rounding
@@ -225,7 +226,7 @@ class hamiltonian:
         adjusted_epsrel = baseline_epsrel / (1 + n * self.omega)
 
         # Determine matrix shape
-        sample = self.compute_driven(0, kx, ky)
+        sample = self.compute_driven(0, kx, ky, kz)
         shape = sample.shape
 
         # Output arrays
@@ -243,11 +244,11 @@ class hamiltonian:
         for i in range(shape[0]):
             for j in range(shape[1]):
                 def integrand_real(t):
-                    val = self.compute_driven(t, kx, ky)[i, j]
+                    val = self.compute_driven(t, kx, ky, kz)[i, j]
                     return np.real(val * np.exp(-1j * n * self.omega * t))
 
                 def integrand_imag(t):
-                    val = self.compute_driven(t, kx, ky)[i, j]
+                    val = self.compute_driven(t, kx, ky, kz)[i, j]
                     return np.imag(val * np.exp(-1j * n * self.omega * t))
 
                 real_val, real_err = quad(integrand_real, 0, T, epsrel=adjusted_epsrel)
@@ -261,14 +262,14 @@ class hamiltonian:
         result = scale * (rounded_real + 1j * rounded_imag)
         return result
 
-    def magnus_first_term(self, kx, ky):
+    def magnus_first_term(self, kx, ky, kz=0):
         """
         Compute the first term of the Magnus expansion:
         (1/omega) * [H1, H-1], rounded to 1e-16 precision.
         """
         # Compute H1 and H-1 Fourier components
-        H1 = self.numerical_fourier_component(1, kx, ky)
-        Hm1 = self.numerical_fourier_component(-1, kx, ky)
+        H1 = self.numerical_fourier_component(1, kx, ky, kz)
+        Hm1 = self.numerical_fourier_component(-1, kx, ky, kz)
 
         # Compute the commutator [H1, H-1]
         comm = commutator_static(H1, Hm1)
@@ -282,14 +283,14 @@ class hamiltonian:
 
         return rounded_magnus
 
-    def magnus_second_term(self, kx, ky):
+    def magnus_second_term(self, kx, ky, kz=0):
         """
         Compute the second Magnus term:
         (1/omega) * (1/2) * [H2, H-2]
         """
         # Compute H2 and H-2 Fourier components
-        H2 = self.numerical_fourier_component(2, kx, ky)
-        Hm2 = self.numerical_fourier_component(-2, kx, ky)
+        H2 = self.numerical_fourier_component(2, kx, ky, kz)
+        Hm2 = self.numerical_fourier_component(-2, kx, ky, kz)
 
         # Compute the commutator [H2, H-2]
         comm = commutator_static(H2, Hm2)
@@ -297,7 +298,7 @@ class hamiltonian:
         # Return the second Magnus term
         return (1 / (2 * self.omega)) * comm
 
-    def effective_hamiltonian(self, kx, ky):
+    def effective_hamiltonian(self, kx, ky, kz=0):
         """
         Compute the total effective Hamiltonian and its perturbation:
         H_eff = H_0 + sum of Magnus terms up to the specified order.
@@ -311,7 +312,7 @@ class hamiltonian:
             H_prime (ndarray): Perturbation Hamiltonian (sum of Magnus terms).
         """
         # Compute the original static Hamiltonian (H_0)
-        H_0 = self.compute_static(kx, ky)
+        H_0 = self.compute_static(kx, ky, kz)
 
         # Initialize perturbation Hamiltonian (H_prime) as zero matrix of same shape as H_0
         H_prime = np.zeros_like(H_0)
@@ -324,11 +325,11 @@ class hamiltonian:
         if self.magnus_order >= 1:
             if self.analytic_magnus and hasattr(self, "analytic_magnus_first_term"):
                 # Expect analytic_magnus_first_term to ALREADY include the 1/omega factor
-                H_prime += self.analytic_magnus_first_term(kx, ky)
+                H_prime += self.analytic_magnus_first_term(kx, ky, kz)
             else:
-                H_prime += self.magnus_first_term(kx, ky)
+                H_prime += self.magnus_first_term(kx, ky, kz)
         if self.magnus_order >= 2:
-            H_prime += self.magnus_second_term(kx, ky)
+            H_prime += self.magnus_second_term(kx, ky, kz)
         
         # Compute effective Hamiltonian (H_eff = H_0 + H_prime)
         H_eff = H_0 + H_prime
@@ -337,41 +338,41 @@ class hamiltonian:
     
     # ____________________________________________________________________________________________________________
     # Below are the method to compute the Fourier Harmonics of the Hamiltonian by the Taylor Expansion Method
-    def get_derivative(self, func_name, kx, ky):
+    def get_derivative(self, func_name, kx, ky, kz=0):
         """Helper function to check and call derivative functions dynamically."""
         if hasattr(self, func_name):
-            return getattr(self, func_name)(kx, ky)
+            return getattr(self, func_name)(kx, ky, kz)
         return 0  # Return 0 if the function does not exist
 
-    def fx11p(self, kx, ky):
-        return self.A0 * (0.5 * self.get_derivative("dfxdx", kx, ky) + (0.5 / 1j) * self.get_derivative("dfxdy", kx, ky))
+    def fx11p(self, kx, ky, kz=0):
+        return self.A0 * (0.5 * self.get_derivative("dfxdx", kx, ky, kz) + (0.5 / 1j) * self.get_derivative("dfxdy", kx, ky, kz))
     
-    def fy11p(self, kx, ky):
-        return self.A0 * (0.5 * self.get_derivative("dfydx", kx, ky) + (0.5 / 1j) * self.get_derivative("dfydy", kx, ky))
+    def fy11p(self, kx, ky, kz=0):
+        return self.A0 * (0.5 * self.get_derivative("dfydx", kx, ky, kz) + (0.5 / 1j) * self.get_derivative("dfydy", kx, ky, kz))
 
-    def fx22p(self, kx, ky):
-        return (self.A0**2 / 4) * (0.5 * self.get_derivative("dfxdxx", kx, ky) - 0.5 * self.get_derivative("dfxdyy", kx, ky) - 1j * self.get_derivative("dfxdxy", kx, ky))
+    def fx22p(self, kx, ky, kz=0):
+        return (self.A0**2 / 4) * (0.5 * self.get_derivative("dfxdxx", kx, ky, kz) - 0.5 * self.get_derivative("dfxdyy", kx, ky, kz) - 1j * self.get_derivative("dfxdxy", kx, ky, kz))
 
-    def fy22p(self, kx, ky):
-        return (self.A0**2 / 4) * (0.5 * self.get_derivative("dfydxx", kx, ky) - 0.5 * self.get_derivative("dfydyy", kx, ky) - 1j * self.get_derivative("dfydxy", kx, ky))
+    def fy22p(self, kx, ky, kz=0):
+        return (self.A0**2 / 4) * (0.5 * self.get_derivative("dfydxx", kx, ky, kz) - 0.5 * self.get_derivative("dfydyy", kx, ky, kz) - 1j * self.get_derivative("dfydxy", kx, ky, kz))
 
-    def fx31p(self, kx, ky):
-        return (self.A0**3 / 16) * (self.get_derivative("dfxdxxx", kx, ky) + 3 * self.get_derivative("dfxdxyy", kx, ky)) + \
-               (self.A0**3 / (16j)) * (3 * self.get_derivative("dfxdxxy", kx, ky) + self.get_derivative("dfxdyyy", kx, ky))
+    def fx31p(self, kx, ky, kz=0):
+        return (self.A0**3 / 16) * (self.get_derivative("dfxdxxx", kx, ky, kz) + 3 * self.get_derivative("dfxdxyy", kx, ky, kz)) + \
+               (self.A0**3 / (16j)) * (3 * self.get_derivative("dfxdxxy", kx, ky, kz) + self.get_derivative("dfxdyyy", kx, ky, kz))
 
-    def fy31p(self, kx, ky):
-        return (self.A0**3 / 16) * (self.get_derivative("dfydxxx", kx, ky) + 3 * self.get_derivative("dfydxyy", kx, ky)) + \
-               (self.A0**3 / (16j)) * (3 * self.get_derivative("dfydxxy", kx, ky) + self.get_derivative("dfydyyy", kx, ky))
+    def fy31p(self, kx, ky, kz=0):
+        return (self.A0**3 / 16) * (self.get_derivative("dfydxxx", kx, ky, kz) + 3 * self.get_derivative("dfydxyy", kx, ky, kz)) + \
+               (self.A0**3 / (16j)) * (3 * self.get_derivative("dfydxxy", kx, ky, kz) + self.get_derivative("dfydyyy", kx, ky, kz))
 
-    def fx33p(self, kx, ky):
-        return (self.A0**3 / 48) * (self.get_derivative("dfxdxxx", kx, ky) + 3 * self.get_derivative("dfxdxyy", kx, ky)) + \
-               (self.A0**3 / (48j)) * (3 * self.get_derivative("dfxdxxy", kx, ky) + self.get_derivative("dfxdyyy", kx, ky))
+    def fx33p(self, kx, ky, kz=0):
+        return (self.A0**3 / 48) * (self.get_derivative("dfxdxxx", kx, ky, kz) + 3 * self.get_derivative("dfxdxyy", kx, ky, kz)) + \
+               (self.A0**3 / (48j)) * (3 * self.get_derivative("dfxdxxy", kx, ky, kz) + self.get_derivative("dfxdyyy", kx, ky, kz))
 
-    def fy33p(self, kx, ky):
-        return (self.A0**3 / 48) * (self.get_derivative("dfydxxx", kx, ky) + 3 * self.get_derivative("dfydxyy", kx, ky)) + \
-               (self.A0**3 / (48j)) * (3 * self.get_derivative("dfydxxy", kx, ky) + self.get_derivative("dfydyyy", kx, ky))
+    def fy33p(self, kx, ky, kz=0):
+        return (self.A0**3 / 48) * (self.get_derivative("dfydxxx", kx, ky, kz) + 3 * self.get_derivative("dfydxyy", kx, ky, kz)) + \
+               (self.A0**3 / (48j)) * (3 * self.get_derivative("dfydxxy", kx, ky, kz) + self.get_derivative("dfydyyy", kx, ky, kz))
     
-    def fx51p(self, kx, ky):
+    def fx51p(self, kx, ky, kz=0):
         """
         Compute the positive fifth-order Fourier component for f_x:
         
@@ -380,18 +381,18 @@ class hamiltonian:
         """
         prefactor = self.A0**5 / 120
         real_part = 0.5 * (
-            (5/8) * self.get_derivative("dfxdxxxxx", kx, ky) +
-            (5/4) * self.get_derivative("dfxdxxxyy", kx, ky) +
-            (5/8) * self.get_derivative("dfxdxyyyy", kx, ky)
+            (5/8) * self.get_derivative("dfxdxxxxx", kx, ky, kz) +
+            (5/4) * self.get_derivative("dfxdxxxyy", kx, ky, kz) +
+            (5/8) * self.get_derivative("dfxdxyyyy", kx, ky, kz)
         )
         imag_part = (1/(2j)) * (
-            (5/8) * self.get_derivative("dfxdxxxxy", kx, ky) +
-            (5/4) * self.get_derivative("dfxdxxyy", kx, ky) +
-            (5/8) * self.get_derivative("dfxdyyyyy", kx, ky)
+            (5/8) * self.get_derivative("dfxdxxxxy", kx, ky, kz) +
+            (5/4) * self.get_derivative("dfxdxxyy", kx, ky, kz) +
+            (5/8) * self.get_derivative("dfxdyyyyy", kx, ky, kz)
         )
         return prefactor * (real_part + imag_part)
 
-    def fy51p(self, kx, ky):
+    def fy51p(self, kx, ky, kz=0):
         """
         Compute the positive fifth-order Fourier component for f_y:
         
@@ -400,38 +401,38 @@ class hamiltonian:
         """
         prefactor = self.A0**5 / 120
         real_part = 0.5 * (
-            (5/8) * self.get_derivative("dfydxxxxx", kx, ky) +
-            (5/4) * self.get_derivative("dfydxxxyy", kx, ky) +
-            (5/8) * self.get_derivative("dfydxyyyy", kx, ky)
+            (5/8) * self.get_derivative("dfydxxxxx", kx, ky, kz) +
+            (5/4) * self.get_derivative("dfydxxxyy", kx, ky, kz) +
+            (5/8) * self.get_derivative("dfydxyyyy", kx, ky, kz)
         )
         imag_part = (1/(2j)) * (
-            (5/8) * self.get_derivative("dfydxxxxy", kx, ky) +
-            (5/4) * self.get_derivative("dfydxxyy", kx, ky) +
-            (5/8) * self.get_derivative("dfydyyyyy", kx, ky)
+            (5/8) * self.get_derivative("dfydxxxxy", kx, ky, kz) +
+            (5/4) * self.get_derivative("dfydxxyy", kx, ky, kz) +
+            (5/8) * self.get_derivative("dfydyyyyy", kx, ky, kz)
         )
         return prefactor * (real_part + imag_part)
     
     # The first Harmonic calculated from the first three orders of Taylor Expansions
-    def Hp1(self, kx, ky):
-        return (self.fx11p(kx, ky) + self.fx31p(kx, ky) + self.fx51p(kx, ky)) * sigma_x + (self.fy11p(kx, ky) + self.fy31p(kx, ky) + self.fy51p(kx, ky)) * sigma_y
+    def Hp1(self, kx, ky, kz=0):
+        return (self.fx11p(kx, ky, kz) + self.fx31p(kx, ky, kz) + self.fx51p(kx, ky, kz)) * sigma_x + (self.fy11p(kx, ky, kz) + self.fy31p(kx, ky, kz) + self.fy51p(kx, ky, kz)) * sigma_y
 
-    def Hp113(self, kx, ky):
-        return (self.fx11p(kx, ky) + self.fx31p(kx, ky)) * sigma_x + (self.fy11p(kx, ky) + self.fy31p(kx, ky)) * sigma_y
+    def Hp113(self, kx, ky, kz=0):
+        return (self.fx11p(kx, ky, kz) + self.fx31p(kx, ky, kz)) * sigma_x + (self.fy11p(kx, ky, kz) + self.fy31p(kx, ky, kz)) * sigma_y
     
-    def Hp11(self, kx, ky):
-        return (self.fx11p(kx, ky)) * sigma_x + (self.fy11p(kx, ky)) * sigma_y
+    def Hp11(self, kx, ky, kz=0):
+        return (self.fx11p(kx, ky, kz)) * sigma_x + (self.fy11p(kx, ky, kz)) * sigma_y
 
-    def Hp13(self, kx, ky):
-        return (self.fx31p(kx, ky)) * sigma_x + (self.fy31p(kx, ky)) * sigma_y
+    def Hp13(self, kx, ky, kz=0):
+        return (self.fx31p(kx, ky, kz)) * sigma_x + (self.fy31p(kx, ky, kz)) * sigma_y
         
-    def Hp15(self, kx, ky):
-        return (self.fx51p(kx, ky)) * sigma_x + (self.fy51p(kx, ky)) * sigma_y
+    def Hp15(self, kx, ky, kz=0):
+        return (self.fx51p(kx, ky, kz)) * sigma_x + (self.fy51p(kx, ky, kz)) * sigma_y
 
-    def Hp2(self, kx, ky):
-        return self.fx22p(kx, ky) * sigma_x + self.fy22p(kx, ky) * sigma_y
+    def Hp2(self, kx, ky, kz=0):
+        return self.fx22p(kx, ky, kz) * sigma_x + self.fy22p(kx, ky, kz) * sigma_y
 
-    def Hp3(self, kx, ky):
-        return self.fx33p(kx, ky) * sigma_x + self.fy33p(kx, ky) * sigma_y
+    def Hp3(self, kx, ky, kz=0):
+        return self.fx33p(kx, ky, kz) * sigma_x + self.fy33p(kx, ky, kz) * sigma_y
     
     # Removed lambdified function so the Hamiltonian can be pickled
     def __getstate__(self):
@@ -460,40 +461,40 @@ class TestHamiltonian(hamiltonian):
         self.b = b
         self.c = c
     
-    def fx(self, kx, ky):
+    def fx(self, kx, ky, kz=0):
         return self.a * kx**2 + self.b * ky**2 + self.c * kx * ky
     
-    def compute_static(self, kx, ky):
-        return self.fx(kx, ky) * sigma_x
+    def compute_static(self, kx, ky, kz=0):
+        return self.fx(kx, ky, kz) * sigma_x
     
     # First derivatives
-    def dfxdx(self, kx, ky):
+    def dfxdx(self, kx, ky, kz=0):
         return 2 * self.a * kx + self.c * ky
     
-    def dfxdy(self, kx, ky):
+    def dfxdy(self, kx, ky, kz=0):
         return 2 * self.b * ky + self.c * kx
     
     # Second derivatives
-    def dfxdxx(self, kx, ky):
+    def dfxdxx(self, kx, ky, kz=0):
         return 2 * self.a
     
-    def dfxdyy(self, kx, ky):
+    def dfxdyy(self, kx, ky, kz=0):
         return 2 * self.b
     
-    def dfxdxy(self, kx, ky):
+    def dfxdxy(self, kx, ky, kz=0):
         return self.c
     
     # Third derivatives (All Zero)
-    def dfxdxxx(self, kx, ky):
+    def dfxdxxx(self, kx, ky, kz=0):
         return 0
     
-    def dfxdxxy(self, kx, ky):
+    def dfxdxxy(self, kx, ky, kz=0):
         return 0
     
-    def dfxdxyy(self, kx, ky):
+    def dfxdxyy(self, kx, ky, kz=0):
         return 0
     
-    def dfxdyyy(self, kx, ky):
+    def dfxdyyy(self, kx, ky, kz=0):
         return 0
 
 
@@ -503,14 +504,14 @@ class GrapheneHamiltonian(hamiltonian):
     def __init__(self, omega = np.pi, A0 = 0):
         super().__init__(dim=2, omega=omega, A0=A0)  
 
-    def compute_static(self, kx, ky):
+    def compute_static(self, kx, ky, kz=0):
         H_k = np.array([
             [0, kx - 1j*ky],
             [kx + 1j*ky, 0]
         ])
         
         return H_k
-    def Hp1(self, kx, ky):
+    def Hp1(self, kx, ky, kz=0):
         # Define the expression
         H21 = self.A0
         return H21 # Temporary, change it to full matrix later
@@ -535,7 +536,7 @@ class RashbaHamiltonian(hamiltonian):
         self.m = m
         self.alpha = alpha
 
-    def compute_static(self, kx, ky):
+    def compute_static(self, kx, ky, kz=0):
         """
         Compute the static Rashba Hamiltonian for a given (kx, ky).
         """
@@ -552,7 +553,7 @@ class RashbaHamiltonian(hamiltonian):
         
         return H_k
     
-    def Hp1(self, kx, ky):
+    def Hp1(self, kx, ky, kz=0):
         H11 = (self.A0 / (2 * self.m)) * (kx - 1j*ky)
         H12 = 0
         H21 = -1j * self.alpha * self.A0
@@ -566,7 +567,7 @@ class RashbaHamiltonian(hamiltonian):
         
         return H_k
     
-    def Hp2(self, kx, ky):
+    def Hp2(self, kx, ky, kz=0):
         H11 = 0
         H12 = 0
         H21 = 0
@@ -622,7 +623,7 @@ class HaldaneHamiltonian(hamiltonian):
     def h_z(self, kx, ky):
         return np.sum(np.sin(kx * self.v[:, 0] + ky * self.v[:, 1]))
 
-    def compute_static(self, kx, ky):
+    def compute_static(self, kx, ky, kz=0):
         hx = self.h_x(kx, ky)
         hy = self.h_y(kx, ky)
         hz = self.h_z(kx, ky)
@@ -656,7 +657,7 @@ class TwoOrbitalSpinfulHamiltonian(hamiltonian):
         self.zeta = zeta
         self.a = a
 
-    def compute_static(self, kx, ky):
+    def compute_static(self, kx, ky, kz=0):
         """
         Compute the static Hamiltonian for the two-orbital spinful model.
         """
@@ -694,7 +695,7 @@ class SquareLatticeHamiltonian(hamiltonian):
         self.t2 = t2
         self.t5 = t5
     
-    def compute_static(self, kx, ky):
+    def compute_static(self, kx, ky, kz=0):
         """
         Compute the static Hamiltonian for the square lattice.
         """
@@ -710,7 +711,7 @@ class SquareLatticeHamiltonian(hamiltonian):
         
         return H_k
     
-    def Hp1(self, kx, ky):
+    def Hp1(self, kx, ky, kz=0):
         # Define the expression
         H12 = (self.A0 / 2) * (
             2 * self.t1 * np.exp(-1j * np.pi / 4) * np.exp(1j * ky) * np.sin(kx)
@@ -732,7 +733,7 @@ class SquareLatticeHamiltonianMod(hamiltonian):
         self.t1 = t1
         self.t2 = t2
     
-    def compute(self, kx, ky):
+    def compute(self, kx, ky, kz=0):
         M11 = 2 * self.t2 * (np.cos(kx) - np.cos(ky))
         M12 = self.t1 * np.exp(1j * np.pi / 4) * (1 + np.exp(-1j * (ky - kx))) + self.t1 * np.exp(-1j * np.pi / 4) * (np.exp(1j * kx) + np.exp(-1j * ky))
         M21 = np.conj(M12)  # M21 is the Hermitian conjugate of M12
@@ -744,10 +745,3 @@ class SquareLatticeHamiltonianMod(hamiltonian):
         ], dtype=complex)
         
         return H_k
-
-
-# Re-export THF Hamiltonian
-from .THF_Hamiltonian import THF_Hamiltonian
-from .TwoOrbitalSpinfulHamiltonian import TwoOrbitalSpinfulHamiltonian
-from .ChiralHamiltonian import ChiralHamiltonian
-

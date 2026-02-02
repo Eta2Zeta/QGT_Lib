@@ -11,6 +11,9 @@ sys.modules["Library.Hamiltonian_v2"] = Library.Hamiltonian.Hamiltonian_v2
 from Library.Hamiltonian.Chiral_Hamiltonian_Projected import ChiralHamiltonianProjected
 Library.Hamiltonian.Hamiltonian_v2.RhombohedralGrapheneHamiltonian = ChiralHamiltonianProjected
 
+from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
+Library.Hamiltonian.Hamiltonian_v2.ChiralHamiltonian = ChiralHamiltonian
+
 def _bz_hexagon_from_bvecs(b1, b2):
     """
     Return (xv, yv) arrays of the hexagon vertices (closed) for the 1st BZ
@@ -340,7 +343,9 @@ root_left = "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_Fal
 # root_right = "results/QGT_ND/RhombohedralGrapheneHamiltonian/A0_0.10-V_30-analytic_magnus_False-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_1_linear-omega_1_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set2"
 
 # View the trace (default)
-dynamic_nd_field_with_bands(root_right, quantity="trace", bands_to_plot=[0,1,2,3,4,5,6,7,8,9])
+# dynamic_nd_field_with_bands(root_right, quantity="trace", bands_to_plot=[0,1,2,3,4,5,6,7,8,9])
 dynamic_nd_field_with_bands(root_left, quantity="trace", bands_to_plot=[0,1,2,3,4,5,6,7,8,9])
 
-
+# PLotting with k space to include all of the first Brillouin zone
+large_k_left = "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_20.000_5000.000_-SPACING_V_3_linear-omega_3_linear_-kx-2.50_2.50__ky-2.50_2.50__mesh300_data_set1"
+dynamic_nd_field_with_bands(large_k_left, quantity="trace", bands_to_plot=[0,1,2,3,4,5,6,7,8,9])
