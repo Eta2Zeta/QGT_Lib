@@ -1,0 +1,26 @@
+{
+  "band_index": 1,
+  "dk": 3.141592653589793,
+  "hamiltonian_name": "RuO2Hamiltonian",
+  "hamiltonian_params": "A0_0.00-J_0.20-analytic_magnus_False-lamb_0.10-lamb_z_0.10-magnus_order_1-mu_0.25-omega_0.00-polarization_left-t1_-0.05-t2_0.70-t3_0.50-t4_-0.15-t5_-0.40-t6_-0.60-t7_0.30-t8_1.70",
+  "include_endpoints": true,
+  "kvals_mode": "endpoints",
+  "kx_range": [
+    -3.141592653589793,
+    3.141592653589793
+  ],
+  "ky_range": [
+    -3.141592653589793,
+    3.141592653589793
+  ],
+  "kz_range": [
+    -3.141592653589793,
+    3.141592653589793
+  ],
+  "mesh_shape": [
+    3,
+    100,
+    100
+  ],
+  "z_cutoff": 20
+}

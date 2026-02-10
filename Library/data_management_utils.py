@@ -1,0 +1,237 @@
+import os, re, json, math
+from typing import Optional, Iterable, Callable, Tuple, Dict, Any
+
+def _load_json(path: str) -> Optional[Dict[str, Any]]:
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+def pick_or_create_dataset_dir(
+    base_root: str,
+    *,
+    meta_target: Dict[str, Any],
+    required_files: Optional[Iterable[str]] = None,
+    meta_matcher: Optional[Callable[[Dict[str, Any], Dict[str, Any]], bool]] = None,
+    force_new: bool = False,
+    prefix: str = "data_set_",
+    start_index: int = 1,
+) -> Tuple[str, bool]:
+    """
+    Dataset dirs are named like data_set_1, data_set_2, ...
+    Reuse if meta.json matches meta_target (via meta_matcher) AND required_files exist (if provided).
+    Otherwise create a new data_set_N.
+
+    Returns: (dir_path, used_existing)
+    """
+    os.makedirs(base_root, exist_ok=True)
+
+    # Collect existing dataset dirs
+    existing = []
+    for d in os.listdir(base_root):
+        if d.startswith(prefix):
+            m = re.match(rf"^{re.escape(prefix)}(\d+)$", d)
+            if m:
+                existing.append((int(m.group(1)), d))
+    existing.sort()
+
+    if not force_new and meta_matcher is not None:
+        for _, dname in existing:
+            dpath = os.path.join(base_root, dname)
+            meta_path = os.path.join(dpath, "meta.json")
+            meta = _load_json(meta_path)
+            if meta is None:
+                continue
+
+            if not meta_matcher(meta, meta_target):
+                continue
+
+            if required_files is not None:
+                ok = all(os.path.exists(os.path.join(dpath, f)) for f in required_files)
+                if not ok:
+                    continue
+
+            return dpath, True
+
+    # Create new dataset dir
+    n = start_index
+    if existing:
+        n = max(n, existing[-1][0] + 1)
+
+    while True:
+        dname = f"{prefix}{n}"
+        dpath = os.path.join(base_root, dname)
+        if not os.path.exists(dpath):
+            os.makedirs(dpath, exist_ok=True)
+            return dpath, False
+        n += 1
+
+def meta_matcher_all_fields(
+    a: Dict[str, Any],
+    b: Dict[str, Any],
+    *,
+    sig_digits: int = 7,
+) -> bool:
+    """
+    Require a and b to be identical in structure and values, except floats which
+    are compared with ~sig_digits significant-digit tolerance (recursively).
+    
+    - Dicts: same key set, values match recursively.
+    - Lists/Tuples: same length, elements match recursively (tuple/list treated as same sequence type).
+    - Numbers: float/int compared numerically with tolerance; bool stays strict.
+    - Everything else: compared with ==.
+    """
+
+    # tolerance ~ 0.5 * 10^(-sig_digits) relative (e.g. 7 digits -> ~5e-8)
+    rel_tol = 0.5 * 10 ** (-sig_digits)
+
+    def is_number(x: Any) -> bool:
+        # bool is a subclass of int; keep it strict, not numeric.
+        return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+    def float_close(x: float, y: float) -> bool:
+        # Handle NaNs/infs explicitly
+        if math.isnan(x) or math.isnan(y):
+            return math.isnan(x) and math.isnan(y)
+        if math.isinf(x) or math.isinf(y):
+            return x == y
+        # Significant-digit-ish tolerance:
+        # abs(x-y) <= rel_tol * max(1, |x|, |y|)
+        scale = max(1.0, abs(x), abs(y))
+        return abs(x - y) <= rel_tol * scale
+
+    def eq(x: Any, y: Any) -> bool:
+        if x is y:
+            return True
+
+        # Dicts: same keys, compare each value
+        if isinstance(x, dict) and isinstance(y, dict):
+            if x.keys() != y.keys():
+                return False
+            return all(eq(x[k], y[k]) for k in x.keys())
+
+        # Sequences: list/tuple treated equivalently
+        if isinstance(x, (list, tuple)) and isinstance(y, (list, tuple)):
+            if len(x) != len(y):
+                return False
+            return all(eq(xi, yi) for xi, yi in zip(x, y))
+
+        # Numeric tolerance
+        if is_number(x) and is_number(y):
+            return float_close(float(x), float(y))
+
+        # Everything else exact
+        return x == y
+
+    return eq(a, b)
+
+
+def setup_3D_Eigen_results_directory(
+    hamiltonian,
+    kx_range, ky_range, kz_range,
+    mesh_shape,
+    include_endpoints=True,
+    force_new=False,
+    kvals_mode: str = "endpoints",  # or "centered"
+):
+    Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
+    base_root = os.path.join(os.getcwd(), "results", "3D_Eigen_results", Hamiltonian_name)
+
+    required_files = ["eigenvalues_3d.npy", "eigenvectors_3d.npy", "meta.json", "meta_info.pkl"]
+
+    meta_target = {
+        "hamiltonian_name": Hamiltonian_name,
+        "include_endpoints": bool(include_endpoints),
+        "k_range": float(max(abs(kx_range[0]), abs(kx_range[1]))),  # or store all 3 ranges below
+        "kvals_mode": str(kvals_mode),
+        "kx_range": [float(kx_range[0]), float(kx_range[1])],
+        "ky_range": [float(ky_range[0]), float(ky_range[1])],
+        "kz_range": [float(kz_range[0]), float(kz_range[1])],
+    }
+
+    dir_path, used = pick_or_create_dataset_dir(
+        base_root,
+        meta_target=meta_target,
+        required_files=required_files,
+        meta_matcher=meta_matcher_exact,  # or meta_matcher_exact
+        force_new=force_new,
+        prefix="data_set_",
+        start_index=1,
+    )
+
+    file_paths = {
+        "eigenvalues": os.path.join(dir_path, "eigenvalues_3d.npy"),
+        "eigenfunctions": os.path.join(dir_path, "eigenvectors_3d.npy"),
+        "meta_json": os.path.join(dir_path, "meta.json"),
+        "meta_pkl": os.path.join(dir_path, "meta_info.pkl"),
+    }
+
+
+    print(("Using existing 3D Eigen results directory: " if used else "Created new 3D Eigen results directory: ") + dir_path)
+    return file_paths, used, dir_path, meta_target
+
+
+def setup_3D_QGT_results_directory(
+    hamiltonian,
+    kx_range, ky_range, kz_range,
+    mesh_shape,
+    include_endpoints=True,
+    force_new=False,
+    kvals_mode: str = "endpoints",
+):
+    nx, ny, nz = mesh_shape
+
+    Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
+    base_root = os.path.join(os.getcwd(), "results", "3D_QGT_results", Hamiltonian_name)
+
+    # Stable short signature
+    ham_param_str = hamiltonian.get_filename(parameter="2D") if hasattr(hamiltonian, "get_filename") else repr(hamiltonian)
+
+    # Match target (what defines this dataset)
+    meta_target = {
+        "hamiltonian_name": Hamiltonian_name,
+        "hamiltonian_params": ham_param_str,   # optional
+        "mesh_shape": [int(nx), int(ny), int(nz)],
+        "include_endpoints": bool(include_endpoints),
+        "kvals_mode": str(kvals_mode),
+        "kx_range": [float(kx_range[0]), float(kx_range[1])],
+        "ky_range": [float(ky_range[0]), float(ky_range[1])],
+        "kz_range": [float(kz_range[0]), float(kz_range[1])],
+    }
+
+    required_files = [
+        "g_xx.npy", "g_yy.npy", "g_zz.npy",
+        "g_xy_real.npy", "g_xy_imag.npy",
+        "g_xz_real.npy", "g_xz_imag.npy",
+        "g_yz_real.npy", "g_yz_imag.npy",
+        "meta.json",       # for matching
+        "meta_info.pkl",   # for loading Hamiltonian_Obj later if you want
+    ]
+
+    dir_path, used = pick_or_create_dataset_dir(
+        base_root,
+        meta_target=meta_target,
+        required_files=required_files,
+        meta_matcher=meta_matcher_exact,
+        force_new=force_new,
+        prefix="data_set_",
+        start_index=1,
+    )
+
+    file_paths = {
+        "g_xx": os.path.join(dir_path, "g_xx.npy"),
+        "g_yy": os.path.join(dir_path, "g_yy.npy"),
+        "g_zz": os.path.join(dir_path, "g_zz.npy"),
+        "g_xy_real": os.path.join(dir_path, "g_xy_real.npy"),
+        "g_xy_imag": os.path.join(dir_path, "g_xy_imag.npy"),
+        "g_xz_real": os.path.join(dir_path, "g_xz_real.npy"),
+        "g_xz_imag": os.path.join(dir_path, "g_xz_imag.npy"),
+        "g_yz_real": os.path.join(dir_path, "g_yz_real.npy"),
+        "g_yz_imag": os.path.join(dir_path, "g_yz_imag.npy"),
+        "meta_json": os.path.join(dir_path, "meta.json"),
+        "meta_pkl": os.path.join(dir_path, "meta_info.pkl"),
+    }
+
+    print(("Using existing 3D QGT results directory: " if used else "Created new 3D QGT results directory: ") + dir_path)
+    return file_paths, used, dir_path, meta_target

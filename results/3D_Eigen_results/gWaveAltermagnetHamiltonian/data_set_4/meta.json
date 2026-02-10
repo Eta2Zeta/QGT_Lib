@@ -1,0 +1,28 @@
+{
+  "dk": [
+    0.05969026041820591,
+    0.05969026041820591,
+    5.969026041820607
+  ],
+  "hamiltonian_name": "gWaveAltermagnetHamiltonian",
+  "include_endpoints": false,
+  "k_range": 2.9845130209103035,
+  "kvals_mode": "centered",
+  "kx_range": [
+    -2.9546678907012005,
+    2.9546678907012005
+  ],
+  "ky_range": [
+    -2.9546678907012005,
+    2.9546678907012005
+  ],
+  "kz_range": [
+    0.0,
+    0.0
+  ],
+  "mesh_shape": [
+    100,
+    100,
+    1
+  ]
+}

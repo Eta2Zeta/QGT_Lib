@@ -134,7 +134,7 @@ def plot_3d_volumetric_scatter(kx_grid, ky_grid, kz_grid, eigenvalues, band_inde
     plt.show()
 
 def plot_isosurface(eigenvalues, isovalue, kx_vals, ky_vals, kz_vals, 
-                    band_index=0, alpha=0.5, color='royalblue', title=None, step_size=1):
+                    band_index=0, alpha=0.5, color='royalblue', title=None, step_size=1, ax=None):
     """
     Plot an isosurface for a specific eigenvalue using marching cubes.
     
@@ -145,6 +145,8 @@ def plot_isosurface(eigenvalues, isovalue, kx_vals, ky_vals, kz_vals,
     - band_index: Band index for labeling.
     - alpha: Transparency of the surface.
     - color: Color of the surface.
+    - step_size: Downsampling step.
+    - ax: Existing 3D axis to plot on. If None, a new figure is created.
     """
     # Use marching cubes to obtain the surface mesh
     # Note: eigenvalues axis order in calculation_3d was [x, y, z]
@@ -174,8 +176,12 @@ def plot_isosurface(eigenvalues, isovalue, kx_vals, ky_vals, kz_vals,
     real_verts[:, 2] = z0 + verts[:, 2] * dz * step_size
     
     # Plotting
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.add_subplot(111, projection='3d')
+    if ax is None:
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111, projection='3d')
+        show_plot = True
+    else:
+        show_plot = False
     
     mesh = Poly3DCollection(real_verts[faces], alpha=alpha)
     mesh.set_facecolor(color)
@@ -194,11 +200,229 @@ def plot_isosurface(eigenvalues, isovalue, kx_vals, ky_vals, kz_vals,
     
     if title is None:
         title = f'Isosurface (Band {band_index}, E={isovalue:.3f})'
-    ax.set_title(title)
     
+    # Only set title if we created the plot or if explicitly updated (optional logic)
+    # For overlaid plots, title management usually happens outside, but setting it here is fine.
+    if show_plot:
+        ax.set_title(title)
+        plt.show()
+
+
+def plot_grid_slice(
+    eigenvalues, orientation, shift,
+    kx_vals, ky_vals, kz_vals,
+    bands=None,
+    kind="pcolormesh",   # "pcolormesh" or "imshow"
+    cmap="viridis",
+    per_slice_colorbar=True,
+    title=None,
+):
+    """
+    Plot an axis-aligned slice of eigenvalues as-is (NO interpolation).
+
+    eigenvalues: array [nkx, nky, nkz, nbands]
+    orientation:
+      'x' -> fix kx ~ shift, plot over (ky,kz)
+      'y' -> fix ky ~ shift, plot over (kx,kz)
+      'z' -> fix kz ~ shift, plot over (kx,ky)
+    shift: the coordinate value where you want the slice (snaps to nearest grid plane)
+
+    bands: list of band indices to plot (default: all)
+    kind: 'pcolormesh' (uses coords) or 'imshow' (fast, robust)
+    per_slice_colorbar: each subplot gets its own colorbar (auto-normalized)
+    """
+    orientation = orientation.lower()
+    kx_vals = np.asarray(kx_vals)
+    ky_vals = np.asarray(ky_vals)
+    kz_vals = np.asarray(kz_vals)
+
+    if eigenvalues.ndim != 4:
+        raise ValueError(f"eigenvalues must be 4D [nkx,nky,nkz,nbands], got shape {eigenvalues.shape}")
+
+    nkx, nky, nkz, nbands = eigenvalues.shape
+    if bands is None:
+        bands = list(range(nbands))
+    else:
+        bands = list(bands)
+
+    # --- choose nearest plane + slice ---
+    if orientation == "x":
+        ix = int(np.argmin(np.abs(kx_vals - shift)))
+        coord_fixed = kx_vals[ix]
+        slice_3d = eigenvalues[ix, :, :, :]      # [nky, nkz, nbands]
+        X, Y = ky_vals, kz_vals
+        xlabel, ylabel = "$k_y$", "$k_z$"
+        fixed_label = f"$k_x$ = {coord_fixed:.3g} (i={ix})"
+
+        # for plotting convenience we want [len(Y), len(X)]
+        # slice_2d for one band is [nky, nkz] -> transpose to [nkz, nky]
+        get_E = lambda b: slice_3d[:, :, b].T
+
+    elif orientation == "y":
+        iy = int(np.argmin(np.abs(ky_vals - shift)))
+        coord_fixed = ky_vals[iy]
+        slice_3d = eigenvalues[:, iy, :, :]      # [nkx, nkz, nbands]
+        X, Y = kx_vals, kz_vals
+        xlabel, ylabel = "$k_x$", "$k_z$"
+        fixed_label = f"$k_y$ = {coord_fixed:.3g} (j={iy})"
+        get_E = lambda b: slice_3d[:, :, b].T    # [nkz, nkx]
+
+    elif orientation == "z":
+        iz = int(np.argmin(np.abs(kz_vals - shift)))
+        coord_fixed = kz_vals[iz]
+        slice_3d = eigenvalues[:, :, iz, :]      # [nkx, nky, nbands]
+        X, Y = kx_vals, ky_vals
+        xlabel, ylabel = "$k_x$", "$k_y$"
+        fixed_label = f"$k_z$ = {coord_fixed:.3g} (k={iz})"
+        get_E = lambda b: slice_3d[:, :, b].T    # [nky, nkx]
+
+    else:
+        raise ValueError("orientation must be 'x', 'y', or 'z' for grid slicing (no interpolation).")
+
+    # --- layout ---
+    n = len(bands)
+    ncols = min(4, n)
+    nrows = int(np.ceil(n / ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(4.8*ncols, 4.2*nrows), squeeze=False)
+    axes = axes.ravel()
+
+    # --- plot each band ---
+    for ax, b in zip(axes, bands):
+        E = get_E(b)
+
+        if kind == "imshow":
+            im = ax.imshow(
+                E, origin="lower",
+                extent=[X[0], X[-1], Y[0], Y[-1]],
+                cmap=cmap, aspect="auto"
+            )
+        else:
+            # pcolormesh with coords-as-centers is usually OK with shading="auto"
+            im = ax.pcolormesh(X, Y, E, shading="auto", cmap=cmap)
+
+        ax.set_title(f"band {b}\n{fixed_label}")
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+
+        if per_slice_colorbar:
+            fig.colorbar(im, ax=ax, shrink=0.85)
+
+    # turn off unused
+    for ax in axes[len(bands):]:
+        ax.axis("off")
+
+    if title is None:
+        title = f"Grid slice ({orientation})"
+    fig.suptitle(title)
+    plt.tight_layout()
     plt.show()
 
-def plot_arbitrary_slice(eigenvalues, orientation, shift, kx_vals, ky_vals, kz_vals, 
+
+def plot_arbitrary_slice_no_interp(
+    eigenvalues, orientation, shift,
+    kx_vals, ky_vals, kz_vals,
+    title=None, stride=3, alpha=0.35,
+    cmaps=None,
+):
+    """
+    Plot axis-aligned slices as 3D surfaces for each band, using ONLY native grid data.
+    NO interpolation. eigenvalues shape: [nkx, nky, nkz, nbands].
+
+    orientation:
+      'x' -> fix kx ~ shift, surface over (ky,kz)
+      'y' -> fix ky ~ shift, surface over (kx,kz)
+      'z' -> fix kz ~ shift, surface over (kx,ky)
+    """
+    orientation = orientation.lower()
+    kx_vals = np.asarray(kx_vals)
+    ky_vals = np.asarray(ky_vals)
+    kz_vals = np.asarray(kz_vals)
+
+    if eigenvalues.ndim != 4:
+        raise ValueError(f"eigenvalues must be 4D [nkx,nky,nkz,nbands], got {eigenvalues.shape}")
+
+    nkx, nky, nkz, nbands = eigenvalues.shape
+    if cmaps is None:
+        cmaps = ['viridis', 'plasma', 'inferno', 'magma', 'cividis']
+
+    # --- choose nearest grid plane and build U,V,E for plotting ---
+    if orientation == "x":
+        ix = int(np.argmin(np.abs(kx_vals - shift)))
+        x0 = float(kx_vals[ix])
+
+        # slice: [nky, nkz, nbands]
+        slice_3d = eigenvalues[ix, :, :, :]
+
+        # U,V grid: ky × kz
+        U, V = np.meshgrid(ky_vals, kz_vals, indexing="xy")  # U shape (nkz,nky), V shape (nkz,nky)
+
+        # For each band, E must have same shape as U,V: (nkz,nky)
+        get_E = lambda b: slice_3d[:, :, b].T  # (nkz,nky)
+
+        u_label, v_label = "ky", "kz"
+        fixed_label = f"kx = {x0:.4g} (ix={ix})"
+
+    elif orientation == "y":
+        iy = int(np.argmin(np.abs(ky_vals - shift)))
+        y0 = float(ky_vals[iy])
+
+        # slice: [nkx, nkz, nbands]
+        slice_3d = eigenvalues[:, iy, :, :]
+
+        # U,V grid: kx × kz
+        U, V = np.meshgrid(kx_vals, kz_vals, indexing="xy")  # (nkz,nkx)
+
+        get_E = lambda b: slice_3d[:, :, b].T  # (nkz,nkx)
+
+        u_label, v_label = "kx", "kz"
+        fixed_label = f"ky = {y0:.4g} (iy={iy})"
+
+    elif orientation == "z":
+        iz = int(np.argmin(np.abs(kz_vals - shift)))
+        z0 = float(kz_vals[iz])
+
+        # slice: [nkx, nky, nbands]
+        slice_3d = eigenvalues[:, :, iz, :]
+
+        # U,V grid: kx × ky
+        U, V = np.meshgrid(kx_vals, ky_vals, indexing="xy")  # U,V shape (nky,nkx)
+
+        get_E = lambda b: slice_3d[:, :, b].T  # (nky,nkx) to match U,V
+
+        u_label, v_label = "kx", "ky"
+        fixed_label = f"kz = {z0:.4g} (iz={iz})"
+
+    else:
+        raise ValueError("No-interp version supports only orientation 'x', 'y', or 'z'.")
+
+    # --- plot ---
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection="3d")
+
+    for b in range(nbands):
+        E = get_E(b)  # shape matches U,V
+
+        surf = ax.plot_surface(
+            U, V, E,
+            cmap=cmaps[b % len(cmaps)],
+            rstride=stride, cstride=stride,
+            alpha=alpha,
+            vmin=np.nanmin(E), vmax=np.nanmax(E),
+            linewidth=0, antialiased=True
+        )
+
+    ax.set_xlabel(u_label)
+    ax.set_ylabel(v_label)
+    ax.set_zlabel("Eigenvalue E")
+
+    if title is None:
+        title = f"Grid slice ({orientation}) | {fixed_label}"
+    ax.set_title(title)
+
+    plt.tight_layout()
+    plt.show()
+
+def plot_arbitrary_slice_interpolated(eigenvalues, orientation, shift, kx_vals, ky_vals, kz_vals, 
                          title=None, cmap='viridis', density=100, stride=3, alpha=0.3):
     """
     Extract and plot a slice of the 3D eigenvalue data along a specified orientation.
@@ -213,13 +437,7 @@ def plot_arbitrary_slice(eigenvalues, orientation, shift, kx_vals, ky_vals, kz_v
     - stride: Downsampling stride for the surface plot (default 3).
     - alpha: Transparency of the surface plot (default 0.3).
     """
-    
-    # 1. Setup Interpolator
-    # We create a list of interpolators, one for each band, or one vector interpolator if supported.
-    # To be safe and compatible, let's just create one interp per band or loop during interpolation?
-    # Actually, RegularGridInterpolator supports trailing dimensions.
-    # We pass the full 4D array.
-    
+
     interp = RegularGridInterpolator((kx_vals, ky_vals, kz_vals), eigenvalues, bounds_error=False, fill_value=np.nan)
     
     # 2. Define Plane Coordinates (u, v) and 3D Coordinates (X, Y, Z)
@@ -270,8 +488,6 @@ def plot_arbitrary_slice(eigenvalues, orientation, shift, kx_vals, ky_vals, kz_v
         alpha_range = np.linspace(k_min * 2, k_max * 2, density)
         U, V = np.meshgrid(alpha_range, v) 
         
-        # x = (u + shift)/2
-        # y = (u - shift)/2
         X = (U + shift) / 2
         Y = (U - shift) / 2
         Z = V
@@ -340,8 +556,6 @@ def plot_arbitrary_slice(eigenvalues, orientation, shift, kx_vals, ky_vals, kz_v
         surf = ax.plot_surface(U, V, E, cmap=cmaps[b % len(cmaps)], 
                                rstride=stride, cstride=stride, alpha=alpha, vmin=np.nanmin(E), vmax=np.nanmax(E))
         
-        # Add a text label? Or legend?
-        # Legend for surface is tricky.
     
     ax.set_xlabel(u_label)
     ax.set_ylabel(v_label)
@@ -413,3 +627,105 @@ def plot_volumetric_cloud(eigenvalues_3d, kx_vals, ky_vals, kz_vals, band_index=
         print(f"Volumetric plot saved to {filename}")
     else:
         fig.show()
+
+
+
+def plot_slice_stack(
+    data_3d, kx_vals, ky_vals, kz_vals,
+    plane="xy", n_slices=10, include_endpoints=True,
+    cmap="bwr", title="Slice stack"
+):
+    """
+    plane:
+      'xy' -> slices at various kz (perp to z)
+      'xz' -> slices at various ky (perp to y)
+      'yz' -> slices at various kx (perp to x)
+
+    Behavior:
+      - each slice uses its OWN normalization (auto from that slice)
+      - each slice has its OWN colorbar
+    """
+    plane = plane.lower()
+
+    if plane == "xy":
+        coord = np.asarray(kz_vals, dtype=float)
+        xvals = np.asarray(kx_vals, dtype=float)
+        yvals = np.asarray(ky_vals, dtype=float)
+        get_slice = lambda i: data_3d[:, :, i].T
+        label = r"$k_z$"
+        xlabel, ylabel = "$k_x$", "$k_y$"
+
+    elif plane == "xz":
+        coord = np.asarray(ky_vals, dtype=float)
+        xvals = np.asarray(kx_vals, dtype=float)
+        yvals = np.asarray(kz_vals, dtype=float)
+        get_slice = lambda i: data_3d[:, i, :].T
+        label = r"$k_y$"
+        xlabel, ylabel = "$k_x$", "$k_z$"
+
+    elif plane == "yz":
+        coord = np.asarray(kx_vals, dtype=float)
+        xvals = np.asarray(ky_vals, dtype=float)
+        yvals = np.asarray(kz_vals, dtype=float)
+        get_slice = lambda i: data_3d[i, :, :].T
+        label = r"$k_x$"
+        xlabel, ylabel = "$k_y$", "$k_z$"
+
+    else:
+        raise ValueError("plane must be 'xy', 'xz', or 'yz'")
+
+    # --- pick targets / indices ---
+    if coord.size == 0:
+        raise ValueError("Empty coord array; check k arrays.")
+
+    c_min = float(coord.min())
+    c_max = float(coord.max())
+
+    if n_slices <= 1:
+        if include_endpoints:
+            t0, t1 = c_min, c_max
+        else:
+            t0, t1 = (float(coord[1]), float(coord[-2])) if coord.size >= 3 else (c_min, c_max)
+        targets = np.array([(t0 + t1) / 2.0], dtype=float)
+    else:
+        if include_endpoints:
+            t0, t1 = c_min, c_max
+        else:
+            t0, t1 = (float(coord[1]), float(coord[-2])) if coord.size >= 3 else (c_min, c_max)
+            if not (t0 < t1):
+                t0, t1 = c_min, c_max
+        targets = np.linspace(t0, t1, n_slices)
+
+    idxs = [int(np.argmin(np.abs(coord - t))) for t in targets]
+    idxs = sorted(set(idxs))
+    n = len(idxs)
+    if n == 0:
+        raise RuntimeError("No slice indices selected (idxs empty).")
+
+    # --- layout ---
+    ncols = min(5, n)
+    nrows = int(np.ceil(n / ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(4.8*ncols, 4.2*nrows), squeeze=False)
+    axes = axes.ravel()
+
+    # --- plot each slice with its OWN normalization + OWN colorbar ---
+    for ax, i in zip(axes, idxs):
+        sl = get_slice(i)
+
+        # auto-normalize per slice: do NOT pass vmin/vmax
+        im = ax.pcolormesh(xvals, yvals, sl, shading="auto", cmap=cmap)
+
+        ax.set_title(f"{label} = {coord[i]:.3g}  (i={i})")
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+
+        # individual colorbar for this subplot
+        fig.colorbar(im, ax=ax, shrink=0.85)
+
+    # turn off unused axes
+    for ax in axes[n:]:
+        ax.axis("off")
+
+    fig.suptitle(f"{title} ({plane.upper()} stack)")
+    plt.tight_layout()
+    plt.show()

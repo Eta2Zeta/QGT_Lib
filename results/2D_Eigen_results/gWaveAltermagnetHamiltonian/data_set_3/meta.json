@@ -1,0 +1,17 @@
+{
+  "dkx": 0.06220975551662988,
+  "dky": 0.06220975551662988,
+  "hamiltonian_name": "gWaveAltermagnetHamiltonian",
+  "include_endpoints": false,
+  "kvals_mode": "centered",
+  "kx_range": [
+    -3.0793828980731637,
+    3.0793828980731632
+  ],
+  "ky_range": [
+    -3.0793828980731637,
+    3.0793828980731632
+  ],
+  "kz": 0,
+  "mesh_spacing": 100
+}

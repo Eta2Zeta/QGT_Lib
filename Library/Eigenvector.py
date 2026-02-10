@@ -123,40 +123,6 @@ class Eigenvectors:
         return new_eigenvalues, new_eigenvectors
     
 
-    
-    def set_eigenvectors_eigenvector_reordered(self, new_eigenvectors, new_eigenvalues, kx, ky, kz=0):
-        """
-        Reorder only the third and fourth eigenvectors (and corresponding eigenvalues) based on the phase continuity condition.
-        """
-        if self.previous_eigenvectors is not None:
-            # Extract relevant eigenvectors (3rd and 4th)
-            previous_vectors = [self.previous_eigenvectors[0], self.previous_eigenvectors[1]]
-            current_vectors = [new_eigenvectors[0], new_eigenvectors[1]]
-
-            # Compute phase differences for the two possible reorderings
-            phase_diff_33_44 = np.abs(1 - np.abs(np.vdot(previous_vectors[0], current_vectors[0]))) + \
-                            np.abs(1 - np.abs(np.vdot(previous_vectors[1], current_vectors[1])))
-            
-            phase_diff_34_43 = np.abs(1 - np.abs(np.vdot(previous_vectors[0], current_vectors[1]))) + \
-                            np.abs(1 - np.abs(np.vdot(previous_vectors[1], current_vectors[0])))
-            if phase_diff_34_43 - phase_diff_33_44 < 1: 
-                print(phase_diff_34_43 - phase_diff_33_44)
-            # Choose the best reordering
-            if phase_diff_34_43 < phase_diff_33_44:
-                print("hello")
-                # Swap the 3rd and 4th eigenvectors and their corresponding eigenvalues if it results in a smaller phase difference
-                new_eigenvectors[0], new_eigenvectors[1] = new_eigenvectors[1], new_eigenvectors[0]
-                new_eigenvalues[0], new_eigenvalues[1] = new_eigenvalues[1], new_eigenvalues[0]
-
-        # Update previous eigenvectors and eigenvalues for the next iteration
-        self.previous_eigenvectors = new_eigenvectors
-        self.previous_eigenvalues = new_eigenvalues
-        self.previous_kx = kx
-        self.previous_ky = ky
-        self.previous_kz = kz
-        
-        return new_eigenvectors, new_eigenvalues
-
 
     def get_phase_factors(self):
         return self.phase_factor

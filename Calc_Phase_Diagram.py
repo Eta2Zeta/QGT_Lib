@@ -18,7 +18,7 @@ from Library.QGT_lib import *
 from Library.topology import *
 from Library.utilities import setup_qgt_nd_results_dir_json, setup_qgt_nd_results_dir
 
-from Library.plotting_lib import *
+from Library.plotting_lib_2d import *
 
 def build_parameter_points(
     param_ranges,

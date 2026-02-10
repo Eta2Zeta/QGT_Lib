@@ -102,8 +102,6 @@ def quantum_geometric_tensor_term2(psi, kx, ky, delta_k):
 
 
 # & Calculation with numerical eigenfunctions
-# Numerical derivative w.r.t. kx
-# Numerical derivative w.r.t. kx
 def dpsi_dx_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=0):
     eigenvector_plus = Eigenvectors(len(eigenfunction))
     eigenvector_minus = Eigenvectors(len(eigenfunction))
@@ -354,69 +352,92 @@ def quantum_geometric_tensor_analytic(Hamiltonian, kx, ky, band=-1):
 
 
 def QGT_grid_num(
-    kx, ky, eigenvalues, eigenfunctions, quantum_geometric_tensor_func, 
+    ki, kj, eigenvalues, eigenfunctions, quantum_geometric_tensor_func, 
     hamiltonian, delta_k, band_index, z_cutoff=None,
-    progress_label=None              
+    progress_label=None, kk=0
 ):
     """
-    Calculate the quantum geometric tensor (QGT) components for a kx-ky grid with a progress bar.
+    Calculate the quantum geometric tensor (QGT) components for a ki-kj grid with a fixed kk.
 
     Parameters:
-    - kx, ky: 2D arrays defining the k-space grid.
-    - eigenvalues: 2D array of eigenvalues corresponding to the k-space grid.
-    - eigenfunctions: 2D array of eigenfunctions corresponding to the k-space grid.
-    - quantum_geometric_tensor_func: Function to calculate QGT components.
+    - ki, kj: 2D arrays defining the k-space grid (meshgrids).
+    - eigenvalues: 2D array of eigenvalues corresponding to the grid.
+    - eigenfunctions: 2D array of eigenfunctions corresponding to the grid.
+    - quantum_geometric_tensor_func: Function to calculate QGT components (must return 9 components).
     - hamiltonian: The Hamiltonian function for the system.
     - delta_k: Small step for numerical differentiation.
     - band_index: Band index for which QGT is calculated.
     - z_cutoff: Optional maximum value for clipping the QGT components.
+    - kk: Fixed value for the third momentum component.
 
     Returns:
-    - g_xx_array: 2D array of g_xx components.
-    - g_xy_real_array: 2D array of real parts of g_xy components.
-    - g_xy_imag_array: 2D array of imaginary parts of g_xy components.
-    - g_yy_array: 2D array of g_yy components.
-    - trace_array: 2D array of trace components (g_xx + g_yy).
+    - g_xx_array, g_yy_array, g_zz_array
+    - g_xy_real_array, g_xy_imag_array
+    - g_xz_real_array, g_xz_imag_array
+    - g_yz_real_array, g_yz_imag_array
     """
     # Initialize arrays to store tensor components
-    g_xx_array = np.zeros(kx.shape)
-    g_xy_real_array = np.zeros(kx.shape)
-    g_xy_imag_array = np.zeros(kx.shape)
-    g_yy_array = np.zeros(kx.shape)
-    trace_array = np.zeros(kx.shape)
+    g_xx_array = np.zeros(ki.shape)
+    g_yy_array = np.zeros(ki.shape)
+    g_zz_array = np.zeros(ki.shape)
 
-    total_points = kx.shape[0] * kx.shape[1]
+    g_xy_real_array = np.zeros(ki.shape)
+    g_xy_imag_array = np.zeros(ki.shape)
+
+    g_xz_real_array = np.zeros(ki.shape)
+    g_xz_imag_array = np.zeros(ki.shape)
+
+    g_yz_real_array = np.zeros(ki.shape)
+    g_yz_imag_array = np.zeros(ki.shape)
+
+    total_points = ki.shape[0] * ki.shape[1]
 
     desc = f"QGT grid [{progress_label}]" if progress_label else "Computing QGT grid"
     # leave=False avoids leaving dozens of bars when using many processes
     with tqdm(total=total_points, desc=desc, unit="kpt", leave=False) as pbar:
-        for i in range(kx.shape[0]):
-            for j in range(kx.shape[1]):
+        for i in range(ki.shape[0]):
+            for j in range(ki.shape[1]):
                 eigenfunction = eigenfunctions[i, j]
                 eigenvalue = eigenvalues[i, j]
-                # (your check remains)
-
-                g_xx, g_xy_real, g_xy_imag, g_yy = quantum_geometric_tensor_func(
-                    hamiltonian, kx[i, j], ky[i, j], delta_k, eigenvalue, eigenfunction, band_index
+                
+                # Call the 3D QGT function with fixed kk
+                # The signature expected here is:
+                # func(Hamiltonian, kx, ky, kz, delta_k, eigenvalue, eigenfunction, band_index)
+                g_xx, g_yy, g_zz, g_xy_real, g_xy_imag, g_xz_real, g_xz_imag, g_yz_real, g_yz_imag = quantum_geometric_tensor_func(
+                    hamiltonian, ki[i, j], kj[i, j], kk, delta_k, eigenvalue, eigenfunction, band_index
                 )
-                # store + update (unchanged)
+                
                 g_xx_array[i, j] = g_xx
+                g_yy_array[i, j] = g_yy
+                g_zz_array[i, j] = g_zz
+                
                 g_xy_real_array[i, j] = g_xy_real
                 g_xy_imag_array[i, j] = g_xy_imag
-                g_yy_array[i, j] = g_yy
-                trace_array[i, j] = g_xx + g_yy
+                
+                g_xz_real_array[i, j] = g_xz_real
+                g_xz_imag_array[i, j] = g_xz_imag
+                
+                g_yz_real_array[i, j] = g_yz_real
+                g_yz_imag_array[i, j] = g_yz_imag
+
                 pbar.update(1)
 
-    # cutoff + return (unchanged)
+    # Clipping if z_cutoff is provided
     if z_cutoff is not None:
-        g_xx_array = np.clip(g_xx_array, -z_cutoff, z_cutoff)
-        g_xy_real_array = np.clip(g_xy_real_array, -z_cutoff, z_cutoff)
-        g_xy_imag_array = np.clip(g_xy_imag_array, -z_cutoff, z_cutoff)
-        g_yy_array = np.clip(g_yy_array, -z_cutoff, z_cutoff)
-        trace_array = np.clip(trace_array, -z_cutoff, z_cutoff)
+        arrays = [g_xx_array, g_yy_array, g_zz_array, 
+                  g_xy_real_array, g_xy_imag_array, 
+                  g_xz_real_array, g_xz_imag_array, 
+                  g_yz_real_array, g_yz_imag_array]
+                  
+        for idx, arr in enumerate(arrays):
+            arrays[idx] = np.clip(arr, -z_cutoff, z_cutoff)
+            
+        return tuple(arrays)
 
-    return g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array
-
+    return (g_xx_array, g_yy_array, g_zz_array, 
+            g_xy_real_array, g_xy_imag_array, 
+            g_xz_real_array, g_xz_imag_array, 
+            g_yz_real_array, g_yz_imag_array) 
 
 
 def QGT_grid_3d_num(
