@@ -16,7 +16,7 @@ from Library.eigenvalue_calc_lib import *
 from Library.QGT_lib import *
 from Library.topology import *
 from Library.utilities import *
-from Library.plotting_lib import *
+from Library.plotting_lib_2d import *
 
 
 # ----- PARAM GRID -----

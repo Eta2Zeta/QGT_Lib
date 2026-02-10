@@ -73,7 +73,7 @@ def pick_or_create_result_dir(
 
 
 
-def setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force_new=False):
+def setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, include_endpoints=True, force_new=False):
     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
     base_root = os.path.join(os.getcwd(), "results", "2D_Eigen_results", Hamiltonian_name)
 
@@ -81,7 +81,9 @@ def setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force
         r'[^\w.-]', '_',
         f"2D_{hamiltonian.get_filename()}_"
         f"kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_"
-        f"ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_mesh{mesh_spacing}"
+        f"ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_"
+        f"mesh{mesh_spacing}_"
+        f"endpoints_{include_endpoints}"
     )
 
     required_files = [
@@ -139,7 +141,7 @@ def setup_results_directory_1d(hamiltonian, k_angle, kx_shift, ky_shift, num_poi
 
 
 
-def setup_QGT_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force_new=False, method_name=None):
+def setup_QGT_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, include_endpoints=True, force_new=False, method_name=None):
     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
     base_root = os.path.join(os.getcwd(), "results", "2D_QGT_results", Hamiltonian_name)
 
@@ -150,7 +152,9 @@ def setup_QGT_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, f
         r'[^\w.-]', '_',
         f"QGT{method_str}_{hamiltonian.get_filename(parameter='2D')}_"
         f"kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_"
-        f"ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_mesh{mesh_spacing}"
+        f"ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_"
+        f"mesh{mesh_spacing}_"
+        f"endpoints_{include_endpoints}"
     )
 
     required_files = ["g_xx.npy","g_xy_real.npy","g_xy_imag.npy","g_yy.npy","trace.npy","meta_info.pkl"]
@@ -177,26 +181,28 @@ def setup_QGT_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, f
     return file_paths, used, dir_path
 
 
-def setup_3D_QGT_results_directory(hamiltonian, kx_range, ky_range, kz_range, mesh_spacing, force_new=False):
+def setup_3D_Eigen_results_directory(
+    hamiltonian, kx_range, ky_range, kz_range,
+    mesh_shape, include_endpoints=True, force_new=False
+):
     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
-    # New base root as requested: results/3D_QGT_results
-    base_root = os.path.join(os.getcwd(), "results", "3D_QGT_results", Hamiltonian_name)
+    base_root = os.path.join(os.getcwd(), "results", "3D_Eigen_results", Hamiltonian_name)
 
+    nx, ny, nz = mesh_shape
     base_name = re.sub(
         r'[^\w.-]', '_',
-        f"3D_{hamiltonian.get_filename(parameter='2D')}_" # Use 2D param string as base or implement 3D if available
+        f"3D_{hamiltonian.get_filename(parameter='2D')}_"
         f"kx{kx_range[0]:.2f}_{kx_range[1]:.2f}_"
         f"ky{ky_range[0]:.2f}_{ky_range[1]:.2f}_"
         f"kz{kz_range[0]:.2f}_{kz_range[1]:.2f}_"
-        f"mesh{mesh_spacing}"
+        f"nx{nx}_ny{ny}_nz{nz}_"
+        f"endpoints_{include_endpoints}"
     )
 
     required_files = [
-        "g_xx.npy", "g_yy.npy", "g_zz.npy",
-        "g_xy_real.npy", "g_xy_imag.npy",
-        "g_xz_real.npy", "g_xz_imag.npy",
-        "g_yz_real.npy", "g_yz_imag.npy",
-        "meta_info.pkl"
+        "eigenvalues_3d.npy",
+        "eigenvectors_3d.npy", # Optional? Usually we save both
+        "meta_info.pkl",
     ]
 
     dir_path, used = pick_or_create_result_dir(
@@ -209,21 +215,13 @@ def setup_3D_QGT_results_directory(hamiltonian, kx_range, ky_range, kz_range, me
     )
 
     file_paths = {k: os.path.join(dir_path, fname) for k, fname in {
-        "g_xx": "g_xx.npy",
-        "g_yy": "g_yy.npy",
-        "g_zz": "g_zz.npy",
-        "g_xy_real": "g_xy_real.npy",
-        "g_xy_imag": "g_xy_imag.npy",
-        "g_xz_real": "g_xz_real.npy",
-        "g_xz_imag": "g_xz_imag.npy",
-        "g_yz_real": "g_yz_real.npy",
-        "g_yz_imag": "g_yz_imag.npy",
+        "eigenvalues": "eigenvalues_3d.npy",
+        "eigenfunctions": "eigenvectors_3d.npy",
         "meta_info": "meta_info.pkl",
     }.items()}
 
-    print(("Using existing 3D QGT results directory: " if used else "Created new 3D QGT results directory: ") + dir_path)
+    print(("Using existing 3D Eigen results directory: " if used else "Created new 3D Eigen results directory: ") + dir_path)
     return file_paths, used, dir_path
-
 
 
 def setup_QGT_results_directory_1D(
@@ -830,3 +828,18 @@ def setup_qgt_nd_results_dir_json(
     print(("Using existing (JSON) QGT directory: " if used else "Created new (JSON) QGT directory: ") + dir_path)
     return dir_path, used
 
+
+
+def centered_kvals(k_range: float, N: int) -> np.ndarray:
+    """
+    Return N cell-centered k points spanning [-k_range, +k_range], symmetric about 0.
+
+    Uses the "edges -> centers" construction:
+      edges   = linspace(-k_range, +k_range, N+1)
+      centers = 0.5*(edges[:-1] + edges[1:])
+    """
+    if N <= 0:
+        raise ValueError("N must be a positive integer.")
+    edges = np.linspace(-k_range, k_range, N + 1, endpoint=True)
+    centers = 0.5 * (edges[:-1] + edges[1:])
+    return centers

@@ -3,86 +3,53 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import math
 from .utilities import replace_zeros_with_nan
+from .plotting_lib_1d import plot_eigenvalues_line
 
-def plot_k_line_on_grid(line_kx, line_ky, k_max):
+
+def extract_and_plot_eigenvalues_along_line(kx_grid, ky_grid, eigenvalues, start_k, end_k, num_points=100, bands_to_plot=None):
     """
-    Plot the k-path line (line_kx, line_ky) on a 2D grid representing the Brillouin zone.
+    Extracts eigenvalues along a linear path in 2D k-space and plots them.
 
     Parameters:
-    - line_kx: 1D array of kx values along the line.
-    - line_ky: 1D array of ky values along the line.
-    - k_max: Maximum k-value defining the grid boundary.
+    - kx_grid, ky_grid: 2D arrays (meshgrid) representing the k-space.
+    - eigenvalues: 3D array of eigenvalues [nkx, nky, nbands].
+    - start_k: Tuple (kx_start, ky_start).
+    - end_k: Tuple (kx_end, ky_end).
+    - num_points: Number of points along the interpolation line.
+    - bands_to_plot: Tuple of band indices to plot.
     """
-    # Generate the grid for visualization
-    kx_grid, ky_grid = np.meshgrid(np.linspace(-k_max, k_max, 100), 
-                                   np.linspace(-k_max, k_max, 100))
+    # Generate points along the line
+    k_path_x = np.linspace(start_k[0], end_k[0], num_points)
+    k_path_y = np.linspace(start_k[1], end_k[1], num_points)
+    
+    # Calculate path distance for x-axis of the plot
+    dist = np.sqrt((k_path_x - start_k[0])**2 + (k_path_y - start_k[1])**2)
+    
+    nbands = eigenvalues.shape[2]
+    result_array = np.zeros((num_points, nbands))
+    
+    # Flatten the grid coordinates
+    flat_kx = kx_grid.flatten()
+    flat_ky = ky_grid.flatten()
+    
+    print(f"Extracting cut with {num_points} points...")
+    
+    for i in range(num_points):
+        tx, ty = k_path_x[i], k_path_y[i]
+        
+        # Distance squared
+        d2 = (flat_kx - tx)**2 + (flat_ky - ty)**2
+        nearest_idx = np.argmin(d2)
+        
+        # Convert flat index back to 2D index
+        idx_y, idx_x = divmod(nearest_idx, kx_grid.shape[1])
+        
+        result_array[i, :] = eigenvalues[idx_y, idx_x, :]
+        
+    print("Extraction complete. Plotting...")
+    
+    plot_eigenvalues_line(dist, result_array, dim=nbands, bands_to_plot=bands_to_plot, plot_style="points")
 
-    # Plot the grid and the line
-    plt.figure(figsize=(8, 8))
-    plt.plot(line_kx, line_ky, color='red', label='k-path line', linewidth=2)  # Plot the line
-    plt.axhline(0, color='black', linewidth=0.5, linestyle='--')  # Optional x-axis
-    plt.axvline(0, color='black', linewidth=0.5, linestyle='--')  # Optional y-axis
-    plt.xlim(-k_max, k_max)
-    plt.ylim(-k_max, k_max)
-    plt.title("k-Path Line on 2D k-Space Grid")
-    plt.xlabel("kx")
-    plt.ylabel("ky")
-    plt.grid(True)
-    plt.legend()
-    plt.show()
-
-
-
-def plot_eigenvalues_line(k_line, eigenvalues, dim=None, bands_to_plot=None):
-    """
-    Plot eigenvalues for selected bands along a 1D k-path.
-
-    Parameters:
-    - k_line: 1D array of k-values along the line.
-    - eigenvalues: 2D array of eigenvalues (shape: [num_points, num_bands]).
-    - dim: Number of bands (optional). If None, it will be inferred from the eigenvalues array.
-    - bands_to_plot: Tuple of band indices to plot (e.g., (0,1,3)). Default is None, which plots all bands.
-    """
-    # Infer the number of bands from eigenvalues if not provided
-    if dim is None:
-        dim = eigenvalues.shape[1]
-
-    # Default to plotting all bands if no specific selection is given
-    if bands_to_plot is None:
-        bands_to_plot = range(dim)
-
-    # Ensure bands_to_plot is a tuple
-    if isinstance(bands_to_plot, int):
-        bands_to_plot = (bands_to_plot,)
-
-    # Collect eigenvalues for selected bands
-    selected_eigenvalues = np.array([eigenvalues[:, band] for band in bands_to_plot if 0 <= band < dim])
-
-    if selected_eigenvalues.size == 0:
-        print("Warning: No valid bands selected for plotting.")
-        return
-
-    # Determine y-axis limits
-    ymin, ymax = np.min(selected_eigenvalues), np.max(selected_eigenvalues)
-    y_padding = 0.05 * (ymax - ymin)  # Add 5% padding
-    ymin, ymax = ymin - y_padding, ymax + y_padding
-
-    # Set up the plot
-    plt.figure(figsize=(10, 6))
-    for band in bands_to_plot:
-        if 0 <= band < dim:  # Ensure the band index is within valid range
-            plt.plot(k_line, eigenvalues[:, band], label=f'Band {band}')
-        else:
-            print(f"Warning: Band {band} is out of range and will not be plotted.")
-
-    # Add plot details
-    plt.title('Eigenvalues Along the Line in k-Space')
-    plt.xlabel('k (along the line)')
-    plt.ylabel('Eigenvalue')
-    plt.ylim(ymin, ymax)  # Dynamically adjust the y-axis range
-    plt.legend()
-    plt.grid(True)
-    plt.show()
 
 
 def plot_eigenvalues_surface(kx, ky, eigenvalues, dim=6, z_limit=300, stride_size=3, color_maps='default'):
@@ -737,7 +704,11 @@ def plot_qmt_eig_berry_trace_3d(
       title             : figure title
     """
     # Extract data
-    Z_eig = replace_zeros_with_nan(eigenvalues[:, :, eigenvalue_band])
+    if eigenvalues is not None:
+        Z_eig = replace_zeros_with_nan(eigenvalues[:, :, eigenvalue_band])
+    else:
+        Z_eig = None
+
     if convert_berry_from_imQ:
         Z_berry = replace_zeros_with_nan(-2.0 * g_xy_imag)  # Ω = -2 Im(Q_xy)
     else:
@@ -746,6 +717,7 @@ def plot_qmt_eig_berry_trace_3d(
 
     # Auto z-limits with 5% margin if not provided
     def auto_limits(Z):
+        if Z is None: return None
         zmin = np.nanmin(Z)
         zmax = np.nanmax(Z)
         if not np.isfinite(zmin) or not np.isfinite(zmax):
@@ -767,7 +739,7 @@ def plot_qmt_eig_berry_trace_3d(
 
     # Panels config
     panels = [
-        dict(Z=Z_eig,   cmap=cmaps[0], title=f"Eigenvalue Band {eigenvalue_band+1}",
+        dict(Z=Z_eig,   cmap=cmaps[0], title=f"Eigenvalue Band {eigenvalue_band+1}" if Z_eig is not None else "Eigenvalue (No Data)",
              zlabel="Eigenvalue", zlim=zlim_eig),
         dict(Z=Z_berry, cmap=cmaps[1], title="Berry Curvature Ω" if convert_berry_from_imQ else "Im(Q_xy)",
              zlabel="Ω" if convert_berry_from_imQ else "Im(Q_xy)", zlim=zlim_berry),
@@ -778,22 +750,25 @@ def plot_qmt_eig_berry_trace_3d(
         Z = cfg['Z']
         cmap = cfg['cmap']
         norm = None  # you can put Normalize(...) if you want matched color scaling
-        surf = ax.plot_surface(
-            kx, ky, Z, cmap=cmap, norm=norm,
-            rstride=stride_size, cstride=stride_size, alpha=0.9
-        )
+        
+        if Z is not None:
+            surf = ax.plot_surface(
+                kx, ky, Z, cmap=cmap, norm=norm,
+                rstride=stride_size, cstride=stride_size, alpha=0.9
+            )
+            
+            # Colorbar per panel (thin)
+            mappable = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+            mappable.set_array(Z)
+            cbar = fig.colorbar(mappable, ax=ax, shrink=cbar_shrink, aspect=cbar_aspect, pad=0.03)
+            cbar.ax.tick_params(labelsize=9)
+            
         ax.set_title(cfg['title'])
         ax.set_xlabel('kx')
         ax.set_ylabel('ky')
         ax.set_zlabel(cfg['zlabel'])
         if cfg['zlim'] is not None:
             ax.set_zlim(*cfg['zlim'])
-
-        # Colorbar per panel (thin)
-        mappable = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-        mappable.set_array(Z)
-        cbar = fig.colorbar(mappable, ax=ax, shrink=cbar_shrink, aspect=cbar_aspect, pad=0.03)
-        cbar.ax.tick_params(labelsize=9)
 
     plt.tight_layout(rect=(0, 0, 1, 0.95))
     plt.show()
@@ -812,3 +787,96 @@ def plot_g_components_line(k_line, g_xx, g_yy, trace, angle_deg):
     plt.legend()
     plt.grid(True)
     plt.show()
+
+def plot_qmt_eig_berry_trace_2d(
+    kx, ky,
+    eigenvalues,              # shape: (Nk, Nk, Nb)
+    g_xy_imag,                # shape: (Nk, Nk); Im(Q_xy)
+    trace_array,              # shape: (Nk, Nk)
+    eigenvalue_band=0,
+    convert_berry_from_imQ=True,  # If True, Ω = -2 * Im(Q_xy)
+    cmaps=('viridis', 'coolwarm', 'plasma'),
+    zlims=(None, None, None),     # (zlim_eig, zlim_berry, zlim_trace); each entry None -> auto
+    title="QGT: Eigenvalue, Berry Curvature, and Trace (2D Heatmaps)",
+    components="xy"
+):
+    """
+    Make a 1×3 row of 2D heatmaps for:
+      - Eigenvalue band 'eigenvalue_band'
+      - Berry curvature Ω (from Im(Q_xy) if convert_berry_from_imQ=True)
+      - Trace of the QGT
+
+    Args:
+      kx, ky            : 2D grids (meshgrid)
+      eigenvalues       : 3D array (Nk, Nk, Nb)
+      g_xy_imag         : 2D array Im(Q_xy)
+      trace_array       : 2D array Tr[g]
+      eigenvalue_band   : which band to plot from eigenvalues
+      convert_berry_from_imQ : if True, uses Ω = -2 * Im(Q_xy)
+      cmaps             : (cmap_eig, cmap_berry, cmap_trace)
+      zlims             : tuple of z-limits for each panel; any None -> auto limit with 5% margin
+      title             : figure title
+    """
+    # Extract data
+    if eigenvalues is not None:
+        Z_eig = replace_zeros_with_nan(eigenvalues[:, :, eigenvalue_band])
+    else:
+        Z_eig = None
+
+    if convert_berry_from_imQ:
+        Z_berry = replace_zeros_with_nan(-2.0 * g_xy_imag)  # Ω = -2 Im(Q_xy)
+        berry_label = f"Berry Curvature Ω ({components})"
+    else:
+        Z_berry = replace_zeros_with_nan(g_xy_imag)
+        berry_label = f"Im(Q_xy) ({components})"
+    Z_trace = replace_zeros_with_nan(trace_array)
+
+    # Auto z-limits with 5% margin if not provided
+    def auto_limits(Z):
+        if Z is None: return None
+        zmin = np.nanmin(Z)
+        zmax = np.nanmax(Z)
+        if not np.isfinite(zmin) or not np.isfinite(zmax):
+            return None
+        if zmax == zmin:
+            delta = 1.0
+            return (zmin - delta, zmax + delta)
+        margin = 0.05 * (zmax - zmin)
+        return (zmin - margin, zmax + margin)
+
+    zlim_eig   = zlims[0] if zlims[0] is not None else auto_limits(Z_eig)
+    zlim_berry = zlims[1] if zlims[1] is not None else auto_limits(Z_berry)
+    zlim_trace = zlims[2] if zlims[2] is not None else auto_limits(Z_trace)
+
+    # Figure & axes (1 row, 3 cols)
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    if title:
+        fig.suptitle(title, fontsize=14)
+
+    panels = [
+        dict(Z=Z_eig,   cmap=cmaps[0], title=f"Eigenvalue Band {eigenvalue_band+1}" if Z_eig is not None else "Eigenvalue (No Data)", zlim=zlim_eig),
+        dict(Z=Z_berry, cmap=cmaps[1], title=berry_label, zlim=zlim_berry),
+        dict(Z=Z_trace, cmap=cmaps[2], title="Trace Tr[g]", zlim=zlim_trace),
+    ]
+
+    for ax, cfg in zip(axes, panels):
+        Z = cfg['Z']
+        cmap = cfg['cmap']
+        zlim = cfg['zlim']
+        
+        vmin, vmax = zlim if zlim is not None else (None, None)
+
+        if Z is not None:
+            # Use pcolormesh for generalized grids
+            im = ax.pcolormesh(kx, ky, Z, cmap=cmap, shading='auto', vmin=vmin, vmax=vmax)
+            # Colorbar
+            cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        
+        ax.set_title(cfg['title'])
+        ax.set_xlabel('kx')
+        ax.set_ylabel('ky')
+        ax.axis('scaled') # square aspect ratio
+        
+    plt.tight_layout(rect=(0, 0, 1, 0.95))
+    plt.show()
+    plt.close()
