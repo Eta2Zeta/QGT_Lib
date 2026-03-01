@@ -11,12 +11,18 @@ from Library.Hamiltonian_v1 import *
 from Library.Hamiltonian.Hamiltonian_v2 import * 
 from Library.Hamiltonian.Chiral_Hamiltonian_Projected import *
 from Library.Hamiltonian.gWaveAltermagnetHamiltonian import *
+from Library.Hamiltonian.AltermagnetHamiltonian import *
 from Library.Hamiltonian.RuO2Hamiltonian import *
-from Library.plotting_lib_3d import *
+from Library.plotting_lib_3d import plot_degeneracy_on_path_3d, plot_isosurface, plot_arbitrary_slice_no_interp, plot_volumetric_cloud
+from Library.plotting_lib_2d import *
+from Library.plotting_lib_2d import plot_degeneracy_2d
+from Library.plotting_lib_1d import *
 from Library.eigenvalue_calc_lib import *
 from Library.Geometry.zones import ZoneDivider
 from Library.utilities import setup_results_directory, centered_kvals
-from Library.data_management_utils import setup_3D_Eigen_results_directory
+from Library.data_management_utils import setup_3D_Eigen_results_directory, setup_3D_sym_points_results_directory
+from Library.Hamiltonian_helper import get_Hamiltonian
+
 
 
 # Ensure the temp directory exists
@@ -36,43 +42,43 @@ os.makedirs(temp_dir, exist_ok=True)
 # bands = (0,1)
 # hamiltonian = HaldaneHamiltonian(psi = -np.pi/2, M=0)
 # hamiltonian = GrapheneHamiltonian(A0=0)
-# hamiltonian = RuO2Hamiltonian()
-hamiltonian = gWaveAltermagnetHamiltonian(t1=0.8, t2=0.0, t3=0.3, t4=0.3, mu=0, Jx=0.0, Jy=0.0, Jz=0.2, lamb=0.1, lamb_z=0.1)
-k_max = np.pi
+# hamiltonian = RuO2Hamiltonian(lamb_z=0)
+hamiltonian = gWaveAltermagnetHamiltonian(t1=0.3, t2=0.3, t3=0.3, t4=0.3, mu=0, Jx=0.0, Jy=0.0, Jz=0.2, lamb=0.1, lamb_z=0.1)
+k_max = 1.2*np.pi
 bands = (0,1)
 dim = hamiltonian.dim
 
-def calculation_2d(hamiltonian = hamiltonian, force_new=True, include_end_points=True, kz=0):
-    # Create kx and ky arrays
+def calculation_2d(hamiltonian = hamiltonian, force_new=True, include_end_points=True, kk=0, order="xyz"):
+    # Create ki and kj arrays
     
-    mesh_spacing = 100
+    mesh_spacing = 150
 
     if include_end_points:
-        kx = np.linspace(-k_max, k_max, mesh_spacing)
-        ky = np.linspace(-k_max, k_max, mesh_spacing)
-        kx_range = (-k_max, k_max)
-        ky_range = (-k_max, k_max)
+        ki = np.linspace(-k_max, k_max, mesh_spacing)
+        kj = np.linspace(-k_max, k_max, mesh_spacing)
+        ki_range = (-k_max, k_max)
+        kj_range = (-k_max, k_max)
     else:
-        kx = np.linspace(-k_max, k_max, mesh_spacing + 2)[1:-1]
-        ky = np.linspace(-k_max, k_max, mesh_spacing + 2)[1:-1]
-        kx_range = (kx[0], kx[-1])
-        ky_range = (ky[0], ky[-1])
+        ki = np.linspace(-k_max, k_max, mesh_spacing + 2)[1:-1]
+        kj = np.linspace(-k_max, k_max, mesh_spacing + 2)[1:-1]
+        ki_range = (ki[0], ki[-1])
+        kj_range = (kj[0], kj[-1])
     
-    kx, ky = np.meshgrid(kx, ky)
-    dkx = np.abs(kx[0, 1] - kx[0, 0])  # Spacing in the x-direction (constant for a uniform grid)
-    dky = np.abs(ky[1, 0] - ky[0, 0])  # Spacing in the y-direction (constant for a uniform grid)
+    ki, kj = np.meshgrid(ki, kj)
+    dki = 2*k_max/mesh_spacing
+    dkj = 2*k_max/mesh_spacing
     z_limit = 1000
 
     # Create the results directory
-    # file_paths, use_existing, results_subdir = setup_results_directory(hamiltonian, kx_range, ky_range, mesh_spacing, force_new=force_new)
+    # file_paths, use_existing, results_subdir = setup_results_directory(hamiltonian, ki_range, kj_range, mesh_spacing, force_new=force_new)
     from Library.data_management_utils_2D import setup_2D_Eigen_results_directory
 
     kvals_mode = "endpoints" if include_end_points else "centered"
     
     file_paths, use_existing, results_subdir, meta_target = setup_2D_Eigen_results_directory(
         hamiltonian, 
-        kx_range, 
-        ky_range, 
+        ki_range, 
+        kj_range, 
         mesh_spacing, 
         include_endpoints=include_end_points, 
         force_new=force_new,
@@ -108,14 +114,18 @@ def calculation_2d(hamiltonian = hamiltonian, force_new=True, include_end_points
         
         # Calculate the eigenvalues and eigenfunctions
         # eigenvalues, eigenfunctions, _, _ = grid_eigenvalues_eigenfunctions_ordered(
-        #     hamiltonian, kx, ky, mesh_spacing, dim=dim
+        #     hamiltonian, ki, kj, mesh_spacing, dim=dim
         # )
 
         eigenvalues, eigenfunctions, _, _ = grid_eigenvalues_eigenfunctions(
-            hamiltonian, kx, ky, mesh_spacing, dim=dim, kz=kz
+            hamiltonian, ki, kj, mesh_spacing, dim=dim, kk=kk, order=order
         )
 
-        # eigenvalues = analytic_eigenvalues_2d(hamiltonian, kx, ky, mesh_spacing, dim)
+        # eigenvalues, eigenfunctions, _, _, _, _ = spiral_eigenvalues_eigenfunctions(
+        #     hamiltonian, ki, kj, mesh_spacing, dim=dim
+        # )
+
+        # eigenvalues = analytic_eigenvalues_2d(hamiltonian, ki, kj, mesh_spacing, dim)
 
 
         # Save results
@@ -131,14 +141,14 @@ def calculation_2d(hamiltonian = hamiltonian, force_new=True, include_end_points
         meta_info_json = meta_target.copy()
         meta_info_json.update({
              "hamiltonian_name": ham_name,
-             "kx_range": kx_range,
-             "ky_range": ky_range,
+             "ki_range": ki_range,
+             "kj_range": kj_range,
              "mesh_spacing": mesh_spacing,
-             "dkx": dkx, 
-             "dky": dky,
-             "kz": kz, # kz was passed in
+             "dki": dki, 
+             "dkj": dkj,
+             "kk": kk, # kk was passed in
              "include_endpoints": include_end_points,
-             
+             "order": order
         })
         
         with open(file_paths["meta_json"], "w") as f:
@@ -146,17 +156,18 @@ def calculation_2d(hamiltonian = hamiltonian, force_new=True, include_end_points
 
         # Save meta information (Pickle) - for objects
         meta_info_pkl = {
-            "kx": kx,
-            "ky": ky,
-            "kz": kz,
-            "dkx": dkx, 
-            "dky": dky,
+            "ki": ki,
+            "kj": kj,
+            "kk": kk,
+            "dki": dki, 
+            "dkj": dkj,
             "mesh_spacing": mesh_spacing,
             "Hamiltonian_Obj": hamiltonian, 
-            "kx_range": kx_range,
-            "ky_range": ky_range,
+            "ki_range": ki_range,
+            "kj_range": kj_range,
             "kvals_mode": kvals_mode,
-            "include_endpoints": include_end_points
+            "include_endpoints": include_end_points,
+            "order": order
         }
 
         # Save the metadata using pickle
@@ -177,26 +188,31 @@ def calculation_2d(hamiltonian = hamiltonian, force_new=True, include_end_points
 
     eigenvalues = capping_eigenvalues(eigenvalues=eigenvalues, z_limit=z_limit)
 
-    plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=None)
-    # plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=(0,1))
-    # plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=0)
-    # plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=1)
-    # plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=2)
-    # plot_eigenvalues_surface_colorbar(kx, ky, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=3)
+    # plot_eigenvalues_surface_colorbar(ki, kj, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=None)
+    # plot_eigenvalues_surface_colorbar(ki, kj, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=(0,1))
+    # plot_eigenvalues_surface_colorbar(ki, kj, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=0)
+    # plot_eigenvalues_surface_colorbar(ki, kj, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=1)
+    # plot_eigenvalues_surface_colorbar(ki, kj, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=2)
+    # plot_eigenvalues_surface_colorbar(ki, kj, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='bwr', norm=None, bands_to_plot=3)
 
-    # plot_individual_eigenvalues(kx, ky, eigenvalues, dim=dim, z_limit=None)
+    # plot_individual_eigenvalues(ki, kj, eigenvalues, dim=dim, z_limit=None)
     
     # --- New: Plot Eigenvalues along a diagonal cut ---
     print("Plotting eigenvalues along diagonal cut...")
-    extract_and_plot_eigenvalues_along_line(kx, ky, eigenvalues, start_k=(-np.pi, 0), end_k=(np.pi, 0), num_points=100)
-    extract_and_plot_eigenvalues_along_line(kx, ky, eigenvalues, start_k=(-np.pi, -np.pi/np.sqrt(3)), end_k=(np.pi, np.pi/np.sqrt(3)), num_points=100)
-    extract_and_plot_eigenvalues_along_line(kx, ky, eigenvalues, start_k=(0, -np.pi), end_k=(0, np.pi), num_points=100)
+    extract_and_plot_eigenvalues_along_line(ki, kj, eigenvalues, start_k=(0, 0), end_k=(np.pi, 0), num_points=100)
+    extract_and_plot_eigenvalues_along_line(ki, kj, eigenvalues, start_k=(0, 0), end_k=(np.pi, np.pi), num_points=100)
+    extract_and_plot_eigenvalues_along_line(ki, kj, eigenvalues, start_k=(0, 0), end_k=(0, np.pi), num_points=100)
+    extract_and_plot_eigenvalues_along_line(ki, kj, eigenvalues, start_k=(0, np.pi), end_k=(np.pi, np.pi), num_points=100)
 
-    # plot_eigenfunction_components(kx, ky, eigenfunctions, band_index=0, components_to_plot=[0,1,2,3])
+    # --- New: Plot 2D Degeneracy Map ---
+    print("Plotting 2D Degeneracy Map...")
+    plot_degeneracy_2d(ki, kj, eigenvalues, threshold=0.01, title=f"Band Degeneracy Map ({hamiltonian.name})")
 
-    # plot_phases(kx, ky, phasefactors, dim=2)
+    # plot_eigenfunction_components(ki, kj, eigenfunctions, band_index=0, components_to_plot=[0,1,2,3])
 
-    # plot_neighbor_phases(kx, ky, overall_neighbor_phase_array, dim=2)
+    # plot_phases(ki, kj, phasefactors, dim=2)
+
+    # plot_neighbor_phases(ki, kj, overall_neighbor_phase_array, dim=2)
 
 
 def calculation_1d(hamiltonian=hamiltonian):
@@ -262,8 +278,9 @@ def calculation_3d(hamiltonian=hamiltonian, force_new=True, include_end_points=T
     temp_dir = os.path.join(os.getcwd(), "temp")
     os.makedirs(temp_dir, exist_ok=True)
 
-    k_range = 0.95*np.pi
-    mesh_nx, mesh_ny, mesh_nz = 100, 100, 1
+    k_range = 1*np.pi
+    mesh = 150
+    mesh_nx, mesh_ny, mesh_nz = mesh, mesh, mesh
 
 
     if include_end_points: 
@@ -278,9 +295,9 @@ def calculation_3d(hamiltonian=hamiltonian, force_new=True, include_end_points=T
         kvals_mode = "centered"
     
     # spacings (uniform by construction)
-    dkx = float(kx_vals[1] - kx_vals[0]) if mesh_nx > 1 else (2*k_range)  # fallback for N=1
-    dky = float(ky_vals[1] - ky_vals[0]) if mesh_ny > 1 else (2*k_range)
-    dkz = float(kz_vals[1] - kz_vals[0]) if mesh_nz > 1 else (2*k_range)
+    dkx = 2*k_range/mesh_nx
+    dky = 2*k_range/mesh_ny
+    dkz = 2*k_range/mesh_nz
     mesh_shape = (len(kx_vals), len(ky_vals), len(kz_vals))
 
 
@@ -356,42 +373,172 @@ def calculation_3d(hamiltonian=hamiltonian, force_new=True, include_end_points=T
     # --- Plotting ---
     print("Generating plots...")
     
-    band_idx = 0
+    band_idx = 2
     eig_band = eigenvalues_3d[:, :, :, band_idx] # [x, y, z]
     
-    # 1. Stacked Slices
-    # Use the new helper function
-    # plot_3d_stacked_slices_from_volume(eigenvalues_3d, kx_vals, ky_vals, kz_vals, 
-    #                                    band_index=band_idx, num_slices=3, 
-    #                                    title=f"RuO2 Band {band_idx} Eigenvalues (10 Z-Slices)")
+    plot_volumetric_cloud(eig_band, kx_vals, ky_vals, kz_vals,
+                          opacity=0.2, levels=[0])
+    
 
-    # print("Generating isosurface plot...")
-    # 2. Isosurface
-    min_e = np.min(eig_band)
-    max_e = np.max(eig_band)
-    avg_e = (min_e + max_e) / 2
-    
-    print(f"Band {band_idx} Energy Range: [{min_e:.3f}, {max_e:.3f}]")
-    
-    
-    plot_isosurface(eig_band, avg_e, kx_vals, ky_vals, kz_vals, band_index=band_idx, 
-                    title=f"RuO2 Band {band_idx} Isosurface (E={avg_e:.3f})", step_size=3)
-
-    print("Generating arbitrary slice plots...")
     orientation = 'z'
     shift_val = 0
     plot_arbitrary_slice_no_interp(eigenvalues_3d, orientation, shift_val, kx_vals, ky_vals, kz_vals, 
                             title=f"Slice {orientation} (shift={shift_val})")
 
-    print("Generating volumetric cloud plot...")
-    # 4. Volumetric Cloud
-    cloud_filename = os.path.join(results_dir, f"volumetric_cloud_band_{band_idx}.html")
-    plot_volumetric_cloud(eigenvalues_3d, kx_vals, ky_vals, kz_vals, band_index=band_idx, 
-                          opacity=0.1, surface_count=20, 
-                          title=f"RuO2 Band {band_idx} Cloud", filename=cloud_filename)
 
+def calculation_3d_sym_points(hamiltonian=hamiltonian, force_new=True):
+    print("Performing 3D Symmetry Points calculation...")
+    
+    # Define High Symmetry Points
+    points = {
+        "G": np.array([0, 0, 0]),
+        "X": np.array([np.pi, 0, 0]),
+        "S": np.array([np.pi, np.pi, 0]),
+        "Y": np.array([0, np.pi, 0]),
+        "Z": np.array([0, 0, np.pi]),  # Zetta
+        "U": np.array([np.pi, 0, np.pi]),
+        "R": np.array([np.pi, np.pi, np.pi]),
+        "T": np.array([0, np.pi, np.pi])
+    }
+    
+    # Define Path Sequence directly as requested
+    # Z -> G -> S -> R -> T -> Y -> S -> X -> U -> R -> Z
+    path_labels = ["Z", "G", "S", "R", "T", "Y", "S", "X", "U", "R", "Z"]
+    # path_labels = ["Z", "R"]
+    path_points = [points[label] for label in path_labels]
+    
+    num_points_per_segment = 100
+    
+    # Generate k-points along the path
+    k_path = []
+    k_dist = [0.0]
+    k_node_indices = [0]
+    
+    current_dist = 0.0
+    
+    for i in range(len(path_points) - 1):
+        start = path_points[i]
+        end = path_points[i+1]
+        
+        # Calculate distance for this segment
+        dist = np.linalg.norm(end - start)
+        
+        
+        segment_points = np.linspace(start, end, num_points_per_segment)
+        segment_dists = np.linspace(0, dist, num_points_per_segment)
+        
+        if i > 0:
+            segment_points = segment_points[1:] # Remove start point
+            segment_dists = segment_dists[1:]
+        
+        k_path.append(segment_points)
+        
+        for d in segment_dists:
+            k_dist.append(current_dist + d)
+            
+        current_dist += dist
+        k_node_indices.append(len(k_dist) - 1)
+        
+    k_path = np.vstack(k_path)
+    k_dist = np.array(k_dist) 
+    
+    # Re-do generation for clarity
+    all_k_points = []
+    all_k_dist = []
+    node_indices = []
+    
+    cum_dist = 0.0
+    
+    # First point
+    all_k_points.append(path_points[0])
+    all_k_dist.append(cum_dist)
+    node_indices.append(0)
+    
+    for i in range(len(path_points) - 1):
+        start = path_points[i]
+        end = path_points[i+1]
+        
+        dist = np.linalg.norm(end - start)
+        
 
+        pts = np.linspace(start, end, num_points_per_segment + 1)[1:]
+        
+        # distances
+        dists = np.linspace(0, dist, num_points_per_segment + 1)[1:]
+        
+        for p, d in zip(pts, dists):
+            all_k_points.append(p)
+            all_k_dist.append(cum_dist + d)
+            
+        cum_dist += dist
+        node_indices.append(len(all_k_points) - 1)
+        
+    k_path = np.array(all_k_points)
+    k_dist = np.array(all_k_dist)
+    
+    # Setup directories
+    file_paths, use_existing, results_dir, meta_target = setup_3D_sym_points_results_directory(
+        hamiltonian, 
+        path_points, # pass list of arrays
+        path_labels, 
+        num_points_per_segment, 
+        force_new=force_new
+    )
+    
+    if use_existing:
+        print("Loading existing 3D Sym Points results...")
+        eigenvalues = np.load(file_paths["eigenvalues"])
+    else:
+        print("Calculating eigenvalues along 3D path...")
+        
+        
+        kx = k_path[:, 0]
+        
+        # We can implement a quick helper here or just loop
+        num_points = len(kx)
+        dim = hamiltonian.dim
+        eigenvalues = np.zeros((num_points, dim))
+        
+
+        try:             
+            for idx in tqdm(range(num_points), desc="Calculating path"):
+                 k_curr = k_path[idx]
+                 H, _ = get_Hamiltonian(hamiltonian, k_curr[0], k_curr[1], k_curr[2])
+                 evals = np.linalg.eigvalsh(H)
+                 # sort
+                 evals = np.sort(evals)
+                 eigenvalues[idx, :] = evals
+                 
+        except Exception as e:
+            print(f"Error in calculation: {e}")
+            raise e
+            
+        # Save results
+        np.save(file_paths["eigenvalues"], eigenvalues)
+        
+        # Save meta
+        with open(file_paths["meta_json"], "w") as f:
+            json.dump(meta_target, f, indent=2)
+            
+        with open(file_paths["meta_pkl"], "wb") as f:
+            pickle.dump(meta_target, f)
+            
+        print("Calculation complete and saved.")
+
+    # Plot
+    plot_band_structure_sym(
+        k_dist, 
+        eigenvalues, 
+        node_indices, 
+        path_labels, 
+        title=f"Band Structure along Z-G-S-R-T-Y-S-X-U-R-Z ({hamiltonian.name})"
+    )
+
+    plot_degeneracy_on_path_3d(k_path, eigenvalues, threshold=0.05, title=f"Degeneracy along Path ({hamiltonian.name})")
+
+    
 # calculation_1d()
-calculation_2d(hamiltonian, force_new=True, include_end_points=False, kz=0.01*np.pi) 
-# calculation_3d(hamiltonian, force_new=False, include_end_points=False)
+# calculation_2d(hamiltonian, force_new=True, include_end_points=False, kk=0.99*np.pi) 
+calculation_3d(hamiltonian, force_new=False, include_end_points=False)
+# calculation_3d_sym_points(hamiltonian, force_new=True)
 

@@ -4,6 +4,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import math
 from .utilities import replace_zeros_with_nan
 from .plotting_lib_1d import plot_eigenvalues_line
+from matplotlib.colors import TwoSlopeNorm
 
 
 def extract_and_plot_eigenvalues_along_line(kx_grid, ky_grid, eigenvalues, start_k, end_k, num_points=100, bands_to_plot=None):
@@ -48,7 +49,43 @@ def extract_and_plot_eigenvalues_along_line(kx_grid, ky_grid, eigenvalues, start
         
     print("Extraction complete. Plotting...")
     
-    plot_eigenvalues_line(dist, result_array, dim=nbands, bands_to_plot=bands_to_plot, plot_style="points")
+    # Construct descriptive title
+    title = f"Eigenvalues along line: ({start_k[0]:.2f}, {start_k[1]:.2f}) -> ({end_k[0]:.2f}, {end_k[1]:.2f})"
+    
+    # Create figure and axes manually to add inset
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Plot the eigenvalues
+    plot_eigenvalues_line(dist, result_array, dim=nbands, bands_to_plot=bands_to_plot, 
+                          plot_style="points", title=title, ax=ax, show=False)
+
+    # Add miniplot (inset)
+    # Location: Lower left corner, small
+    from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+    # Alternatively, using relative coordinates: [left, bottom, width, height]
+    ax_inset = ax.inset_axes([0.05, 0.05, 0.2, 0.2])
+    
+    # Plot the bounding box of the grid (assuming rectangular grid aligned with axes)
+    kx_min, kx_max = kx_grid.min(), kx_grid.max()
+    ky_min, ky_max = ky_grid.min(), ky_grid.max()
+    
+    # Draw a box for the domain
+    ax_inset.plot([kx_min, kx_max, kx_max, kx_min, kx_min], 
+                  [ky_min, ky_min, ky_max, ky_max, ky_min], 'k-', linewidth=0.5)
+    
+    # Plot the path line
+    ax_inset.plot([start_k[0], end_k[0]], [start_k[1], end_k[1]], 'r-', linewidth=2)
+    
+    # Plot start and end points
+    ax_inset.plot(start_k[0], start_k[1], 'go', markersize=3) # Start Green
+    ax_inset.plot(end_k[0], end_k[1], 'rs', markersize=3)   # End Red
+    
+    ax_inset.set_aspect('equal')
+    ax_inset.set_xticks([])
+    ax_inset.set_yticks([])
+    ax_inset.set_title("Path in 2D", fontsize=8)
+    
+    plt.show()
 
 
 
@@ -796,7 +833,8 @@ def plot_qmt_eig_berry_trace_2d(
     eigenvalue_band=0,
     convert_berry_from_imQ=True,  # If True, Ω = -2 * Im(Q_xy)
     cmaps=('viridis', 'coolwarm', 'plasma'),
-    zlims=(None, None, None),     # (zlim_eig, zlim_berry, zlim_trace); each entry None -> auto
+    zlim_berry=None,
+    zlim_trace=None,
     title="QGT: Eigenvalue, Berry Curvature, and Trace (2D Heatmaps)",
     components="xy"
 ):
@@ -814,7 +852,8 @@ def plot_qmt_eig_berry_trace_2d(
       eigenvalue_band   : which band to plot from eigenvalues
       convert_berry_from_imQ : if True, uses Ω = -2 * Im(Q_xy)
       cmaps             : (cmap_eig, cmap_berry, cmap_trace)
-      zlims             : tuple of z-limits for each panel; any None -> auto limit with 5% margin
+      zlim_berry        : max absolute limit for berry panel; None -> auto limit with 5% margin
+      zlim_trace        : max absolute limit for trace panel; None -> auto limit with 5% margin
       title             : figure title
     """
     # Extract data
@@ -831,22 +870,42 @@ def plot_qmt_eig_berry_trace_2d(
         berry_label = f"Im(Q_xy) ({components})"
     Z_trace = replace_zeros_with_nan(trace_array)
 
-    # Auto z-limits with 5% margin if not provided
-    def auto_limits(Z):
-        if Z is None: return None
+    def get_limits(Z, limit=None, margin_frac=0.05):
+        if Z is None:
+            return None
+
         zmin = np.nanmin(Z)
         zmax = np.nanmax(Z)
         if not np.isfinite(zmin) or not np.isfinite(zmax):
             return None
-        if zmax == zmin:
-            delta = 1.0
-            return (zmin - delta, zmax + delta)
-        margin = 0.05 * (zmax - zmin)
-        return (zmin - margin, zmax + margin)
 
-    zlim_eig   = zlims[0] if zlims[0] is not None else auto_limits(Z_eig)
-    zlim_berry = zlims[1] if zlims[1] is not None else auto_limits(Z_berry)
-    zlim_trace = zlims[2] if zlims[2] is not None else auto_limits(Z_trace)
+        # Handle constant field
+        if zmax == zmin:
+            delta = 1.0 if zmax == 0 else 0.05 * abs(zmax)
+            return (zmin - delta, zmax + delta)
+
+        # Symmetric about 0
+        abs_max = max(abs(zmin), abs(zmax))
+
+        # If a limit is provided and is tighter than data, clamp to it
+        if limit is not None:
+            lim = float(limit)
+            abs_use = lim if lim < abs_max else abs_max
+        else:
+            abs_use = abs_max
+
+        # Optional symmetric margin (still symmetric)
+        abs_use = abs_use * (1.0 + float(margin_frac))
+
+        # Avoid degenerate range
+        if abs_use == 0.0:
+            abs_use = 1.0
+
+        return (-abs_use, abs_use)
+
+    zlim_eig   = get_limits(Z_eig, None)
+    zlim_berry_tuple = get_limits(Z_berry, zlim_berry)
+    zlim_trace_tuple = get_limits(Z_trace, zlim_trace)
 
     # Figure & axes (1 row, 3 cols)
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
@@ -855,28 +914,122 @@ def plot_qmt_eig_berry_trace_2d(
 
     panels = [
         dict(Z=Z_eig,   cmap=cmaps[0], title=f"Eigenvalue Band {eigenvalue_band+1}" if Z_eig is not None else "Eigenvalue (No Data)", zlim=zlim_eig),
-        dict(Z=Z_berry, cmap=cmaps[1], title=berry_label, zlim=zlim_berry),
-        dict(Z=Z_trace, cmap=cmaps[2], title="Trace Tr[g]", zlim=zlim_trace),
+        dict(Z=Z_berry, cmap=cmaps[1], title=berry_label, zlim=zlim_berry_tuple),
+        dict(Z=Z_trace, cmap=cmaps[2], title="Trace Tr[g]", zlim=zlim_trace_tuple),
     ]
 
     for ax, cfg in zip(axes, panels):
-        Z = cfg['Z']
-        cmap = cfg['cmap']
-        zlim = cfg['zlim']
-        
+        Z = cfg["Z"]
+        cmap = cfg["cmap"]
+        zlim = cfg["zlim"]
         vmin, vmax = zlim if zlim is not None else (None, None)
 
         if Z is not None:
-            # Use pcolormesh for generalized grids
-            im = ax.pcolormesh(kx, ky, Z, cmap=cmap, shading='auto', vmin=vmin, vmax=vmax)
-            # Colorbar
-            cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-        
+            norm = None
+
+            # Make 0 map to the *center color* (white-ish in many diverging maps)
+            if cfg["title"] in [berry_label, "Trace Tr[g]"]:
+                if vmin is not None and vmax is not None and vmin < 0 < vmax:
+                    from matplotlib.colors import TwoSlopeNorm
+                    norm = TwoSlopeNorm(vmin=vmin, vcenter=0.0, vmax=vmax)
+
+            im = ax.pcolormesh(kx, ky, Z, cmap=cmap, shading="auto",
+                            norm=norm, vmin=None if norm else vmin, vmax=None if norm else vmax)
+            fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+            
+            # Use native matplotlib format_coord to show the exact z-value on hover
+            def make_format_coord(ax_curr, Z_arr, kx_arr, ky_arr):
+                def format_coord(x, y):
+                    # Find nearest index in the kx, ky grid
+                    # kx_arr[0,:] gives the x-coordinates, ky_arr[:,0] gives the y-coordinates
+                    # Note: pcolormesh coordinates can be slightly offset from cell centers
+                    x_idx = np.abs(kx_arr[0, :] - x).argmin()
+                    y_idx = np.abs(ky_arr[:, 0] - y).argmin()
+                    
+                    if 0 <= y_idx < Z_arr.shape[0] and 0 <= x_idx < Z_arr.shape[1]:
+                        z_val = Z_arr[y_idx, x_idx]
+                        return f"kx={x:.4f}, ky={y:.4f}  |  Value = {z_val:.6g}"
+                    return f"kx={x:.4f}, ky={y:.4f}"
+                return format_coord
+
+            ax.format_coord = make_format_coord(ax, Z, kx, ky)
+
         ax.set_title(cfg['title'])
         ax.set_xlabel('kx')
         ax.set_ylabel('ky')
         ax.axis('scaled') # square aspect ratio
         
     plt.tight_layout(rect=(0, 0, 1, 0.95))
+    plt.show()
+    plt.close()
+
+
+def plot_degeneracy_2d(kx, ky, eigenvalues, threshold=0.01, title="Degeneracy Map (2D)"):
+    """
+    Plot a 2D map where colors indicate the number of band degeneracies at each k-point.
+    
+    Parameters:
+    - kx, ky: 2D arrays (meshgrid) for k-space.
+    - eigenvalues: 3D array of eigenvalues [nkx, nky, nbands].
+    - threshold: Relative threshold (fraction of max gap) to consider bands degenerate.
+    - title: Plot title.
+    """
+    nkx, nky, nbands = eigenvalues.shape
+    degeneracy_map = np.zeros((nkx, nky), dtype=int)
+    
+    print("Calculating 2D degeneracy map...")
+    
+    # Iterate over grid
+    for i in range(nkx):
+        for j in range(nky):
+            evals = np.sort(eigenvalues[i, j, :])
+            diffs = np.diff(evals)
+            
+            if len(diffs) > 0:
+                max_gap = np.max(diffs)
+                # Avoid zero division or extremely small gaps
+                current_thresh = max(threshold * max_gap, 1e-10)
+                
+                # Count how many gaps are smaller than threshold
+                # This counts number of "touchings". 
+                # e.g. 2 degenerate bands -> 1 touching
+                # 3 degenerate bands -> 2 touchings (or maybe 1 if blocked, but typically diffs will show 2 small gaps)
+                degeneracy_map[i, j] = np.sum(diffs <= current_thresh)
+            else:
+                degeneracy_map[i, j] = 0
+                
+    # Plot
+    fig, ax = plt.subplots(figsize=(10, 8))
+    
+    # Use a discrete colormap
+    # 0 -> Blue (No degeneracy)
+    # 1 -> Green (2-fold)
+    # 2 -> Red (3-fold or two 2-fold)
+    # 3+ -> Black
+    
+    # We can use imshow or pcolormesh
+    # Let's use pcolormesh
+    
+    # Custom colormap
+    from matplotlib.colors import ListedColormap, BoundaryNorm
+    
+    # Define colors for 0, 1, 2, 3+
+    colors = ['blue', 'green', 'red', 'black']
+    cmap = ListedColormap(colors)
+    bounds = [-0.5, 0.5, 1.5, 2.5, 10.5] # Bins centered at 0, 1, 2, 3+
+    norm = BoundaryNorm(bounds, cmap.N)
+    
+    im = ax.pcolormesh(kx, ky, degeneracy_map, cmap=cmap, norm=norm, shading='auto')
+    
+    ax.set_title(title)
+    ax.set_xlabel('kx')
+    ax.set_ylabel('ky')
+    
+    # Colorbar with discrete ticks
+    cbar = fig.colorbar(im, ax=ax, ticks=[0, 1, 2, 3])
+    cbar.ax.set_yticklabels(['0 (Non-deg)', '1 (2-fold)', '2 (3-fold/2x2)', '3+ (>3-fold)'])
+    cbar.set_label('Degeneracy Count (small gaps)')
+    
+    plt.tight_layout()
     plt.show()
     plt.close()

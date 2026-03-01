@@ -3,10 +3,9 @@ import os
 import numpy as np
 import pickle
 from tqdm import tqdm  # Import tqdm for progress bar
-import copy
 from multiprocessing import Pool, cpu_count
 from functools import partial
-
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # from Library import * 
 from Library.Hamiltonian_v1 import *
@@ -19,13 +18,13 @@ from Library.plotting_lib_2d import *
 from Library.Hamiltonian.RuO2Hamiltonian import *
 from Library.Hamiltonian.gWaveAltermagnetHamiltonian import *
 from Library.data_management_utils import setup_3D_QGT_results_directory
-
+from Library.data_management_utils_2D import setup_2D_QGT_results_directory
 
 
 def calculate_2d(Force_new=True):
     # Define parameters
-    band = 1 # Which band to calculate your QMT on, starting from 0
-    z_cutoff = 1 #where to cutoff the plot for the z axis when singularties occur
+    band = 2 # Which band to calculate your QMT on, starting from 0
+    z_cutoff = 10 #where to cutoff the plot for the z axis when singularties occur
 
     # Define the temp directory for storing .npy files
     temp_dir = os.path.join(os.getcwd(), "temp")
@@ -42,14 +41,15 @@ def calculate_2d(Force_new=True):
         with open(meta_info_file, "rb") as meta_file:
             meta_info = pickle.load(meta_file)
             Hamiltonian_Obj = meta_info["Hamiltonian_Obj"] # ALWAYS REQUIRED
-            kx = meta_info["kx"] # Required for 1D
-            ky = meta_info["ky"] # Required for 1D
-            kz = meta_info["kz"]
-            dkx = meta_info["dkx"]
-            dky = meta_info["dky"]
+            ki = meta_info["ki"] # Required for 1D
+            kj = meta_info["kj"] # Required for 1D
+            kk = meta_info["kk"]
+            dki = meta_info["dki"]
+            dkj = meta_info["dkj"]
             mesh_spacing = meta_info["mesh_spacing"]
-            kx_range = meta_info["kx_range"]
-            ky_range = meta_info["ky_range"]
+            ki_range = meta_info["ki_range"]
+            kj_range = meta_info["kj_range"]
+            order = meta_info["order"]
         print("Loaded eigenvalues, eigenfunctions, and meta information from files.")
         print(f"Current Hamiltonian: {Hamiltonian_Obj.name}")
     else:
@@ -58,27 +58,27 @@ def calculate_2d(Force_new=True):
 
     # Define method name for directory naming ("analytic", "numerical", etc.)
     method_name = "numerical"
-    
-    # NEW SETUP
-    from Library.data_management_utils_2D import setup_2D_QGT_results_directory
-    
+    # method_name = "numerical_phase_corrected"
+    # method_name = "analytic"
+
     Hamiltonian_name = getattr(Hamiltonian_Obj, "name", "Hamiltonian")
     
     # Construct metadata parameters dictionary with ALL info
     meta_params = {
         "hamiltonian_name": Hamiltonian_name,
-        "kz": kz,
-        "kx_range": kx_range,
-        "ky_range": ky_range,
+        "kk": kk,
+        "ki_range": ki_range,
+        "kj_range": kj_range,
         "mesh_spacing": mesh_spacing,
         "method_name": method_name,
         "include_endpoints": True,
         # Objects to include in pickle but exclude from JSON
         "Hamiltonian_Obj": Hamiltonian_Obj,
-        "kx": kx,
-        "ky": ky,
-        "dkx": dkx,
-        "dky": dky
+        "ki": ki,
+        "kj": kj,
+        "dki": dki,
+        "dkj": dkj, 
+        "order": order
     }
     
     file_paths, use_existing, results_subdir, meta_target = setup_2D_QGT_results_directory(
@@ -106,53 +106,53 @@ def calculate_2d(Force_new=True):
 
 
     else:
-        Hamiltonian_Obj.A0 = 0.0
-        Hamiltonian_Obj.omega = 5e3
-
         # Select QGT calculation method
-        if method_name == "numerical":
-            # Note: QGT_grid_num now returns 9 components
-            # We must use a 3D-compatible function for the inner loop, e.g. quantum_geometric_tensor_3d_num_eigenvector_ordered
-            
+        if method_name == "numerical":            
             (g_xx_array, g_yy_array, g_zz_array, 
              g_xy_real_array, g_xy_imag_array, 
              g_xz_real_array, g_xz_imag_array, 
              g_yz_real_array, g_yz_imag_array) = QGT_grid_num(
-                kx, ky, eigenvalues, eigenfunctions, quantum_geometric_tensor_3d_num_eigenvector_ordered, 
-                Hamiltonian_Obj, delta_k=1e-5, band_index=band, z_cutoff=z_cutoff, kk=kz
+                ki, kj, eigenvalues, eigenfunctions, quantum_geometric_tensor_3d_num_eigenvector_ordered, 
+                Hamiltonian_Obj, delta_k=1e-5, band_index=band, kk=kk
             )
-            
-            # Trace is typically sum of diagonal elements g_ii
+            trace_array = g_xx_array + g_yy_array + g_zz_array
+
+        
+        elif method_name == "numerical_phase_corrected":
+
+            (g_xx_array, g_yy_array, g_zz_array, 
+             g_xy_real_array, g_xy_imag_array, 
+             g_xz_real_array, g_xz_imag_array, 
+             g_yz_real_array, g_yz_imag_array) = QGT_grid_num(
+                ki, kj, eigenvalues, eigenfunctions, quantum_geometric_tensor_3d_num_phase_corrected, 
+                Hamiltonian_Obj, delta_k=1e-5, band_index=band, kk=kk
+            )
             trace_array = g_xx_array + g_yy_array + g_zz_array
         
         elif method_name == "array_analytic":
             print("Using Analytic QGT Calculation (Block Diagonalization)...")
             g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = Hamiltonian_Obj.compute_qgt_analytic(
-                kx, ky, band_index=band
+                ki, kj, band_index=band
             )
-            
-            if z_cutoff is not None:
-                g_xx_array = np.clip(g_xx_array, -z_cutoff, z_cutoff)
-                g_xy_real_array = np.clip(g_xy_real_array, -z_cutoff, z_cutoff)
-                g_xy_imag_array = np.clip(g_xy_imag_array, -z_cutoff, z_cutoff)
-                g_yy_array = np.clip(g_yy_array, -z_cutoff, z_cutoff)
-                trace_array = np.clip(trace_array, -z_cutoff, z_cutoff)
 
         elif method_name == "analytic":
             print("Using Array Analytic QGT Calculation...")
             # Assuming QGT_grid_analytic is available in imports
-            g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = QGT_grid_analytic(
-                kx, ky, quantum_geometric_tensor_analytic, 
-                Hamiltonian_Obj, z_cutoff=z_cutoff
+            # eigenvalues[..., band] extracts the specific band's eigenvalues from the calculation 
+            eigenvalues_band = eigenvalues[..., band]
+
+            g_xx_array, g_yy_array, g_zz_array, g_xy_real_array, g_xy_imag_array, g_xz_real_array, g_xz_imag_array, g_yz_real_array, g_yz_imag_array, trace_array = QGT_grid_analytic(
+                ki, kj, quantum_geometric_tensor_analytic, 
+                Hamiltonian_Obj, kk=kk, z_cutoff=z_cutoff, eigenvalues=eigenvalues_band, order=order
             )
 
         elif method_name == "semi_numerical":
             print("Using Semi-Numerical QGT Calculation...")
             g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = QGT_grid_semi_num(
-                kx, ky,
+                ki, kj,
                 quantum_geometric_tensor_semi_num,
                 hamiltonian=Hamiltonian_Obj,
-                delta_k=dkx,
+                delta_k=dki,
                 band_index=band,
                 z_cutoff=z_cutoff
             )
@@ -177,24 +177,17 @@ def calculate_2d(Force_new=True):
         }
 
         for key, array in save_dict.items():
-            # If the file path is not in file_paths (e.g. g_zz, g_xz...), we might need to define it or just skip
-            # The setup_2D_QGT_results_directory might not have returned paths for 3D components if it wasn't updated.
-            # However, we can construct the path if needed or just rely on what is in file_paths.
-            # Checking if key is in file_paths:
             if key in file_paths:
                 np.save(file_paths[key], array)
                 np.save(os.path.join(temp_dir, os.path.basename(file_paths[key])), array)
             else:
-                # If key not in file_paths (likely for new 3D components in 2D struct), 
-                # we can save them to temp_dir or define a new path convention.
-                # For now, let's save to temp_dir at least.
                 np.save(os.path.join(temp_dir, f"{key}.npy"), array)
 
         # Save QGT metadata (JSON)
         # Clean up meta_target for JSON saving (remove objects not serializable)
         meta_info_json = meta_target.copy()
         
-        keys_to_remove = ["Hamiltonian_Obj", "kx", "ky"]
+        keys_to_remove = ["Hamiltonian_Obj", "ki", "kj"]
         for key in keys_to_remove:
             if key in meta_info_json:
                 del meta_info_json[key]
@@ -219,161 +212,304 @@ def calculate_2d(Force_new=True):
     # b1, b2 = Hamiltonian_Obj.b1, Hamiltonian_Obj.b2
     # chern_number = compute_chern_number(
     #     g_xy_imag_array,
-    #     dkx, dky,
-    #     kx, ky,
+    #     dki, dkj,
+    #     ki, kj,
     #     b1, b2
     # )
     # print("Chern number is: ", chern_number)
 
 
-    # plot_QGT_components_3d(kx, ky, g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, stride_size=1)
+    # plot_QGT_components_3d(ki, kj, g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, stride_size=1)
 
     # plot_g_components_2d(g_xx_array, g_yy_array, trace_array, k_max=k_max)
 
-    # plot_trace_w_eigenvalue(kx, ky, g_xx_array, g_yy_array, eigenvalues, trace_array, eigenvalue_band=band)
+    # plot_trace_w_eigenvalue(ki, kj, g_xx_array, g_yy_array, eigenvalues, trace_array, eigenvalue_band=band)
 
 
     # --- FHS Method (Commented out effectively by not using its result) ---
     # flux_field = berry_flux_FHS(eigenfunctions, dim_band=band)
-    # berry_curvature_fhs = flux_field / (dkx * dky)
+    # berry_curvature_fhs = flux_field / (dki * dkj)
     # g_xy_imag_fhs = -0.5 * berry_curvature_fhs
 
 
-    # plot_qmt_eig_berry_trace_3d(
-    #     kx, ky, eigenvalues, g_xy_imag_array, trace_array,
-    #     eigenvalue_band=band,
-    #     zlims=(None, (-z_cutoff, z_cutoff), (-z_cutoff, z_cutoff))
-    # )
 
     plot_qmt_eig_berry_trace_2d(
-        kx, ky, eigenvalues, g_xy_imag_array, trace_array,
+        ki, kj, eigenvalues, g_xy_imag_array, trace_array,
         eigenvalue_band=band,
-        zlims=(None, (-z_cutoff, z_cutoff), (-z_cutoff, z_cutoff)),
+        zlim_berry=z_cutoff,
         components="xy"
     )
 
     plot_qmt_eig_berry_trace_2d(
-        kx, ky, eigenvalues, g_xz_imag_array, trace_array,
+        ki, kj, eigenvalues, g_xz_imag_array, trace_array,
         eigenvalue_band=band,
-        zlims=(None, (-z_cutoff, z_cutoff), (-z_cutoff, z_cutoff)),
+        zlim_berry=z_cutoff,
         components="xz"
     )
 
     plot_qmt_eig_berry_trace_2d(
-        kx, ky, eigenvalues, g_yz_imag_array, trace_array,
+        ki, kj, eigenvalues, g_yz_imag_array, trace_array,
         eigenvalue_band=band,
-        zlims=(None, (-z_cutoff, z_cutoff), (-z_cutoff, z_cutoff)),
+        zlim_berry=z_cutoff,
         components="yz"
     )
 
 
-def calculate_3d():
-    print(f"Starting 3D QGT Calculation...")
-    band = 0
-    z_cutoff = 20
-    # --- Check Temp Directory First (User Request) ---
-    temp_dir = os.path.join(os.getcwd(), "temp")
-    temp_eig = os.path.join(temp_dir, "eigenvalues_3d.npy")
-    temp_vec = os.path.join(temp_dir, "eigenvectors_3d.npy")
-    temp_meta = os.path.join(temp_dir, "meta_info.pkl")
-    
-    
-    if os.path.exists(temp_eig) and os.path.exists(temp_vec) and os.path.exists(temp_meta):
-        print("Found results in temp directory. Attempting to load from there...")
-        try:
-            with open(temp_meta, "rb") as f:
-                temp_info = pickle.load(f)
-            
-            # Check if it looks like what we expect
-            # We trust the user wants to use this
-            hamiltonian = temp_info["Hamiltonian_Obj"]
-            kx_vals = temp_info["kx_vals"]
-            ky_vals = temp_info["ky_vals"]
-            kz_vals = temp_info["kz_vals"]
-            mesh_shape = temp_info["mesh_shape"]
-            kvals_mode = temp_info["kvals_mode"]
-            include_endpoints = temp_info["include_endpoints"]
-            eigenvalues_3d = np.load(temp_eig)
-            eigenvectors_3d = np.load(temp_vec)
-            print(f"Successfully loaded data from temp. Hamiltonian: {hamiltonian.name}, Mesh: {mesh_size}")
-            
-        except Exception as e:
-            print(f"Failed to load from temp: {e}. Falling back to standard calculation.")
+def _infer_nbands(eigenvalues: np.ndarray, eigenfunctions: np.ndarray) -> int:
+    """
+    Try to infer band count robustly.
+    Typical shapes:
+      eigenvalues: (Nx, Ny, Nb) or (Nk, Nb)
+      eigenfunctions: (Nx, Ny, Nb, dim) or (Nx, Ny, Nb, dim, ...) etc
+    """
+    if eigenvalues is not None and eigenvalues.ndim >= 1:
+        # Most common: last axis is band
+        return int(eigenvalues.shape[-1])
+    # fallback
+    return int(eigenfunctions.shape[2])
 
+def _qgt_one_band_worker(payload: dict):
+    """
+    Runs in a separate process.
+    Loads eigenvalues/eigenfunctions via mmap (no giant pickles).
+    Computes QGT for ONE band.
+    """
+    # ---- unpack minimal payload ----
+    band = payload["band"]
+    temp_dir = payload["temp_dir"]
+    z_cutoff = payload["z_cutoff"]
+    delta_k = payload["delta_k"]
+    method_name = payload["method_name"]
+    kk = payload["kk"]
 
-    delta_k = 1e-4 # Use small step for numerical derivative, matching 2D calculation
-    
-    qgt_file_paths, qgt_use_existing, qgt_results_dir, qgt_meta_target = setup_3D_QGT_results_directory(
-        hamiltonian,
-        [kx_vals[0], kx_vals[-1]],
-        [ky_vals[0], ky_vals[-1]],
-        [kz_vals[0], kz_vals[-1]],
-        mesh_shape=mesh_shape,
-        include_endpoints=include_endpoints,
-        force_new=True,
-        kvals_mode=kvals_mode,  # if your function supports it
+    # Load meta + Hamiltonian object (pickled) inside worker
+    meta_info_file = os.path.join(temp_dir, "meta_info.pkl")
+    with open(meta_info_file, "rb") as f:
+        meta_info = pickle.load(f)
+    H = meta_info["Hamiltonian_Obj"]
+
+    ki = meta_info["ki"]
+    kj = meta_info["kj"]
+
+    # mmap the big arrays
+    eigenvalues = np.load(os.path.join(temp_dir, "eigenvalues.npy"), mmap_mode="r")
+    eigenfunctions = np.load(os.path.join(temp_dir, "eigenfunctions.npy"), mmap_mode="r")
+
+    # If you need these set:
+    H.A0 = 0.0
+    H.omega = 5e3
+
+    if method_name != "numerical":
+        raise ValueError("This worker currently implements numerical only (easy to extend).")
+
+    # --- compute band QGT ---
+    (g_xx, g_yy, g_zz,
+     g_xy_r, g_xy_i,
+     g_xz_r, g_xz_i,
+     g_yz_r, g_yz_i) = QGT_grid_num(
+        ki, kj,
+        eigenvalues, eigenfunctions,
+        quantum_geometric_tensor_3d_num_eigenvector_ordered,
+        # quantum_geometric_tensor_3d_num_phase_corrected,
+        H,
+        delta_k=delta_k,
+        band_index=band,
+        z_cutoff=z_cutoff,
+        kk=kk, 
+        order = "xyz"
     )
 
-    if qgt_use_existing and all(os.path.exists(p) for p in qgt_file_paths.values()):
-         print("Loading existing QGT results...")
-         g_xx_arr = np.load(qgt_file_paths["g_xx"])
-         g_yy_arr = np.load(qgt_file_paths["g_yy"])
-         g_zz_arr = np.load(qgt_file_paths["g_zz"])
-         g_xy_real_arr = np.load(qgt_file_paths["g_xy_real"])
-         g_xy_imag_arr = np.load(qgt_file_paths["g_xy_imag"])
-         g_xz_real_arr = np.load(qgt_file_paths["g_xz_real"])
-         g_xz_imag_arr = np.load(qgt_file_paths["g_xz_imag"])
-         g_yz_real_arr = np.load(qgt_file_paths["g_yz_real"])
-         g_yz_imag_arr = np.load(qgt_file_paths["g_yz_imag"])
+    trace = g_xx + g_yy + g_zz
+
+    # return numpy arrays to parent (these are much smaller than the eigenfunctions)
+    return {
+        "band": band,
+        "g_xx": np.array(g_xx),
+        "g_yy": np.array(g_yy),
+        "g_zz": np.array(g_zz),
+        "g_xy_real": np.array(g_xy_r),
+        "g_xy_imag": np.array(g_xy_i),
+        "g_xz_real": np.array(g_xz_r),
+        "g_xz_imag": np.array(g_xz_i),
+        "g_yz_real": np.array(g_yz_r),
+        "g_yz_imag": np.array(g_yz_i),
+        "trace": np.array(trace),
+    }
+
+def calculate_2d_all_bands(Force_new=True):
+    # ---- your existing setup/load block ----
+    z_cutoff = 1000
+    temp_dir = os.path.join(os.getcwd(), "temp")
+
+    eigenvalues_file = os.path.join(temp_dir, "eigenvalues.npy")
+    eigenfunctions_file = os.path.join(temp_dir, "eigenfunctions.npy")
+    meta_info_file = os.path.join(temp_dir, "meta_info.pkl")
+
+    if not (os.path.exists(eigenvalues_file) and os.path.exists(eigenfunctions_file) and os.path.exists(meta_info_file)):
+        raise FileNotFoundError("Missing temp eigenvalues/eigenfunctions/meta_info.pkl")
+
+    # mmap in parent only for nbands inference + plotting ki/kj later
+    eigenvalues = np.load(eigenvalues_file, mmap_mode="r")
+
+    with open(meta_info_file, "rb") as meta_file:
+        meta_info = pickle.load(meta_file)
+        Hamiltonian_Obj = meta_info["Hamiltonian_Obj"]
+        ki = meta_info["ki"]
+        kj = meta_info["kj"]
+        kk = meta_info["kk"]
+        dki = meta_info["dki"]
+        dkj = meta_info["dkj"]
+        mesh_spacing = meta_info["mesh_spacing"]
+        ki_range = meta_info["ki_range"]
+        kj_range = meta_info["kj_range"]
+
+    method_name = "numerical"
+    delta_k = 1e-5
+
+    n_bands = Hamiltonian_Obj.dim # Number of bands
+    n_cores = os.cpu_count() or 1
+    n_workers = min(n_cores, n_bands)  # <-- the correct "use each core for each band" rule
+
+    print(f"Detected n_bands={n_bands}, cpu_cores={n_cores} -> using n_workers={n_workers}")
+
+    # ---- results dir: you can either (A) one dir with stacked arrays, or (B) per-band dirs ----
+    from Library.data_management_utils_2D import setup_2D_QGT_results_directory
+
+    Hamiltonian_name = getattr(Hamiltonian_Obj, "name", "Hamiltonian")
+    meta_params = {
+        "hamiltonian_name": Hamiltonian_name,
+        "kk": kk,
+        "ki_range": ki_range,
+        "kj_range": kj_range,
+        "mesh_spacing": mesh_spacing,
+        "method_name": method_name,
+        "include_endpoints": True,
+
+        # store that this run includes all bands
+        "band_index": "ALL",
+        "n_bands": int(n_bands),
+
+        # pickle-only objects
+        "dki": dki, 
+        "dkj": dkj
+    }
+
+    file_paths, use_existing, results_subdir, meta_target = setup_2D_QGT_results_directory(
+        meta_params=meta_params,
+        force_new=Force_new
+    )
+
+    # ---- if existing stacked results, load them and skip compute ----
+    # (you will need to ensure setup_2D_QGT_results_directory defines these filenames)
+    stacked_keys = ["g_xx","g_yy","g_zz","g_xy_real","g_xy_imag","g_xz_real","g_xz_imag","g_yz_real","g_yz_imag","trace"]
+
+    if use_existing and all(k in file_paths and os.path.exists(file_paths[k]) for k in stacked_keys):
+        print("Loading existing stacked QGT arrays...")
+        loaded = {k: np.load(file_paths[k]) for k in stacked_keys}
+        # shapes should be (n_bands, Nx, Ny)
+        g_xx_all = loaded["g_xx"]; g_yy_all = loaded["g_yy"]; g_zz_all = loaded["g_zz"]
+        g_xy_imag_all = loaded["g_xy_imag"]; g_xy_real_all = loaded["g_xy_real"]
+        g_xz_imag_all = loaded["g_xz_imag"]; g_xz_real_all = loaded["g_xz_real"]
+        g_yz_imag_all = loaded["g_yz_imag"]; g_yz_real_all = loaded["g_yz_real"]
+        trace_all = loaded["trace"]
     else:
-        # We use QGT_grid_3d_num
-        print("Computing 3D QGT Grid...")
-        results = QGT_grid_3d_num(
-            kx_vals, ky_vals, kz_vals, eigenvalues_3d, eigenvectors_3d, 
-            quantum_geometric_tensor_3d_num_eigenvector_ordered, # Use ordered version
-            hamiltonian, delta_k=delta_k, band_index=band, z_cutoff=z_cutoff
+        # ---- parallel compute over bands ----
+        payloads = [
+            {
+                "band": b,
+                "temp_dir": temp_dir,
+                "z_cutoff": z_cutoff,
+                "delta_k": delta_k,
+                "method_name": method_name,
+                "kk": kk
+            }
+            for b in range(n_bands)
+        ]
+
+        results_by_band = [None] * n_bands
+
+        # IMPORTANT: ProcessPool on mac uses "spawn" by default.
+        # This design keeps payload small and mmap-loads big arrays inside each worker.
+        with ProcessPoolExecutor(max_workers=n_workers) as ex:
+            futures = [ex.submit(_qgt_one_band_worker, p) for p in payloads]
+            for fut in as_completed(futures):
+                out = fut.result()
+                results_by_band[out["band"]] = out
+                print(f"Finished band {out['band']}")
+
+        # ---- stack into (n_bands, Nx, Ny) ----
+        def stack(key):
+            return np.stack([results_by_band[b][key] for b in range(n_bands)], axis=0)
+
+        g_xx_all = stack("g_xx")
+        g_yy_all = stack("g_yy")
+        g_zz_all = stack("g_zz")
+        g_xy_real_all = stack("g_xy_real")
+        g_xy_imag_all = stack("g_xy_imag")
+        g_xz_real_all = stack("g_xz_real")
+        g_xz_imag_all = stack("g_xz_imag")
+        g_yz_real_all = stack("g_yz_real")
+        g_yz_imag_all = stack("g_yz_imag")
+        trace_all = stack("trace")
+
+        # ---- save stacked ----
+        stacked_save = {
+            "g_xx": g_xx_all,
+            "g_yy": g_yy_all,
+            "g_zz": g_zz_all,
+            "g_xy_real": g_xy_real_all,
+            "g_xy_imag": g_xy_imag_all,
+            "g_xz_real": g_xz_real_all,
+            "g_xz_imag": g_xz_imag_all,
+            "g_yz_real": g_yz_real_all,
+            "g_yz_imag": g_yz_imag_all,
+            "trace": trace_all,
+        }
+
+        for k, arr in stacked_save.items():
+            if k in file_paths:
+                np.save(file_paths[k], arr)
+            # also copy to temp for convenience
+            np.save(os.path.join(temp_dir, f"{k}.npy"), arr)
+
+        # JSON meta (remove non-serializable)
+        meta_info_json = meta_target.copy()
+        for rm in ["Hamiltonian_Obj", "ki", "kj"]:
+            meta_info_json.pop(rm, None)
+        with open(file_paths["meta_json"], "w") as f:
+            json.dump(meta_info_json, f, indent=2, sort_keys=True)
+
+        with open(file_paths["meta_pkl"], "wb") as f:
+            pickle.dump(meta_target, f)
+
+        print(f"Saved STACKED QGT results for all bands to '{results_subdir}' (and temp/)")
+
+    # ---- example plotting: choose a band to view ----
+    band_to_plot = [0,1,2,3] 
+    for band_to_plot in band_to_plot: # pick which band you want to visualize
+        plot_qmt_eig_berry_trace_2d(
+            ki, kj, eigenvalues, g_xy_imag_all[band_to_plot], trace_all[band_to_plot],
+            eigenvalue_band=band_to_plot,
+            zlim_berry=z_cutoff,
+            components="xy"
         )
-        
-        (g_xx_arr, g_yy_arr, g_zz_arr, 
-         g_xy_real_arr, g_xy_imag_arr, 
-         g_xz_real_arr, g_xz_imag_arr, 
-         g_yz_real_arr, g_yz_imag_arr) = results
-     
-        # 3. Save Results
-        print("Saving 3D QGT Results...")
-        save_dict = {
-            "g_xx": g_xx_arr, "g_yy": g_yy_arr, "g_zz": g_zz_arr,
-            "g_xy_real": g_xy_real_arr, "g_xy_imag": g_xy_imag_arr,
-            "g_xz_real": g_xz_real_arr, "g_xz_imag": g_xz_imag_arr,
-            "g_yz_real": g_yz_real_arr, "g_yz_imag": g_yz_imag_arr
-        }
-        
-        for key, val in save_dict.items():
-            np.save(qgt_file_paths[key], val)
-            
-        # JSON
-        qgt_meta = dict(qgt_meta_target)
-        qgt_meta.update({"dk": delta_k, "band_index": band, "z_cutoff": z_cutoff})
-        with open(qgt_file_paths["meta_json"], "w") as f:
-            json.dump(qgt_meta, f, indent=2, sort_keys=True)
 
-        # Pickle (loadable)
-        qgt_meta_pkl = {
-            "kx_vals": kx_vals, "ky_vals": ky_vals, "kz_vals": kz_vals,
-            "mesh_shape": mesh_shape,
-            "dk": delta_k,
-            "include_endpoints": include_endpoints,
-            "kvals_mode": kvals_mode,
-            "Hamiltonian_Obj": hamiltonian,
-        }
-        with open(qgt_file_paths["meta_pkl"], "wb") as f:
-            pickle.dump(qgt_meta_pkl, f)
+        plot_qmt_eig_berry_trace_2d(
+            ki, kj, eigenvalues, g_xz_imag_all[band_to_plot], trace_all[band_to_plot],
+            eigenvalue_band=band_to_plot,
+            zlim_berry=z_cutoff,
+            components="xz"
+        )
 
-        
-    print(f"3D QGT calculation complete. Results saved to {qgt_results_dir}")
+        plot_qmt_eig_berry_trace_2d(
+            ki, kj, eigenvalues, g_yz_imag_all[band_to_plot], trace_all[band_to_plot],
+            eigenvalue_band=band_to_plot,
+            zlim_berry=z_cutoff,
+            components="yz"
+        )
+
 
 
 if __name__ == '__main__':
-
-    calculate_2d(Force_new=True)
-    # calculate_3d()
+    # calculate_2d_all_bands(Force_new=True)
+    calculate_2d(Force_new=False)

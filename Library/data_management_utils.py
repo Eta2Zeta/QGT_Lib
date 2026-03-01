@@ -1,10 +1,18 @@
-import os, re, json, math
+import os, re, json, math, pickle
 from typing import Optional, Iterable, Callable, Tuple, Dict, Any
+import numpy as np
 
 def _load_json(path: str) -> Optional[Dict[str, Any]]:
     try:
         with open(path, "r") as f:
             return json.load(f)
+    except Exception:
+        return None
+
+def _load_pkl(path: str) -> Optional[Dict[str, Any]]:
+    try:
+        with open(path, "rb") as f:
+            return pickle.load(f)
     except Exception:
         return None
 
@@ -39,8 +47,8 @@ def pick_or_create_dataset_dir(
     if not force_new and meta_matcher is not None:
         for _, dname in existing:
             dpath = os.path.join(base_root, dname)
-            meta_path = os.path.join(dpath, "meta.json")
-            meta = _load_json(meta_path)
+            meta_path = os.path.join(dpath, "meta_info.pkl")
+            meta = _load_pkl(meta_path)
             if meta is None:
                 continue
 
@@ -117,12 +125,32 @@ def meta_matcher_all_fields(
                 return False
             return all(eq(xi, yi) for xi, yi in zip(x, y))
 
+        # Numpy Arrays
+        if isinstance(x, np.ndarray) and isinstance(y, np.ndarray):
+            if x.shape != y.shape:
+                return False
+            if np.issubdtype(x.dtype, np.number) and np.issubdtype(y.dtype, np.number):
+                return bool(np.allclose(x, y, rtol=rel_tol, atol=rel_tol, equal_nan=True))
+            else:
+                return bool(np.array_equal(x, y))
+
         # Numeric tolerance
         if is_number(x) and is_number(y):
             return float_close(float(x), float(y))
 
+        # Custom Objects: compare __dict__ if both have it
+        if hasattr(x, '__dict__') and hasattr(y, '__dict__'):
+            if type(x) is not type(y):
+                return False
+            x_dict = x.__dict__
+            y_dict = y.__dict__
+            return eq(x_dict, y_dict)
+
         # Everything else exact
-        return x == y
+        try:
+            return bool(x == y)
+        except Exception:
+            return False
 
     return eq(a, b)
 
@@ -154,7 +182,7 @@ def setup_3D_Eigen_results_directory(
         base_root,
         meta_target=meta_target,
         required_files=required_files,
-        meta_matcher=meta_matcher_exact,  # or meta_matcher_exact
+        meta_matcher=meta_matcher_all_fields,  # or meta_matcher_exact
         force_new=force_new,
         prefix="data_set_",
         start_index=1,
@@ -179,41 +207,90 @@ def setup_3D_QGT_results_directory(
     include_endpoints=True,
     force_new=False,
     kvals_mode: str = "endpoints",
+    *,
+    # NEW: include these in meta-matching so ALL-bands runs don't collide with single-band runs
+    method_name: str = "numerical",
+    band_index="ALL",          # int or "ALL"
+    n_bands=None,              # required if band_index == "ALL"
 ):
-    nx, ny, nz = mesh_shape
+    """
+    Creates (or reuses) a results directory for 3D QGT computations.
+
+    Supports two modes:
+      - band_index is an int: single-band results saved (still as .npy arrays).
+      - band_index == "ALL": stacked results saved with shape (n_bands, nx, ny, nz).
+
+    Returns:
+      file_paths: dict of output file paths
+      used_existing: bool
+      dir_path: str
+      meta_target: dict used for matching/saving
+    """
+    nx, ny, nz = map(int, mesh_shape)
 
     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
     base_root = os.path.join(os.getcwd(), "results", "3D_QGT_results", Hamiltonian_name)
 
-    # Stable short signature
-    ham_param_str = hamiltonian.get_filename(parameter="2D") if hasattr(hamiltonian, "get_filename") else repr(hamiltonian)
+    # Get Hamiltonian parameters natively as a dictionary
+    if hasattr(hamiltonian, "get_parameters_dict"):
+        ham_params = hamiltonian.get_parameters_dict(parameter="3D")
+    else:
+        # Fallback if get_parameters_dict isn't available
+        ham_params = (
+            hamiltonian.get_filename(parameter="3D")
+            if hasattr(hamiltonian, "get_filename")
+            else repr(hamiltonian)
+        )
+
+    # Normalize band_index
+    band_key = band_index
+    if isinstance(band_key, str):
+        band_key = band_key.upper()
+    is_all = (band_key == "ALL")
+
+    if is_all:
+        if n_bands is None:
+            raise ValueError("setup_3D_QGT_results_directory: n_bands must be provided when band_index='ALL'")
+        n_bands = int(n_bands)
+    else:
+        # Single band: store as int
+        band_index = int(band_index)
 
     # Match target (what defines this dataset)
     meta_target = {
-        "hamiltonian_name": Hamiltonian_name,
-        "hamiltonian_params": ham_param_str,   # optional
-        "mesh_shape": [int(nx), int(ny), int(nz)],
+        "hamiltonian_name": str(Hamiltonian_name),
+        "hamiltonian_params": ham_params,
+        "mesh_shape": [nx, ny, nz],
         "include_endpoints": bool(include_endpoints),
         "kvals_mode": str(kvals_mode),
         "kx_range": [float(kx_range[0]), float(kx_range[1])],
         "ky_range": [float(ky_range[0]), float(ky_range[1])],
         "kz_range": [float(kz_range[0]), float(kz_range[1])],
+
+        # NEW: make meta matching robust across methods and band modes
+        "method_name": str(method_name),
+        "band_index": ("ALL" if is_all else int(band_index)),
+        "n_bands": (int(n_bands) if is_all else None),
     }
 
+    # Required files for reuse
     required_files = [
         "g_xx.npy", "g_yy.npy", "g_zz.npy",
         "g_xy_real.npy", "g_xy_imag.npy",
         "g_xz_real.npy", "g_xz_imag.npy",
         "g_yz_real.npy", "g_yz_imag.npy",
-        "meta.json",       # for matching
-        "meta_info.pkl",   # for loading Hamiltonian_Obj later if you want
+        "trace.npy",          # NEW
+        "meta.json",          # for matching
+        "meta_info.pkl",      # for loading Hamiltonian_Obj later if you want
     ]
 
+    # If your meta_matcher treats None fields strictly, it might fail matches between
+    # (single band) and (ALL bands). That's GOOD — we *want* them separated.
     dir_path, used = pick_or_create_dataset_dir(
         base_root,
         meta_target=meta_target,
         required_files=required_files,
-        meta_matcher=meta_matcher_exact,
+        meta_matcher=meta_matcher_all_fields,
         force_new=force_new,
         prefix="data_set_",
         start_index=1,
@@ -229,9 +306,54 @@ def setup_3D_QGT_results_directory(
         "g_xz_imag": os.path.join(dir_path, "g_xz_imag.npy"),
         "g_yz_real": os.path.join(dir_path, "g_yz_real.npy"),
         "g_yz_imag": os.path.join(dir_path, "g_yz_imag.npy"),
+        "trace": os.path.join(dir_path, "trace.npy"),          # NEW
         "meta_json": os.path.join(dir_path, "meta.json"),
         "meta_pkl": os.path.join(dir_path, "meta_info.pkl"),
     }
 
     print(("Using existing 3D QGT results directory: " if used else "Created new 3D QGT results directory: ") + dir_path)
+    return file_paths, used, dir_path, meta_target
+
+def setup_3D_sym_points_results_directory(
+    hamiltonian,
+    path_points,
+    path_labels,
+    num_points_per_segment,
+    force_new=False
+):
+    Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
+    base_root = os.path.join(os.getcwd(), "results", "3D_Sym_Points_results", Hamiltonian_name)
+
+    required_files = ["eigenvalues.npy", "meta.json", "meta_info.pkl"]
+
+    # Convert path_points (list of arrays/lists) to list of lists for JSON serialization
+    # Note: Using .tolist() ensures numpy scalars are converted to python types
+    path_points_list = [np.array(p).tolist() for p in path_points]
+
+    meta_target = {
+        "hamiltonian_name": Hamiltonian_name,
+        "path_labels": path_labels,
+        "num_points_per_segment": num_points_per_segment,
+        # precise float handling might be tricky with "path_points", 
+        # but let's store them for exact matching if we want to reuse the same path
+        "path_points": path_points_list
+    }
+
+    dir_path, used = pick_or_create_dataset_dir(
+        base_root,
+        meta_target=meta_target,
+        required_files=required_files,
+        meta_matcher=meta_matcher_all_fields, # Use the robust matcher we have
+        force_new=force_new,
+        prefix="data_set_",
+        start_index=1,
+    )
+
+    file_paths = {
+        "eigenvalues": os.path.join(dir_path, "eigenvalues.npy"),
+        "meta_json": os.path.join(dir_path, "meta.json"),
+        "meta_pkl": os.path.join(dir_path, "meta_info.pkl"),
+    }
+
+    print(("Using existing 3D Sym Points results directory: " if used else "Created new 3D Sym Points results directory: ") + dir_path)
     return file_paths, used, dir_path, meta_target

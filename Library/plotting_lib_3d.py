@@ -184,7 +184,11 @@ def plot_isosurface(eigenvalues, isovalue, kx_vals, ky_vals, kz_vals,
         show_plot = False
     
     mesh = Poly3DCollection(real_verts[faces], alpha=alpha)
-    mesh.set_facecolor(color)
+    if color is not None:
+        # Avoid float precision issues
+        c = np.clip(np.array(color)[:3], 0, 1)
+        mesh.set_facecolor(c)
+
     mesh.set_edgecolor('k') # Optional: add edges for better visibility
     mesh.set_linewidth(0.05)
     
@@ -571,34 +575,34 @@ def plot_arbitrary_slice_interpolated(eigenvalues, orientation, shift, kx_vals, 
     plt.tight_layout()
     plt.show()
 
-def plot_volumetric_cloud(eigenvalues_3d, kx_vals, ky_vals, kz_vals, band_index=0, 
-                          opacity=0.1, surface_count=20, title=None, filename=None):
+def plot_volumetric_cloud(values, kx_vals, ky_vals, kz_vals,
+                          opacity=0.1, surface_count=20, levels=None, color_sequence=None, title=None, filename=None):
     """
     Create a volumetric rendering (cloud plot) of the 3D eigenvalue data using Plotly.
     
     Parameters:
-    - eigenvalues_3d: 4D array [nkx, nky, nkz, dim]
+    - values: 3D array of values to plot [nkx, nky, nkz]
     - kx_vals, ky_vals, kz_vals: 1D arrays defining the grid.
-    - band_index: Index of the band to visualize.
     - opacity: Opacity of the volume (default 0.1).
-    - surface_count: Number of iso-surfaces to render in the volume (default 20).
+    - surface_count: Number of iso-surfaces to render in the volume (default 20), used if levels is None.
+    - levels: (Optional) List of specific scalar real values at which to plot isosurfaces.
+    - color_sequence: (Optional) List of colors (e.g. hex or string) corresponding to each level in `levels`.
     - title: Plot title.
     - filename: Output filename (e.g., 'volume_plot.html'). If None, shows in browser/notebook.
     """
     
     # Extract band data
     # eigenvalues_3d is [x, y, z, dim]
-    values = eigenvalues_3d[:, :, :, band_index]
     
     # Grid coordinates
     X, Y, Z = np.meshgrid(kx_vals, ky_vals, kz_vals, indexing='ij')
     
     if title is None:
-        title = f"Volumetric Cloud: Band {band_index}"
+        title = f"Volumetric Cloud"
         
     vmin, vmax = np.min(values), np.max(values)
-        
-    fig = go.Figure(data=go.Volume(
+    
+    go_kwargs = dict(
         x=X.flatten(),
         y=Y.flatten(),
         z=Z.flatten(),
@@ -609,8 +613,46 @@ def plot_volumetric_cloud(eigenvalues_3d, kx_vals, ky_vals, kz_vals, band_index=
         surface_count=surface_count, # number of isosurfaces, 20 is good default
         caps=dict(x_show=False, y_show=False, z_show=False), # Hide the box caps
         colorscale='Viridis',
-        colorbar=dict(title='Energy'),
-        ))
+        colorbar=dict(title='Value'),
+    )
+    
+    if levels is not None:
+        if color_sequence is None:
+            # Fall back to a default colorscale mapping if no sequence provided
+            import matplotlib.cm as cm
+            import matplotlib.colors as mcolors
+            base = cm.get_cmap("RdBu_r")
+            L = len(levels)
+            base_colors = base(np.linspace(0.0, 1.0, L))
+            color_sequence = [mcolors.to_hex(c) for c in base_colors]
+            
+        data = []
+        for i, level in enumerate(levels):
+            col = color_sequence[i % len(color_sequence)]
+            # Custom colorscale that maps strictly to this color
+            cscale = [[0, col], [1, col]]
+            
+            iso = go.Isosurface(
+                x=X.flatten(),
+                y=Y.flatten(),
+                z=Z.flatten(),
+                value=values.flatten(),
+                isomin=level,
+                isomax=level,
+                surface_count=1,
+                    opacity=opacity,
+                caps=dict(x_show=False, y_show=False, z_show=False),
+                colorscale=cscale,
+                showscale=False,
+                name=f'Value: {level:.3g}',
+                showlegend=True
+            )
+            data.append(iso)
+        fig = go.Figure(data=data)
+        _fig_created = True
+    
+    if 'fig' not in locals() or not _fig_created:
+        fig = go.Figure(data=go.Volume(**go_kwargs))
     
     fig.update_layout(
         title=title,
@@ -728,4 +770,107 @@ def plot_slice_stack(
 
     fig.suptitle(f"{title} ({plane.upper()} stack)")
     plt.tight_layout()
+    plt.show()
+
+def plot_degeneracy_on_path_3d(k_points, eigenvalues, threshold=0.01, title="Degeneracy along Path"):
+    """
+    Plot the k-path in 3D, colored by the degree of band degeneracy.
+    
+    Parameters:
+    - k_points: (N, 3) array of k-coordinates (kx, ky, kz).
+    - eigenvalues: (N, num_bands) array of eigenvalues.
+    - threshold: Energy difference threshold to consider bands degenerate.
+    - title: Plot title.
+    """
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    
+    num_points = k_points.shape[0]
+    degeneracies = np.zeros(num_points, dtype=int)
+    
+    # Calculate max degeneracy for each point
+    # Calculate max degeneracy for each point
+    for i in range(num_points):
+        evals = np.sort(eigenvalues[i])
+        
+        # Using difference array
+        diffs = np.diff(evals)
+        
+        if len(diffs) > 0:
+            max_gap = np.max(diffs)
+            # Threshold is now relative (e.g. 0.01 means 1% of max gap)
+            # Avoid division by zero issues if max_gap is extremely small
+            current_threshold = max(threshold * max_gap, 1e-10) 
+            
+            degeneracies[i] = int(np.sum(diffs <= current_threshold))
+        else:
+            degeneracies[i] = 0
+
+    # Define colors
+    # 1: Blue, 2: Green, 3: Red, 4: Black
+    color_map = {
+        0: 'blue',   # no degeneracy
+        1: 'green',  # one degenerate pair
+        2: 'red',    # either 3-fold or two 2-folds
+        3: 'black'   # 4-fold
+    }
+    
+    # Draw faint grey box cornered at 0,0,0 to pi,pi,pi?
+    box_min = np.array([0, 0, 0])
+    box_max = np.array([np.pi, np.pi, np.pi])
+    
+    # Draw box edges
+    # Generate vertices
+    from itertools import product
+
+    # We can just construct the 12 edges
+    # x-aligned
+    for y in [box_min[1], box_max[1]]:
+        for z in [box_min[2], box_max[2]]:
+            ax.plot([box_min[0], box_max[0]], [y, y], [z, z], color='grey', alpha=0.3, linewidth=1)
+    # y-aligned
+    for x in [box_min[0], box_max[0]]:
+        for z in [box_min[2], box_max[2]]:
+            ax.plot([x, x], [box_min[1], box_max[1]], [z, z], color='grey', alpha=0.3, linewidth=1)
+    # z-aligned
+    for x in [box_min[0], box_max[0]]:
+        for y in [box_min[1], box_max[1]]:
+            ax.plot([x, x], [y, y], [box_min[2], box_max[2]], color='grey', alpha=0.3, linewidth=1)
+
+
+    # Calculate default line width for reference
+    point_size = 30 # "Relatively large"
+
+    # Plot points and connecting lines
+    for i in range(num_points):
+        deg = degeneracies[i]
+        color = color_map.get(deg, 'black') # Default to black if > 4
+        
+        # Plot Point
+        ax.scatter(k_points[i, 0], k_points[i, 1], k_points[i, 2], color=color, s=point_size)
+        
+        # Connect to next if same degeneracy
+        if i < num_points - 1:
+            if degeneracies[i+1] == deg:
+                ax.plot([k_points[i, 0], k_points[i+1, 0]],
+                        [k_points[i, 1], k_points[i+1, 1]],
+                        [k_points[i, 2], k_points[i+1, 2]],
+                        color=color, linewidth=3) # "3 times the thickness" roughly
+            # else: no line or grey line? User implied only connect if same.
+
+    ax.set_xlabel('kx')
+    ax.set_ylabel('ky')
+    ax.set_zlabel('kz')
+    ax.set_title(title)
+    
+    # Create manual legend
+    from matplotlib.lines import Line2D
+    legend_elements = [
+        Line2D([0], [0], marker='o', color='w', label='Non-degenerate (1)', markerfacecolor='blue', markersize=10),
+        Line2D([0], [0], marker='o', color='w', label='1-fold', markerfacecolor='green', markersize=10),
+        Line2D([0], [0], marker='o', color='w', label='2-fold', markerfacecolor='red', markersize=10),
+        Line2D([0], [0], marker='o', color='w', label='3-fold', markerfacecolor='black', markersize=10)
+    ]
+    ax.legend(handles=legend_elements, loc='best')
+
     plt.show()
