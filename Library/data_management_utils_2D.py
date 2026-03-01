@@ -68,26 +68,7 @@ def setup_2D_QGT_results_directory(
     - meta_params: Dictionary containing metadata fields (kz, kx_range, ky_range, mesh_spacing, method_name, include_endpoints).
     - force_new: Whether to force creating a new directory.
     """
-    # Construct match_target for directory matching (JSON serializable fields only)
-    # We explicitly select fields that define the dataset identity
-    match_target = {
-        "hamiltonian_name": meta_params.get("hamiltonian_name"),
-        "kz": meta_params.get("kz"),
-        "include_endpoints": meta_params.get("include_endpoints", True),
-        "mesh_spacing": meta_params.get("mesh_spacing"),
-        "method_name": meta_params.get("method_name"),
-    }
-    
-    # Handle ranges carefully (lists of floats)
-    if "kx_range" in meta_params:
-        match_target["kx_range"] = [float(x) for x in meta_params["kx_range"]]
-    if "ky_range" in meta_params:
-        match_target["ky_range"] = [float(x) for x in meta_params["ky_range"]]
 
-    # Ensure types for consistent matching
-    if match_target.get("mesh_spacing") is not None:
-        match_target["mesh_spacing"] = int(match_target["mesh_spacing"])
-        
     # Define base_root using hamiltonian_name
     Hamiltonian_name = meta_params.get("hamiltonian_name", "Unknown_Hamiltonian")
     base_root = os.path.join(os.getcwd(), "results", "2D_QGT_results", Hamiltonian_name)
@@ -109,7 +90,7 @@ def setup_2D_QGT_results_directory(
 
     dir_path, used = pick_or_create_dataset_dir(
         base_root,
-        meta_target=match_target,  # Use filtered target for matching
+        meta_target=meta_params,  # Use filtered target for matching
         required_files=required_files,
         meta_matcher=meta_matcher_all_fields,
         force_new=force_new,

@@ -34,13 +34,12 @@ class hamiltonian:
         self.magnus_order = magnus_order  # Order of Magnus expansion
         self.analytic_magnus = analytic_magnus
     
-    def get_filename(self, parameter='2D', decimals=2):
+    def get_parameters_dict(self, parameter='2D'):
         """
-        Get the parameters of the Hamiltonian as a dictionary.
+        Get all the simple types of the properties of the Hamiltonian as a dictionary.
         
         Parameters:
-            parameter (str): '1D' or '2D'. If '1D', exclude omega (default '2D').
-            decimals (int): float precision for formatting (not used for dict return, but kept for signature compatibility).
+            parameter (str): '1D', '2D', or '3D'. If '1D', exclude omega (default '2D').
         """
         def is_simple_type(val):
             return isinstance(val, (int, float, str, bool))
@@ -59,6 +58,28 @@ class hamiltonian:
             params.pop('omega', None)
 
         return params
+
+    def get_filename(self, parameter='2D', decimals=2):
+        """
+        Generate a compact, stable filename-style string of parameters.
+        Example: t1_-1.00-t2_0.33-A0_0.10-omega_6.28-polarization_left
+        
+        Parameters:
+            parameter (str): '1D' or '2D'. If '1D', exclude omega (default '2D').
+            decimals (int): float precision for formatting.
+        """
+        params = self.get_parameters_dict(parameter=parameter)
+
+        def fmt_val(v):
+            if isinstance(v, float):
+                return f"{v:.{decimals}f}"
+            return str(v)
+
+        # Build parts in a stable order
+        parts = [f"{k}_{fmt_val(params[k])}" for k in sorted(params.keys())]
+
+        # Join with '-' between parameters
+        return "-".join(parts)
 
     
     def compute_static(self, kx, ky, kz=0):

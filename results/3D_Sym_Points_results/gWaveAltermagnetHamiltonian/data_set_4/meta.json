@@ -1,0 +1,24 @@
+{
+  "hamiltonian_name": "gWaveAltermagnetHamiltonian",
+  "path_labels": [
+    "Z",
+    "G",
+    "S",
+    "R",
+    "T",
+    "Y",
+    "S",
+    "X",
+    "U",
+    "R",
+    "Z"
+  ],
+  "num_points_per_segment": 50,
+  "path_points": [
+    [
+      0.0,
+      0.0,
+      3.141592653589793
+    ],
+    [
+      

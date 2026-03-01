@@ -1,26 +1,43 @@
 {
-  "band_index": 0,
-  "dk": 0.0001,
+  "band_index": "ALL",
+  "dk": 1e-05,
   "hamiltonian_name": "gWaveAltermagnetHamiltonian",
-  "hamiltonian_params": "A0_0.00-Jx_0.20-Jy_0.00-Jz_0.00-analytic_magnus_False-lamb_0.10-lamb_z_0.10-magnus_order_1-mu_0.00-omega_0.00-polarization_left-t1_0.80-t2_0.20-t3_0.30-t4_0.30",
-  "include_endpoints": true,
-  "kvals_mode": "endpoints",
+  "hamiltonian_params": {
+    "A0": 0.0,
+    "Jx": 0.0,
+    "Jy": 0.0,
+    "Jz": 0.2,
+    "analytic_magnus": false,
+    "lamb": 0.1,
+    "lamb_z": 0.1,
+    "magnus_order": 1,
+    "mu": 0,
+    "omega": 0.0,
+    "polarization": "left",
+    "t1": 0.3,
+    "t2": 0.3,
+    "t3": 0.3,
+    "t4": 0.3
+  },
+  "include_endpoints": false,
+  "kvals_mode": "centered",
   "kx_range": [
-    -2.9845130209103035,
-    2.9845130209103035
+    -3.120648702565861,
+    3.120648702565861
   ],
   "ky_range": [
-    -2.9845130209103035,
-    2.9845130209103035
+    -3.120648702565861,
+    3.120648702565861
   ],
   "kz_range": [
-    -2.9845130209103035,
-    2.9845130209103035
+    -3.120648702565861,
+    3.120648702565861
   ],
   "mesh_shape": [
-    100,
-    100,
-    3
+    150,
+    150,
+    150
   ],
-  "z_cutoff": 20
+  "method_name": "numerical",
+  "n_bands": 4
 }

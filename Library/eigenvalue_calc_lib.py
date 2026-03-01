@@ -8,6 +8,8 @@ from .Hamiltonian.Hamiltonian_v2 import hamiltonian
 from .Hamiltonian_helper import get_Hamiltonian
 from .Eigenvector import *
 from .diagnalization import eigenvalues_and_vectors_eigenvalue_ordering, get_eigenvalues_and_eigenvectors
+from .dimension_lib import map_k_by_order
+
 
 # * Checkers
 def check_eigen_solution(Hamiltonian, kx, ky, eigenvalues, eigenvectors, tolerance=1e-6):
@@ -225,7 +227,7 @@ def analytic_eigenvalues_2d(hamiltonian, kx, ky, mesh_spacing, dim):
 
 
 # & Calculations in a normal grid
-def grid_eigenvalues_eigenfunctions0(Hamiltonian, kx, ky, mesh_spacing, dim):
+def grid_eigenvalues_eigenfunctions(Hamiltonian, ki, kj, mesh_spacing, dim, kk=0, order="xyz"):
     # Initialize arrays
     eigenfunctions  = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
     eigenvalues     = np.zeros((mesh_spacing, mesh_spacing, dim), dtype=float)
@@ -234,54 +236,24 @@ def grid_eigenvalues_eigenfunctions0(Hamiltonian, kx, ky, mesh_spacing, dim):
 
     eigenvector = Eigenvectors(dim)
 
-    # Flatten indices for a single progress bar
     total_points = mesh_spacing * mesh_spacing
     for idx in tqdm(range(total_points), desc="Diagonalizing Hamiltonians"):
         i, j = divmod(idx, mesh_spacing)
 
-        # Compute Hamiltonian and its derivative
-        H, H_prime = get_Hamiltonian(Hamiltonian, kx[i, j], ky[i, j])
-
-        # Eigen decomposition (with ordering + phase fix)
-        vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(
-            Hamiltonian, kx[i, j], ky[i, j], eigenvector
-        )
-
-        # Store results
-        eigenfunctions[i, j] = vecs
-        eigenvalues[i, j]    = vals
-        H_array[i, j]        = H
-        H_prime_array[i, j]  = H_prime
-
-    return eigenvalues, eigenfunctions, H_array, H_prime_array
-
-
-# & Calculations in a normal grid
-def grid_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, kz=0):
-    # Initialize arrays
-    eigenfunctions  = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
-    eigenvalues     = np.zeros((mesh_spacing, mesh_spacing, dim), dtype=float)
-    H_array         = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
-    H_prime_array   = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
-
-    eigenvector = Eigenvectors(dim)
-
-    # Flatten indices for a single progress bar
-    total_points = mesh_spacing * mesh_spacing
-    for idx in tqdm(range(total_points), desc="Diagonalizing Hamiltonians"):
-        i, j = divmod(idx, mesh_spacing)
+        # Map coordinates according to order
+        kx, ky, kz = map_k_by_order(ki[i, j], kj[i, j], kk, order)
 
         # --- Measure Hamiltonian computation time ---
         t0 = time.time()
-        H, H_prime = get_Hamiltonian(Hamiltonian, kx[i, j], ky[i, j])
+        H, H_prime = get_Hamiltonian(Hamiltonian, kx, ky, kz=kz)  # <-- update get_Hamiltonian signature if needed
         t1 = time.time()
         elapsed = t1 - t0
-        if elapsed > 0.1:  # Only print if it takes more than 10 ms
-            print(f"Hamiltonian computed at point ({kx[i, j]}, {ky[i, j]}) in {elapsed:.6f} s")
+        if elapsed > 0.1:
+            print(f"Hamiltonian computed at point ({kx}, {ky}, {kz}) in {elapsed:.6f} s")
 
         # Eigen decomposition (with ordering + phase fix)
         vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(
-            Hamiltonian, kx[i, j], ky[i, j],  kz=kz, eigenvector=eigenvector
+            Hamiltonian, kx, ky, kz=kz, eigenvector=eigenvector
         )
 
         # Store results
@@ -294,7 +266,7 @@ def grid_eigenvalues_eigenfunctions(Hamiltonian, kx, ky, mesh_spacing, dim, kz=0
 
 
 # & Calculations in a normal grid (Ordered by Eigenvectors Overlap)
-def grid_eigenvalues_eigenfunctions_ordered(Hamiltonian, kx, ky, mesh_spacing, dim):
+def grid_eigenvalues_eigenfunctions_ordered(Hamiltonian, ki, kj, mesh_spacing, dim):
     # Initialize arrays
     eigenfunctions  = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
     eigenvalues     = np.zeros((mesh_spacing, mesh_spacing, dim), dtype=float)
@@ -317,15 +289,15 @@ def grid_eigenvalues_eigenfunctions_ordered(Hamiltonian, kx, ky, mesh_spacing, d
 
         # --- Measure Hamiltonian computation time ---
         t0 = time.time()
-        H, H_prime = get_Hamiltonian(Hamiltonian, kx[i, j], ky[i, j])
+        H, H_prime = get_Hamiltonian(Hamiltonian, ki[i, j], kj[i, j])
         t1 = time.time()
         elapsed = t1 - t0
         if elapsed > 0.1:  # Only print if it takes more than 10 ms
-            print(f"Hamiltonian computed at point ({kx[i, j]}, {ky[i, j]}) in {elapsed:.6f} s")
+            print(f"Hamiltonian computed at point ({ki[i, j]}, {kj[i, j]}) in {elapsed:.6f} s")
 
         # Eigen decomposition (with ordering + phase fix)
         vals, vecs = eigenvalues_and_vectors_eigenvector_ordering(
-            Hamiltonian, kx[i, j], ky[i, j], eigenvector
+            Hamiltonian, ki[i, j], kj[i, j], eigenvector
         )
 
         # Store results
@@ -403,7 +375,7 @@ def spiral_eigenvalues_eigenfunctions(
                     continue
 
                 if phase_correction:
-                    vals, vecs = eigenvalues_and_vectors_eigenvalue_ordering(
+                    vals, vecs = eigenvalues_and_vectors_eigenvector_ordering(
                         Hamiltonian, kx_kl, ky_kl, eigenvector=eigenvector
                     )
                     if calculate_phase_factors:
@@ -493,13 +465,7 @@ def compute_eigenvalues_3d(hamiltonian, kx_vals, ky_vals, kz_vals):
         # Reshape back to 2D slice
         eigenvalues_3d[:, :, i, :] = evals.reshape(mesh_size_x, mesh_size_y, dim)
         
-        # Reshape vectors
-        # evecs is [pixel, component, band]
-        # We want [x, y, band, component] (or [x, y, dimension_index(component), band_index])
-        # "rows are vectors" -> band index is first?
-        # In this lib, it seems "rows are vectors" usually means v[band, component].
-        # numpy returns v[component, band].
-        # So we transpose the last two dimensions.
+
         evecs_reshaped = evecs.reshape(mesh_size_x, mesh_size_y, dim, dim) # [x, y, component, band]
         eigenvectors_3d[:, :, i, :, :] = np.swapaxes(evecs_reshaped, -1, -2) # [x, y, band, component]
         
