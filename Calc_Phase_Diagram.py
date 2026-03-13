@@ -66,7 +66,6 @@ def build_parameter_points(
       axes_values     : [np.ndarray, ...] (values per parameter)
       grid_shape      : tuple[int, ...]
     """
-    import numpy as np
 
     # -------- normalize ranges --------
     if isinstance(param_ranges, dict):
@@ -154,7 +153,6 @@ def _worker_qgt_point(arg, h_template, kx, ky, mesh_spacing, band, z_cutoff):
     """
     arg is (param_values_dict, idx_tuple)  OR  (param_values_dict, idx_tuple, progress_label)
     """
-    import copy
 
     # --- unpack ---
     if len(arg) == 3:

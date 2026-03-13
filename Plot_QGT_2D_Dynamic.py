@@ -19,7 +19,6 @@ def _bz_hexagon_from_bvecs(b1, b2):
     Return (xv, yv) arrays of the hexagon vertices (closed) for the 1st BZ
     built from reciprocal vectors b1, b2 (shape (2,) arrays).
     """
-    import numpy as np
 
     # 6 nearest reciprocal vectors
     Gs = np.array([
@@ -58,7 +57,6 @@ def _get_bvecs_from_meta(meta):
     Try to extract b1, b2 from the saved Hamiltonian template in meta.
     Fallback to graphene defaults if needed.
     """
-    import numpy as np
     b1 = b2 = None
     if meta is not None:
         Htemp = meta.get("Hamiltonian_Template", None)

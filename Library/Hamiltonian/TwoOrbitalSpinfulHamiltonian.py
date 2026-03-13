@@ -1,5 +1,6 @@
 import numpy as np
 from .Hamiltonian_v2 import hamiltonian
+import sympy as sp
 
 
 class TwoOrbitalSpinfulHamiltonian(hamiltonian):
@@ -117,7 +118,6 @@ class TwoOrbitalSpinfulHamiltonian(hamiltonian):
         (from first up to fifth order) with respect to kx and ky. Then lambdify these 
         expressions so they can be evaluated numerically.
         """
-        import sympy as sp
 
         # Define sympy symbols for kx and ky.
         kx_sym, ky_sym = sp.symbols('kx ky', real=True)

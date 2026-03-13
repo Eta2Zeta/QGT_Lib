@@ -4,12 +4,8 @@ from typing import Dict, Any, Tuple
 from .data_management_utils import pick_or_create_dataset_dir, meta_matcher_all_fields
 
 def setup_2D_Eigen_results_directory(
-    hamiltonian,
-    kx_range, ky_range,
-    mesh_spacing,
-    include_endpoints: bool = True,
+    meta_params: Dict[str, Any],
     force_new: bool = False,
-    kvals_mode: str = "endpoints",
 ):
     """
     Sets up the results directory for 2D eigenvalue calculations using metadata matching.
@@ -20,24 +16,23 @@ def setup_2D_Eigen_results_directory(
         results_subdir (str): The path to the results directory.
         meta_target (dict): The metadata dictionary used for matching.
     """
-    Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
+    Hamiltonian_name = meta_params.get("hamiltonian_name", "Unknown_Hamiltonian")
     base_root = os.path.join(os.getcwd(), "results", "2D_Eigen_results", Hamiltonian_name)
 
     required_files = ["eigenvalues.npy", "eigenfunctions.npy", "meta.json", "meta_info.pkl"]
 
-    # Match target (what defines this dataset)
-    meta_target = {
-        "hamiltonian_name": Hamiltonian_name,
-        "include_endpoints": bool(include_endpoints),
-        "mesh_spacing": int(mesh_spacing),
-        "kvals_mode": str(kvals_mode),
-        "kx_range": [float(kx_range[0]), float(kx_range[1])],
-        "ky_range": [float(ky_range[0]), float(ky_range[1])],
-    }
+    # Extract Hamiltonian parameters
+    hamiltonian = meta_params.get("Hamiltonian_Obj", None)
+    if hamiltonian is not None and hasattr(hamiltonian, "get_parameters_dict"):
+        ham_params = hamiltonian.get_parameters_dict(parameter="2D")
+    else:
+        ham_params = {}
+
+    meta_params["hamiltonian_params"] = ham_params
 
     dir_path, used = pick_or_create_dataset_dir(
         base_root,
-        meta_target=meta_target,
+        meta_target=meta_params,
         required_files=required_files,
         meta_matcher=meta_matcher_all_fields,
         force_new=force_new,
@@ -54,7 +49,11 @@ def setup_2D_Eigen_results_directory(
 
 
     print(("Using existing 2D Eigen results directory: " if used else "Created new 2D Eigen results directory: ") + dir_path)
-    return file_paths, used, dir_path, meta_target
+    
+    full_meta = meta_params.copy()
+    full_meta["hamiltonian_name"] = Hamiltonian_name
+    
+    return file_paths, used, dir_path, full_meta
 
 def setup_2D_QGT_results_directory(
     meta_params: Dict[str, Any],
@@ -72,6 +71,15 @@ def setup_2D_QGT_results_directory(
     # Define base_root using hamiltonian_name
     Hamiltonian_name = meta_params.get("hamiltonian_name", "Unknown_Hamiltonian")
     base_root = os.path.join(os.getcwd(), "results", "2D_QGT_results", Hamiltonian_name)
+    
+    # Extract Hamiltonian parameters
+    hamiltonian = meta_params.get("Hamiltonian_Obj", None)
+    if hamiltonian is not None and hasattr(hamiltonian, "get_parameters_dict"):
+        ham_params = hamiltonian.get_parameters_dict(parameter="2D")
+    else:
+        ham_params = {}
+
+    meta_params["hamiltonian_params"] = ham_params
 
     required_files = [
         "g_xx.npy", 

@@ -118,7 +118,9 @@ def plot_band_structure_sym(
     ylabel="Energy (eV)",
     figsize=(10, 6),
     linewidth=1.5,
-    ylim=None
+    ylim=None,
+    results_dir=None,
+    save_fig=False
 ):
     """
     Plots the band structure along a path in k-space with high-symmetry points labeled.
@@ -182,4 +184,14 @@ def plot_band_structure_sym(
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.show()
+    
+    if save_fig and results_dir:
+        import os
+        filename = "band_structure_sym.png"
+        filepath = os.path.join(results_dir, filename)
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        print(f"Saved band structure to: {filepath}")
+    else:
+        plt.show()
+        
+    plt.close()

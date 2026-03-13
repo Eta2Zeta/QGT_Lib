@@ -122,6 +122,7 @@ def main():
     ax2.set_ylabel('Energy (meV)')
     ax2.legend()
     ax2.grid(True, alpha=0.3)
+    ax2.set_ylim(-100, 100)
     
     # Plot 3: Comparison Overlay
     ax3 = axes[2]

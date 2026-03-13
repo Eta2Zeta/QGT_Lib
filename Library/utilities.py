@@ -843,3 +843,58 @@ def centered_kvals(k_range: float, N: int) -> np.ndarray:
     edges = np.linspace(-k_range, k_range, N + 1, endpoint=True)
     centers = 0.5 * (edges[:-1] + edges[1:])
     return centers
+
+def generate_3d_sym_lines(num_points_per_segment=100):
+    """
+    Generates k-points along the high-symmetry path Z-G-S-R-T-Y-S-X-U-R-Z.
+    
+    Returns:
+    - all_k_points: (N, 3) array of k-points
+    - all_k_dist: (N,) array of cumulative distance along the path
+    - node_indices: list of indices into the arrays where the path hits a high-symmetry point
+    - path_labels: name of each high-symmetry point in sequence
+    - path_points: (11, 3) the actual (kx, ky, kz) coordinates of the path nodes in sequence
+    """
+    # Define High Symmetry Points
+    points = {
+        "G": np.array([0, 0, 0]),
+        "X": np.array([np.pi, 0, 0]),
+        "S": np.array([np.pi, np.pi, 0]),
+        "Y": np.array([0, np.pi, 0]),
+        "Z": np.array([0, 0, np.pi]),  # Zetta
+        "U": np.array([np.pi, 0, np.pi]),
+        "R": np.array([np.pi, np.pi, np.pi]),
+        "T": np.array([0, np.pi, np.pi])
+    }
+    
+    # Path Sequence
+    path_labels = ["Z", "G", "S", "R", "T", "Y", "S", "X", "U", "R", "Z"]
+    path_points = [points[label] for label in path_labels]
+    
+    all_k_points = []
+    all_k_dist = []
+    node_indices = []
+    
+    cum_dist = 0.0
+    
+    # First point
+    all_k_points.append(path_points[0])
+    all_k_dist.append(cum_dist)
+    node_indices.append(0)
+    
+    for i in range(len(path_points) - 1):
+        start = path_points[i]
+        end = path_points[i+1]
+        
+        dist = np.linalg.norm(end - start)
+        pts = np.linspace(start, end, num_points_per_segment + 1)[1:]
+        dists = np.linspace(0, dist, num_points_per_segment + 1)[1:]
+        
+        for p, d in zip(pts, dists):
+            all_k_points.append(p)
+            all_k_dist.append(cum_dist + d)
+            
+        cum_dist += dist
+        node_indices.append(len(all_k_points) - 1)
+        
+    return np.array(all_k_points), np.array(all_k_dist), node_indices, path_labels, np.array(path_points)

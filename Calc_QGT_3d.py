@@ -329,7 +329,5 @@ def calculate_3d_all_bands_parallel(force_new=True, method = "numerical"):
     return stacked, qgt_results_dir
 
 if __name__ == '__main__':
-    # calculate_2d_all_bands(Force_new=False)
-    # calculate_2d(Force_new=True)
     # calculate_3d()
     calculate_3d_all_bands_parallel(method="numerical")

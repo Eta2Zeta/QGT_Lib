@@ -23,8 +23,9 @@ from Library.data_management_utils_2D import setup_2D_QGT_results_directory
 
 def calculate_2d(Force_new=True):
     # Define parameters
-    band = 2 # Which band to calculate your QMT on, starting from 0
-    z_cutoff = 10 #where to cutoff the plot for the z axis when singularties occur
+    band =1 # Which band to calculate your QMT on, starting from 0
+    z_cutoff = .3 #where to cutoff the plot for the z axis when singularties occur
+    z_percentile = 99 # percentile to cut off the plot
 
     # Define the temp directory for storing .npy files
     temp_dir = os.path.join(os.getcwd(), "temp")
@@ -204,6 +205,9 @@ def calculate_2d(Force_new=True):
         with open(os.path.join(temp_dir, "qgt_meta_info.pkl"), "wb") as meta_file:
             pickle.dump(qgt_meta_info, meta_file)  # Save to temp directory
 
+        if eigenvalues is not None:
+            np.save(os.path.join(results_subdir, "eigenvalues.npy"), eigenvalues)
+
         print(f"Saved QGT results to '{results_subdir}' and copied to temp directory: {temp_dir}")
 
 
@@ -233,25 +237,14 @@ def calculate_2d(Force_new=True):
 
 
 
-    plot_qmt_eig_berry_trace_2d(
-        ki, kj, eigenvalues, g_xy_imag_array, trace_array,
+    plot_eigen_and_all_berry_2d(
+        ki, kj, eigenvalues, 
+        g_xy_imag_array, g_xz_imag_array, g_yz_imag_array,
         eigenvalue_band=band,
         zlim_berry=z_cutoff,
-        components="xy"
-    )
-
-    plot_qmt_eig_berry_trace_2d(
-        ki, kj, eigenvalues, g_xz_imag_array, trace_array,
-        eigenvalue_band=band,
-        zlim_berry=z_cutoff,
-        components="xz"
-    )
-
-    plot_qmt_eig_berry_trace_2d(
-        ki, kj, eigenvalues, g_yz_imag_array, trace_array,
-        eigenvalue_band=band,
-        zlim_berry=z_cutoff,
-        components="yz"
+        zlim_percentile=z_percentile,
+        results_dir=results_subdir,
+        save_fig=True
     )
 
 
@@ -281,6 +274,7 @@ def _qgt_one_band_worker(payload: dict):
     delta_k = payload["delta_k"]
     method_name = payload["method_name"]
     kk = payload["kk"]
+    order = payload["order"]
 
     # Load meta + Hamiltonian object (pickled) inside worker
     meta_info_file = os.path.join(temp_dir, "meta_info.pkl")
@@ -309,14 +303,14 @@ def _qgt_one_band_worker(payload: dict):
      g_yz_r, g_yz_i) = QGT_grid_num(
         ki, kj,
         eigenvalues, eigenfunctions,
-        quantum_geometric_tensor_3d_num_eigenvector_ordered,
-        # quantum_geometric_tensor_3d_num_phase_corrected,
+        # quantum_geometric_tensor_3d_num_eigenvector_ordered,
+        quantum_geometric_tensor_3d_num_phase_corrected,
         H,
         delta_k=delta_k,
         band_index=band,
         z_cutoff=z_cutoff,
         kk=kk, 
-        order = "xyz"
+        order=order
     )
 
     trace = g_xx + g_yy + g_zz
@@ -339,6 +333,7 @@ def _qgt_one_band_worker(payload: dict):
 def calculate_2d_all_bands(Force_new=True):
     # ---- your existing setup/load block ----
     z_cutoff = 1000
+    z_percentile = 95
     temp_dir = os.path.join(os.getcwd(), "temp")
 
     eigenvalues_file = os.path.join(temp_dir, "eigenvalues.npy")
@@ -362,6 +357,7 @@ def calculate_2d_all_bands(Force_new=True):
         mesh_spacing = meta_info["mesh_spacing"]
         ki_range = meta_info["ki_range"]
         kj_range = meta_info["kj_range"]
+        order = meta_info["order"]
 
     method_name = "numerical"
     delta_k = 1e-5
@@ -373,7 +369,6 @@ def calculate_2d_all_bands(Force_new=True):
     print(f"Detected n_bands={n_bands}, cpu_cores={n_cores} -> using n_workers={n_workers}")
 
     # ---- results dir: you can either (A) one dir with stacked arrays, or (B) per-band dirs ----
-    from Library.data_management_utils_2D import setup_2D_QGT_results_directory
 
     Hamiltonian_name = getattr(Hamiltonian_Obj, "name", "Hamiltonian")
     meta_params = {
@@ -390,8 +385,12 @@ def calculate_2d_all_bands(Force_new=True):
         "n_bands": int(n_bands),
 
         # pickle-only objects
+        "Hamiltonian_Obj": Hamiltonian_Obj,
+        "ki": ki,
+        "kj": kj,
         "dki": dki, 
-        "dkj": dkj
+        "dkj": dkj,
+        "order": order
     }
 
     file_paths, use_existing, results_subdir, meta_target = setup_2D_QGT_results_directory(
@@ -421,7 +420,8 @@ def calculate_2d_all_bands(Force_new=True):
                 "z_cutoff": z_cutoff,
                 "delta_k": delta_k,
                 "method_name": method_name,
-                "kk": kk
+                "kk": kk,
+                "order": order
             }
             for b in range(n_bands)
         ]
@@ -482,34 +482,26 @@ def calculate_2d_all_bands(Force_new=True):
         with open(file_paths["meta_pkl"], "wb") as f:
             pickle.dump(meta_target, f)
 
+        if eigenvalues is not None:
+            np.save(os.path.join(results_subdir, "eigenvalues.npy"), eigenvalues)
+
         print(f"Saved STACKED QGT results for all bands to '{results_subdir}' (and temp/)")
 
     # ---- example plotting: choose a band to view ----
-    band_to_plot = [0,1,2,3] 
-    for band_to_plot in band_to_plot: # pick which band you want to visualize
-        plot_qmt_eig_berry_trace_2d(
-            ki, kj, eigenvalues, g_xy_imag_all[band_to_plot], trace_all[band_to_plot],
+    band_to_plot_list = [0,1,2,3] 
+    for band_to_plot in band_to_plot_list: # pick which band you want to visualize
+        plot_eigen_and_all_berry_2d(
+            ki, kj, eigenvalues, 
+            g_xy_imag_all[band_to_plot], g_xz_imag_all[band_to_plot], g_yz_imag_all[band_to_plot],
             eigenvalue_band=band_to_plot,
             zlim_berry=z_cutoff,
-            components="xy"
-        )
-
-        plot_qmt_eig_berry_trace_2d(
-            ki, kj, eigenvalues, g_xz_imag_all[band_to_plot], trace_all[band_to_plot],
-            eigenvalue_band=band_to_plot,
-            zlim_berry=z_cutoff,
-            components="xz"
-        )
-
-        plot_qmt_eig_berry_trace_2d(
-            ki, kj, eigenvalues, g_yz_imag_all[band_to_plot], trace_all[band_to_plot],
-            eigenvalue_band=band_to_plot,
-            zlim_berry=z_cutoff,
-            components="yz"
+            zlim_percentile=z_percentile,
+            results_dir=results_subdir,
+            save_fig=True
         )
 
 
 
 if __name__ == '__main__':
-    # calculate_2d_all_bands(Force_new=True)
-    calculate_2d(Force_new=False)
+    calculate_2d_all_bands(Force_new=False)
+    # calculate_2d(Force_new=False)

@@ -168,8 +168,15 @@ def setup_3D_Eigen_results_directory(
 
     required_files = ["eigenvalues_3d.npy", "eigenvectors_3d.npy", "meta.json", "meta_info.pkl"]
 
+    # Get Hamiltonian parameters natively as a dictionary
+    if hasattr(hamiltonian, "get_parameters_dict"):
+        ham_params = hamiltonian.get_parameters_dict(parameter="3D")
+    else:
+        ham_params = {}
+
     meta_target = {
         "hamiltonian_name": Hamiltonian_name,
+        "hamiltonian_params": ham_params,
         "include_endpoints": bool(include_endpoints),
         "k_range": float(max(abs(kx_range[0]), abs(kx_range[1]))),  # or store all 3 ranges below
         "kvals_mode": str(kvals_mode),
@@ -235,12 +242,7 @@ def setup_3D_QGT_results_directory(
     if hasattr(hamiltonian, "get_parameters_dict"):
         ham_params = hamiltonian.get_parameters_dict(parameter="3D")
     else:
-        # Fallback if get_parameters_dict isn't available
-        ham_params = (
-            hamiltonian.get_filename(parameter="3D")
-            if hasattr(hamiltonian, "get_filename")
-            else repr(hamiltonian)
-        )
+        ham_params = {}
 
     # Normalize band_index
     band_key = band_index
@@ -330,8 +332,15 @@ def setup_3D_sym_points_results_directory(
     # Note: Using .tolist() ensures numpy scalars are converted to python types
     path_points_list = [np.array(p).tolist() for p in path_points]
 
+    # Get Hamiltonian parameters natively as a dictionary
+    if hasattr(hamiltonian, "get_parameters_dict"):
+        ham_params = hamiltonian.get_parameters_dict(parameter="3D")
+    else:
+        ham_params = {}
+
     meta_target = {
         "hamiltonian_name": Hamiltonian_name,
+        "hamiltonian_params": ham_params,
         "path_labels": path_labels,
         "num_points_per_segment": num_points_per_segment,
         # precise float handling might be tricky with "path_points", 

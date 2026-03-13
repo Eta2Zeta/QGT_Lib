@@ -6,6 +6,7 @@ from Library.topology import compute_chern_number
 import Library.Hamiltonian.Hamiltonian_v2
 import Library.Hamiltonian.ChiralHamiltonian
 import sys
+import pickle
 sys.modules["Library.Hamiltonian_v2"] = Library.Hamiltonian.Hamiltonian_v2
 sys.modules["Library.Hamiltonian_v2.ChiralHamiltonian"] = Library.Hamiltonian.ChiralHamiltonian
 # Fix pickle loading error by patching the module directly
@@ -374,7 +375,6 @@ def _load_bundle(path_like):
 
 def _get_b_vectors(path_like):
     """Load b1, b2 from meta.pkl in the given directory or bundle parent."""
-    import pickle
     
     # Try to find meta.pkl
     if os.path.isdir(path_like):
@@ -442,7 +442,6 @@ def prepare_joined_signed_invomega_data(
     def _calc_field(bundle, result_dir):
         if quantity.lower() == "chern":
             # Load b-vectors and z_cutoff
-            import pickle
             if os.path.isdir(result_dir):
                 mpath = os.path.join(result_dir, "meta.pkl")
             else:
@@ -661,7 +660,6 @@ def plot_qgt_std_param2d_signed_invomega_joined(
 
     Ω is read from 'berry_grid' if present; otherwise derived as -2 * Im(Q_xy).
     """
-    import matplotlib.pyplot as plt
 
     x, y_values, Z, meta = prepare_joined_signed_invomega_data(
         left_result_dir, right_result_dir,
@@ -768,7 +766,6 @@ def plot_slices_qgt_std_param2d_signed_invomega_joined(
     2. Vertical slice: Fix 'omega' approx slice_omega_val, plot vs y_param.
        (Note: we check both left (negative x) and right (positive x) for the closest match to +/- 1/slice_omega_val).
     """
-    import matplotlib.pyplot as plt
 
     # 1. Prepare data
     x, y_values, Z, meta = prepare_joined_signed_invomega_data(

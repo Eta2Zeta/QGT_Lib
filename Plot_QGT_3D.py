@@ -5,6 +5,12 @@ import pickle
 import numpy as np
 from Library.plotting_lib_3d import plot_isosurface, plot_slice_stack
 import sys
+import trimesh
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
+from matplotlib.colorbar import ColorbarBase
+from skimage.measure import marching_cubes
+from Library.plotting_lib_3d import plot_volumetric_cloud
 
 def plot_3d_qgt_slices(results_dir, quantity, component="xy", slice_plane="xy",
                        n_slices=1, include_endpoints=True):
@@ -115,20 +121,74 @@ def compute_equal_volume_levels(data_3d, count):
     return levels
 
 
+def compute_dynamic_opacity(num_levels, min_op=0.3, max_op=0.8):
+    """
+    Computes a V-shaped or U-shaped opacity sequence where the extreme levels get max_op
+    and the intermediate levels dip down towards min_op.
+    """
+    if num_levels == 0:
+        return []
+    if num_levels == 1:
+        return [max_op]
+    
+    opacities = []
+    for i in range(num_levels):
+        x = i / (num_levels - 1)
+        # abs(1.0 - 2*x) gives exactly 1 at x=0, 0 at x=0.5, 1 at x=1
+        op = min_op + (max_op - min_op) * abs(1.0 - 2.0 * x)
+        opacities.append(op)
+    
+    return opacities
+
+
+def generate_volumetric_filename(results_dir, hamiltonian_name, quantity, plane, band_label, levels, kx_range=None, ky_range=None, kz_range=None):
+    """
+    Generates a descriptive filename for the volumetric cloud HTML plot.
+    Format: {results_dir}/{hamiltonian_name}_{quantity}_{plane}_band{band_label}_levels_L1_L2.html
+    where levels are formatted to 3 significant figures. Includes ranges if specified.
+    """
+    # Format levels to 3 significant figures
+    formatted_levels = []
+    for lvl in levels:
+        if lvl == 0:
+            formatted_levels.append("0.00")
+        else:
+            # Format to 3 sig figs
+            formatted_levels.append(f"{lvl:.3g}")
+            
+    levels_str = "-".join(formatted_levels)
+    fname = f"{hamiltonian_name}_{quantity}_{plane}_band{band_label}_levels_{levels_str}"
+    
+    if kx_range is not None:
+        fname += f"_kx{kx_range[0]:.2f}-{kx_range[1]:.2f}"
+    if ky_range is not None:
+        fname += f"_ky{ky_range[0]:.2f}-{ky_range[1]:.2f}"
+    if kz_range is not None:
+        fname += f"_kz{kz_range[0]:.2f}-{kz_range[1]:.2f}"
+        
+    fname += ".html"
+    
+    # Sanitize filename
+    fname = fname.replace(" ", "_").replace("/", "_")
+    return os.path.join(results_dir, fname)
+
+
 def plot_3d_qgt(
     results_dir,
-    plane,
-    quantity,
-    min_val=None,
-    max_val=None,
+    plane="all",
+    quantity="berry",
     count=5,
     bands=None,
     levels=None,
+    percentile_count=10,      # <-- NEW: segments for dividing percentiles to print
+    kx_range=None,            # <-- NEW: tuple (min, max) for filtering kx
+    ky_range=None,            # <-- NEW: tuple (min, max) for filtering ky
+    kz_range=None,            # <-- NEW: tuple (min, max) for filtering kz
     *,
     export_dir=None,          # <-- NEW: where to save meshes; None => don't export
     export_fmt="ply",         # "ply", "stl", "obj", "glb" (depends on trimesh support)
     export_step_size=1,       # marching cubes step_size for export (1 = highest fidelity)
-    plot_step_size=3,         # step_size for matplotlib plotting (bigger = faster)
+    plot_step_size=1,         # step_size for matplotlib plotting (bigger = faster)
     show=True,                # whether to show matplotlib figure
 ):
     """
@@ -141,11 +201,30 @@ def plot_3d_qgt(
     If levels is None and count is provided, it computes `count` levels such that
     an equal volume of data points falls between each isosurface (equal percentiles).
     """
-    import trimesh
-    import matplotlib.cm as cm
-    import matplotlib.colors as mcolors
-    from matplotlib.colorbar import ColorbarBase
-    from skimage.measure import marching_cubes
+    
+    if plane is None or plane == "all":
+        for p in ["xy", "yz", "xz"]:
+            print(f"\n======================================================\n"
+                  f"Plotting for plane {p}...\n"
+                  f"======================================================")
+            plot_3d_qgt(
+                results_dir=results_dir,
+                plane=p,
+                quantity=quantity,
+                count=count,
+                bands=bands,
+                levels=levels,
+                percentile_count=percentile_count,
+                kx_range=kx_range,
+                ky_range=ky_range,
+                kz_range=kz_range,
+                export_dir=export_dir,
+                export_fmt=export_fmt,
+                export_step_size=export_step_size,
+                plot_step_size=plot_step_size,
+                show=show
+            )
+        return
 
     def save_isosurface_mesh(data_3d, level, kx_vals, ky_vals, kz_vals, out_path, step_size=1):
         # verts come back in index coordinates (i,j,k)
@@ -176,9 +255,9 @@ def plot_3d_qgt(
     with open(meta_file, "rb") as f:
         meta_info = pickle.load(f)
 
-    kx_vals = meta_info["kx_vals"]
-    ky_vals = meta_info["ky_vals"]
-    kz_vals = meta_info["kz_vals"]
+    kx_vals_full = meta_info["kx_vals"]
+    ky_vals_full = meta_info["ky_vals"]
+    kz_vals_full = meta_info["kz_vals"]
     hamiltonian = meta_info.get("Hamiltonian_Obj", None)
     hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
 
@@ -199,6 +278,25 @@ def plot_3d_qgt(
         print(f"Error: Unknown plane '{plane}'. Use 'xy', 'yz', or 'xz'.")
         return
 
+    # ---- filtering indices based on ranges ----
+    def get_indices(vals, r):
+        if r is None:
+            return np.arange(len(vals))
+        return np.where((vals >= r[0]) & (vals <= r[1]))[0]
+
+    ix_keep = get_indices(kx_vals_full, kx_range)
+    iy_keep = get_indices(ky_vals_full, ky_range)
+    iz_keep = get_indices(kz_vals_full, kz_range)
+
+    if len(ix_keep) == 0 or len(iy_keep) == 0 or len(iz_keep) == 0:
+        print("Error: Range filtering resulted in an empty grid along at least one dimension.")
+        return
+
+    # Sliced coordinate arrays
+    kx_vals = kx_vals_full[ix_keep]
+    ky_vals = ky_vals_full[iy_keep]
+    kz_vals = kz_vals_full[iz_keep]
+
     # ---- load stacked arrays ----
     def load_arr(name):
         path = os.path.join(results_dir, f"{name}.npy")
@@ -217,6 +315,10 @@ def plot_3d_qgt(
                 f"Expected stacked arrays (n_bands, nx, ny, nz). "
                 f"Got {comp_11_name}.ndim={val_11.ndim}, {comp_22_name}.ndim={val_22.ndim}."
             )
+        # Apply filter
+        val_11 = val_11[:, ix_keep, :][:, :, iy_keep, :][:, :, :, iz_keep]
+        val_22 = val_22[:, ix_keep, :][:, :, iy_keep, :][:, :, :, iz_keep]
+        
         n_bands = val_11.shape[0]
         title_base = f"{hamiltonian_name} Metric Trace ({plane})"
     elif quantity == "berry":
@@ -228,6 +330,9 @@ def plot_3d_qgt(
                 f"Expected stacked array (n_bands, nx, ny, nz). "
                 f"Got {comp_12_imag_name}.ndim={val_12_imag.ndim}."
             )
+        # Apply filter
+        val_12_imag = val_12_imag[:, ix_keep, :][:, :, iy_keep, :][:, :, :, iz_keep]
+
         n_bands = val_12_imag.shape[0]
         title_base = f"{hamiltonian_name} Berry Curvature ({plane})"
     else:
@@ -268,6 +373,15 @@ def plot_3d_qgt(
         dmin = float(np.min(data_3d))
         dmax = float(np.max(data_3d))
 
+        # Calculate and print percentile segments
+        valid_ds = data_3d[np.isfinite(data_3d)]
+        if len(valid_ds) > 0:
+            pct_levels = np.linspace(0, 100, percentile_count + 1)
+            pct_vals = np.percentile(valid_ds, pct_levels)
+            print(f"Data divided into {percentile_count} segments ({len(pct_vals)} boundary values):")
+            for p_num, p_val in zip(pct_levels, pct_vals):
+                print(f"  {p_num:5.1f}th percentile: {p_val:.6g}")
+        
         # levels_use: do NOT mutate `levels` argument; make a per-band local array
         if levels is not None:
             levels_use = np.array(levels, dtype=float)
@@ -285,7 +399,7 @@ def plot_3d_qgt(
             continue
 
         # 1) Pick L colors evenly from RdBu_r *by index*
-        base = cm.get_cmap("RdBu_r")
+        base = plt.get_cmap("RdBu_r")
         colors = base(np.linspace(0.0, 1.0, L))   # evenly spaced colors, independent of values
 
         # --- optionally make a matplotlib figure ---
@@ -312,12 +426,42 @@ def plot_3d_qgt(
                 )
 
 
+        # Generate specific HTML filename 
+        html_filename = generate_volumetric_filename(
+            results_dir=results_dir, 
+            hamiltonian_name=hamiltonian_name, 
+            quantity=quantity, 
+            plane=plane, 
+            band_label=band_label, 
+            levels=levels_use,
+            kx_range=kx_range,
+            ky_range=ky_range,
+            kz_range=kz_range
+        )
+
         # pass same levels and colors to the volume
-        from Library.plotting_lib_3d import plot_volumetric_cloud
         hex_colors = [mcolors.to_hex(c) for c in colors]
+        opacity_seq = compute_dynamic_opacity(L, min_op=0.1, max_op=0.5)
+        
+        # Format levels for display and title
+        formatted_levels = []
+        for lvl in levels_use:
+            if lvl == 0:
+                formatted_levels.append("0.00")
+            else:
+                formatted_levels.append(f"{lvl:.3g}")
+        levels_str = ", ".join(formatted_levels)
+        
+        print(f"  - Plotting levels: {levels_str}")
+        print(f"  - Calculated dynamic opacities: {[round(op, 3) for op in opacity_seq]}")
+        
+        plot_title = f"{title_base} (Band {band_label})<br><sup>Levels: {levels_str}</sup>"
+        
         plot_volumetric_cloud(data_3d, kx_vals, ky_vals, kz_vals, 
                                       opacity=0.1, levels=levels_use, color_sequence=hex_colors, 
-                                      title=None, filename=None)
+                                      opacity_sequence=opacity_seq,
+                                      title=plot_title, 
+                                      filename=html_filename, stride=plot_step_size)
 
 if __name__ == "__main__":
     # Example usage as requested
@@ -331,12 +475,13 @@ if __name__ == "__main__":
     base_results_path = os.path.join(current_dir, "results/3D_QGT_results/gWaveAltermagnetHamiltonian")
     
     # Placeholder for the specific dataset, using one found in list_dir
-    latest_dataset = "data_set_1"
+    latest_dataset = "data_set_5"
     
     results_dir = os.path.join(base_results_path, latest_dataset)
 
     print(f"Running 3D QGT Slice Plot on: {results_dir}")
     # plot_3d_qgt_slices(results_dir=results_dir, quantity='berry', component='xy', slice_plane="xy", n_slices=3)
     
-    # plot_3d_qgt(results_dir=results_dir, quantity='berry', plane='xz', levels=[0.5, 0.3, 0.1, -0.1, -1, -10])
-    plot_3d_qgt(results_dir=results_dir, quantity='berry', plane='xz', count=2, bands=[1])
+    # plot_3d_qgt(results_dir=results_dir, quantity='berry', plane='xy', levels=[0.3, -0.3], kz_range = (0, 0.9*np.pi))
+    # plot_3d_qgt(results_dir=results_dir, quantity='berry', plane='xy', count=4, bands=[1, 2, 3, 4], plot_step_size = 1, kz_range = (0, 1*np.pi))
+    plot_3d_qgt(results_dir=results_dir, quantity='berry', count=2, bands=[1, 2, 3, 4], plot_step_size = 1, kz_range = (0, 3.14))
