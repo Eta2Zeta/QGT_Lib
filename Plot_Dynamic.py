@@ -8,12 +8,12 @@ from Library.utilities import in_range
 from Library.plotting_utils import load_qgt, filter_entries_by_omega
 import sys
 import Library.Hamiltonian.Hamiltonian_v2
+from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
 # Patch for unpickling old data that references Library.Hamiltonian_v2 (direct module)
 sys.modules["Library.Hamiltonian_v2"] = Library.Hamiltonian.Hamiltonian_v2
 
 # Also ensure ChiralHamiltonian is available in Hamiltonian_v2 for unpickling
 try:
-    from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
     Library.Hamiltonian.Hamiltonian_v2.ChiralHamiltonian = ChiralHamiltonian
 except ImportError:
     pass

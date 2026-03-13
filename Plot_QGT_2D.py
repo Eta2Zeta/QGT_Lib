@@ -10,7 +10,8 @@ from Library.plotting_lib_2d import (
     plot_QGT_components_3d,
     plot_qmt_eig_berry_trace_3d,
     plot_qmt_eig_berry_trace_2d,
-    plot_g_components_2d
+    plot_g_components_2d,
+    plot_eigen_and_all_berry_2d
 )
 
 def plot_qgt_from_directory(target_dir):
@@ -103,7 +104,84 @@ def plot_qgt_from_directory(target_dir):
     
     print("Done.")
 
+def plot_all_2d_berries_from_directory(target_dir):
+    """
+    Loads QGT results and optionally plotted the new 2D 1x4 horizontal plot 
+    for Eigenvalues, and all three Berry curvature components.
+    """
+    print(f"Loading data for all-Berry plots from: {target_dir}")
+
+    # Metadata
+    meta_path = os.path.join(target_dir, "meta_info.pkl")
+    if os.path.exists(os.path.join(target_dir, "qgt_meta_info.pkl")):
+        meta_path = os.path.join(target_dir, "qgt_meta_info.pkl")
+
+    if not os.path.exists(meta_path):
+        print(f"Error: No meta info file found in {target_dir}")
+        return
+
+    try:
+        with open(meta_path, "rb") as f:
+            meta_info = pickle.load(f)
+        kx = meta_info.get("kx", meta_info.get("ki", None))
+        ky = meta_info.get("ky", meta_info.get("kj", None))
+        if kx is None or ky is None:
+            raise KeyError("Neither 'kx'/'ky' nor 'ki'/'kj' found in metadata.")
+    except Exception as e:
+        print(f"Failed to load metadata/grid: {e}")
+        return
+
+    # Arrays
+    try:
+        g_xy_imag = np.load(os.path.join(target_dir, "g_xy_imag.npy"))
+        g_xz_imag = np.load(os.path.join(target_dir, "g_xz_imag.npy"))
+        g_yz_imag = np.load(os.path.join(target_dir, "g_yz_imag.npy"))
+    except FileNotFoundError as e:
+        print(f"Error: Missing QGT data file: {e}")
+        return
+
+    # Eigenvalues
+    eigenvalues = None
+    eig_path = os.path.join(target_dir, "eigenvalues.npy")
+    if os.path.exists(eig_path):
+        eigenvalues = np.load(eig_path)
+    
+    # Parameters matches Calc_QGT
+    band = 1
+    z_cutoff = 1000
+    z_percentile = 95
+
+    print("Plotting all-Berry 2D heatmaps...")
+
+    if g_xy_imag.ndim > 2:
+        num_bands = g_xy_imag.shape[0]
+        for b in range(num_bands):
+            print(f"Plotting all-Berry 2D for band {b}...")
+            plot_eigen_and_all_berry_2d(
+                kx, ky, eigenvalues, 
+                g_xy_imag[b], g_xz_imag[b], g_yz_imag[b],
+                eigenvalue_band=b,
+                zlim_berry=z_cutoff,
+                zlim_percentile=z_percentile,
+                results_dir=target_dir,
+                save_fig=True
+            )
+    else:
+        print("Plotting all-Berry 2D for single band...")
+        plot_eigen_and_all_berry_2d(
+            kx, ky, eigenvalues, 
+            g_xy_imag, g_xz_imag, g_yz_imag,
+            eigenvalue_band=band,
+            zlim_berry=z_cutoff,
+            zlim_percentile=z_percentile,
+            results_dir=target_dir,
+            save_fig=True
+        )
+
+    print("Done all-Berry plots.")
+
 if __name__ == "__main__":
-    target_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/gWaveAltermagnetHamiltonian/data_set_1"
-        
-    plot_qgt_from_directory(target_dir)
+    # target_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/gWaveAltermagnetHamiltonian/Jz_0"
+    target_dir = "/Users/hongyuzhang/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/gWaveAltermagnetHamiltonian/Jz_0"
+    # plot_qgt_from_directory(target_dir)  # Fails due to metadata keys 
+    plot_all_2d_berries_from_directory(target_dir)

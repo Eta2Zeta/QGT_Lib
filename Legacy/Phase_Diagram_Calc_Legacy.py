@@ -17,6 +17,7 @@ from Library.QGT_lib import *
 from Library.topology import *
 from Library.utilities import *
 from Library.plotting_lib_2d import *
+import shutil
 
 
 # ----- PARAM GRID -----
@@ -117,7 +118,6 @@ def _worker_save_eigen_point(arg,
             if os.path.exists(src):
                 dst = os.path.join(temp_dir, os.path.basename(src))
                 try:
-                    import shutil
                     shutil.copy(src, dst)
                 except Exception:
                     pass

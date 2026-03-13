@@ -6,6 +6,10 @@ from skimage import measure
 from scipy.interpolate import RegularGridInterpolator
 import plotly.graph_objects as go
 from .utilities import replace_zeros_with_nan
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
+from itertools import product
+from matplotlib.lines import Line2D
 
 def plot_3d_stacked_slices(kx, ky, kz_values, eigenvalues_slices, band_index=0, 
                            z_limit=None, cmap='viridis', title=None):
@@ -211,6 +215,108 @@ def plot_isosurface(eigenvalues, isovalue, kx_vals, ky_vals, kz_vals,
         ax.set_title(title)
         plt.show()
 
+def plot_degeneracy_3d(kx_vals, ky_vals, kz_vals, eigenvalues, threshold=0.01, title="Degeneracy Map (3D)",
+                       opacity=0.3, results_dir=None, save_fig=False, filename=None):
+    """
+    Plot a 3D scatter map where points indicate k-points with band degeneracies.
+    
+    Parameters:
+    - kx_vals, ky_vals, kz_vals: 1D arrays defining the grid.
+    - eigenvalues: 4D array of eigenvalues [nkx, nky, nkz, nbands].
+    - threshold: Relative threshold (fraction of energy range) or absolute threshold to consider bands degenerate.
+    - title: Plot title.
+    - results_dir: Output directory to save the file.
+    - save_fig: Whether to save the HTML file locally in the `results_dir`.
+    - filename: Output filename, defaults to `degeneracy_3d.html`.
+    """
+    import plotly.graph_objects as go
+    
+    nkx, nky, nkz, nbands = eigenvalues.shape
+    
+    print("Calculating 3D degeneracy map...")
+    
+    # Calculate degeneracy counts
+    # A vectorized approach:
+    # 1. Sort eigenvalues along the band axis
+    sorted_evals = np.sort(eigenvalues, axis=-1)
+    # 2. Compute differences between adjacent bands
+    diffs = np.diff(sorted_evals, axis=-1)
+    
+    # Using an absolute threshold for simplicity, matching the 2D version logic roughly
+    # Alternatively, you can calculate the max gap to make it relative as in the 2D script:
+    # max_gap = np.max(diffs)
+    # actual_threshold = threshold * max_gap if max_gap > 0 else threshold
+    actual_threshold = threshold 
+    
+    # Count how many gaps are smaller than the threshold at each k-point
+    degeneracy_map = np.sum(diffs < actual_threshold, axis=-1)
+    
+    # Find indices where degeneracy > 0
+    deg_indices = np.where(degeneracy_map > 0)
+    
+    if len(deg_indices[0]) == 0:
+        print("No degeneracies found at the given threshold.")
+        return
+        
+    X, Y, Z = np.meshgrid(kx_vals, ky_vals, kz_vals, indexing='ij')
+    
+    # Extract coordinates and counts for the degenerate points
+    x_deg = X[deg_indices]
+    y_deg = Y[deg_indices]
+    z_deg = Z[deg_indices]
+    counts = degeneracy_map[deg_indices]
+    
+    # Plot using Plotly 3D scatter
+    fig = go.Figure()
+    
+    unique_counts = np.unique(counts)
+    import matplotlib.cm as cm
+    import matplotlib.colors as mcolors
+    base_cmap = plt.get_cmap('tab10')
+    
+    for i, uc in enumerate(unique_counts):
+        mask = (counts == uc)
+        color = mcolors.to_hex(base_cmap(i % 10))
+        
+        fig.add_trace(go.Scatter3d(
+            x=x_deg[mask],
+            y=y_deg[mask],
+            z=z_deg[mask],
+            mode='markers',
+            marker=dict(
+                size=4,
+                color=color,
+                opacity=opacity,
+            ),
+            name=f"Degeneracy: {uc}",
+            text=[f"Degeneracy: {uc}"] * np.sum(mask),
+            hoverinfo='text+x+y+z'
+        ))
+    
+    
+    fig.update_layout(
+        title=title,
+        scene=dict(
+            xaxis_title='kx',
+            yaxis_title='ky',
+            zaxis_title='kz'
+        ),
+        margin=dict(l=0, r=0, b=0, t=40)
+    )
+    
+    if save_fig and results_dir:
+        import os
+        if not filename:
+            filename = 'degeneracy_3d.html'
+        filepath = os.path.join(results_dir, filename)
+        fig.write_html(filepath, include_plotlyjs='cdn')
+        print(f"Saved 3D Degeneracy map to: {filepath}")
+    elif filename:
+        fig.write_html(filename, include_plotlyjs='cdn')
+        print(f"Saved 3D Degeneracy map to: {filename}")
+    else:
+        fig.show()
+
 
 def plot_grid_slice(
     eigenvalues, orientation, shift,
@@ -325,11 +431,12 @@ def plot_grid_slice(
 def plot_arbitrary_slice_no_interp(
     eigenvalues, orientation, shift,
     kx_vals, ky_vals, kz_vals,
-    title=None, stride=3, alpha=0.35,
-    cmaps=None,
+    title=None, stride=1, alpha=0.9,
+    cmaps=None, filename=None, show=True,
+    results_dir=None, save_fig=False
 ):
     """
-    Plot axis-aligned slices as 3D surfaces for each band, using ONLY native grid data.
+    Plot axis-aligned slices as 3D surfaces for each band, using ONLY native grid data, using Plotly.
     NO interpolation. eigenvalues shape: [nkx, nky, nkz, nbands].
 
     orientation:
@@ -337,6 +444,8 @@ def plot_arbitrary_slice_no_interp(
       'y' -> fix ky ~ shift, surface over (kx,kz)
       'z' -> fix kz ~ shift, surface over (kx,ky)
     """
+    import plotly.graph_objects as go
+
     orientation = orientation.lower()
     kx_vals = np.asarray(kx_vals)
     ky_vals = np.asarray(ky_vals)
@@ -354,14 +463,9 @@ def plot_arbitrary_slice_no_interp(
         ix = int(np.argmin(np.abs(kx_vals - shift)))
         x0 = float(kx_vals[ix])
 
-        # slice: [nky, nkz, nbands]
         slice_3d = eigenvalues[ix, :, :, :]
-
-        # U,V grid: ky × kz
-        U, V = np.meshgrid(ky_vals, kz_vals, indexing="xy")  # U shape (nkz,nky), V shape (nkz,nky)
-
-        # For each band, E must have same shape as U,V: (nkz,nky)
-        get_E = lambda b: slice_3d[:, :, b].T  # (nkz,nky)
+        U, V = np.meshgrid(ky_vals, kz_vals, indexing="xy")
+        get_E = lambda b: slice_3d[:, :, b].T
 
         u_label, v_label = "ky", "kz"
         fixed_label = f"kx = {x0:.4g} (ix={ix})"
@@ -370,13 +474,9 @@ def plot_arbitrary_slice_no_interp(
         iy = int(np.argmin(np.abs(ky_vals - shift)))
         y0 = float(ky_vals[iy])
 
-        # slice: [nkx, nkz, nbands]
         slice_3d = eigenvalues[:, iy, :, :]
-
-        # U,V grid: kx × kz
-        U, V = np.meshgrid(kx_vals, kz_vals, indexing="xy")  # (nkz,nkx)
-
-        get_E = lambda b: slice_3d[:, :, b].T  # (nkz,nkx)
+        U, V = np.meshgrid(kx_vals, kz_vals, indexing="xy")
+        get_E = lambda b: slice_3d[:, :, b].T
 
         u_label, v_label = "kx", "kz"
         fixed_label = f"ky = {y0:.4g} (iy={iy})"
@@ -385,13 +485,9 @@ def plot_arbitrary_slice_no_interp(
         iz = int(np.argmin(np.abs(kz_vals - shift)))
         z0 = float(kz_vals[iz])
 
-        # slice: [nkx, nky, nbands]
         slice_3d = eigenvalues[:, :, iz, :]
-
-        # U,V grid: kx × ky
-        U, V = np.meshgrid(kx_vals, ky_vals, indexing="xy")  # U,V shape (nky,nkx)
-
-        get_E = lambda b: slice_3d[:, :, b].T  # (nky,nkx) to match U,V
+        U, V = np.meshgrid(kx_vals, ky_vals, indexing="xy")
+        get_E = lambda b: slice_3d[:, :, b].T
 
         u_label, v_label = "kx", "ky"
         fixed_label = f"kz = {z0:.4g} (iz={iz})"
@@ -399,32 +495,55 @@ def plot_arbitrary_slice_no_interp(
     else:
         raise ValueError("No-interp version supports only orientation 'x', 'y', or 'z'.")
 
-    # --- plot ---
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.add_subplot(111, projection="3d")
+    # Downsample if stride given
+    if stride > 1:
+        U = U[::stride, ::stride]
+        V = V[::stride, ::stride]
+
+    fig = go.Figure()
 
     for b in range(nbands):
-        E = get_E(b)  # shape matches U,V
+        E = get_E(b)
+        if stride > 1:
+            E = E[::stride, ::stride]
 
-        surf = ax.plot_surface(
-            U, V, E,
-            cmap=cmaps[b % len(cmaps)],
-            rstride=stride, cstride=stride,
-            alpha=alpha,
-            vmin=np.nanmin(E), vmax=np.nanmax(E),
-            linewidth=0, antialiased=True
+        surface = go.Surface(
+            x=U, y=V, z=E,
+            colorscale=cmaps[b % len(cmaps)],
+            opacity=alpha,
+            showscale=False,
+            name=f"Band {b}",
+            showlegend=True
         )
-
-    ax.set_xlabel(u_label)
-    ax.set_ylabel(v_label)
-    ax.set_zlabel("Eigenvalue E")
+        fig.add_trace(surface)
 
     if title is None:
         title = f"Grid slice ({orientation}) | {fixed_label}"
-    ax.set_title(title)
+        
+    fig.update_layout(
+        title=title,
+        scene=dict(
+            xaxis_title=u_label,
+            yaxis_title=v_label,
+            zaxis_title="Eigenvalue E"
+        ),
+        margin=dict(r=20, b=10, l=10, t=40)
+    )
 
-    plt.tight_layout()
-    plt.show()
+    if save_fig and results_dir:
+        import os
+        if not filename:
+            shift_str = f"{shift:.1f}".replace('.', 'p')
+            filename = f"slice_{orientation}_shift_{shift_str}.html"
+        filepath = os.path.join(results_dir, filename)
+        fig.write_html(filepath, include_plotlyjs='cdn')
+        print(f"Slice plot saved to {filepath}")
+    elif filename:
+        fig.write_html(filename, include_plotlyjs='cdn')
+        print(f"Slice plot saved to {filename}")
+        
+    if show and not (save_fig and results_dir):
+        fig.show()
 
 def plot_arbitrary_slice_interpolated(eigenvalues, orientation, shift, kx_vals, ky_vals, kz_vals, 
                          title=None, cmap='viridis', density=100, stride=3, alpha=0.3):
@@ -576,7 +695,9 @@ def plot_arbitrary_slice_interpolated(eigenvalues, orientation, shift, kx_vals, 
     plt.show()
 
 def plot_volumetric_cloud(values, kx_vals, ky_vals, kz_vals,
-                          opacity=0.1, surface_count=20, levels=None, color_sequence=None, title=None, filename=None):
+                          opacity=0.1, surface_count=20, levels=None, color_sequence=None, 
+                          opacity_sequence=None, title=None, filename=None, stride=1,
+                          results_dir=None, save_fig=False):
     """
     Create a volumetric rendering (cloud plot) of the 3D eigenvalue data using Plotly.
     
@@ -587,8 +708,12 @@ def plot_volumetric_cloud(values, kx_vals, ky_vals, kz_vals,
     - surface_count: Number of iso-surfaces to render in the volume (default 20), used if levels is None.
     - levels: (Optional) List of specific scalar real values at which to plot isosurfaces.
     - color_sequence: (Optional) List of colors (e.g. hex or string) corresponding to each level in `levels`.
+    - opacity_sequence: (Optional) List of opacities corresponding to each level in `levels`.
     - title: Plot title.
     - filename: Output filename (e.g., 'volume_plot.html'). If None, shows in browser/notebook.
+    - stride: Integer stride to downsample the array data for faster rendering (default 1).
+    - results_dir: Output directory to save the file.
+    - save_fig: Whether to save the HTML file locally in the `results_dir`.
     """
     
     # Extract band data
@@ -596,6 +721,13 @@ def plot_volumetric_cloud(values, kx_vals, ky_vals, kz_vals,
     
     # Grid coordinates
     X, Y, Z = np.meshgrid(kx_vals, ky_vals, kz_vals, indexing='ij')
+    
+    # Downsample for faster loading and smaller sizes
+    if stride > 1:
+        X = X[::stride, ::stride, ::stride]
+        Y = Y[::stride, ::stride, ::stride]
+        Z = Z[::stride, ::stride, ::stride]
+        values = values[::stride, ::stride, ::stride]
     
     if title is None:
         title = f"Volumetric Cloud"
@@ -619,9 +751,7 @@ def plot_volumetric_cloud(values, kx_vals, ky_vals, kz_vals,
     if levels is not None:
         if color_sequence is None:
             # Fall back to a default colorscale mapping if no sequence provided
-            import matplotlib.cm as cm
-            import matplotlib.colors as mcolors
-            base = cm.get_cmap("RdBu_r")
+            base = plt.get_cmap("RdBu_r")
             L = len(levels)
             base_colors = base(np.linspace(0.0, 1.0, L))
             color_sequence = [mcolors.to_hex(c) for c in base_colors]
@@ -632,6 +762,12 @@ def plot_volumetric_cloud(values, kx_vals, ky_vals, kz_vals,
             # Custom colorscale that maps strictly to this color
             cscale = [[0, col], [1, col]]
             
+            # Determine opacity for this level
+            if opacity_sequence is not None:
+                current_opacity = opacity_sequence[i % len(opacity_sequence)]
+            else:
+                current_opacity = opacity
+            
             iso = go.Isosurface(
                 x=X.flatten(),
                 y=Y.flatten(),
@@ -640,7 +776,7 @@ def plot_volumetric_cloud(values, kx_vals, ky_vals, kz_vals,
                 isomin=level,
                 isomax=level,
                 surface_count=1,
-                    opacity=opacity,
+                opacity=current_opacity,
                 caps=dict(x_show=False, y_show=False, z_show=False),
                 colorscale=cscale,
                 showscale=False,
@@ -664,8 +800,15 @@ def plot_volumetric_cloud(values, kx_vals, ky_vals, kz_vals,
         margin=dict(r=20, b=10, l=10, t=40)
     )
     
-    if filename:
-        fig.write_html(filename)
+    if save_fig and results_dir:
+        import os
+        if not filename:
+            filename = 'volume_plot.html'
+        filepath = os.path.join(results_dir, filename)
+        fig.write_html(filepath, include_plotlyjs='cdn')
+        print(f"Volumetric plot saved to {filepath}")
+    elif filename:
+        fig.write_html(filename, include_plotlyjs='cdn')
         print(f"Volumetric plot saved to {filename}")
     else:
         fig.show()
@@ -772,42 +915,36 @@ def plot_slice_stack(
     plt.tight_layout()
     plt.show()
 
-def plot_degeneracy_on_path_3d(k_points, eigenvalues, threshold=0.01, title="Degeneracy along Path"):
+def plot_degeneracy_on_path_3d(k_points, eigenvalues, threshold=0.01, title="Degeneracy along Path", results_dir=None, save_fig=False):
     """
-    Plot the k-path in 3D, colored by the degree of band degeneracy.
+    Plot the k-path in 3D using Plotly, colored by the degree of band degeneracy.
     
     Parameters:
     - k_points: (N, 3) array of k-coordinates (kx, ky, kz).
     - eigenvalues: (N, num_bands) array of eigenvalues.
     - threshold: Energy difference threshold to consider bands degenerate.
     - title: Plot title.
+    - results_dir: Directory to save the plot.
+    - save_fig: If True, saves as HTML.
     """
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.add_subplot(111, projection='3d')
+    import plotly.graph_objects as go
+    import os
     
     num_points = k_points.shape[0]
     degeneracies = np.zeros(num_points, dtype=int)
     
     # Calculate max degeneracy for each point
-    # Calculate max degeneracy for each point
     for i in range(num_points):
         evals = np.sort(eigenvalues[i])
         
-        # Using difference array
         diffs = np.diff(evals)
-        
         if len(diffs) > 0:
             max_gap = np.max(diffs)
-            # Threshold is now relative (e.g. 0.01 means 1% of max gap)
-            # Avoid division by zero issues if max_gap is extremely small
             current_threshold = max(threshold * max_gap, 1e-10) 
-            
             degeneracies[i] = int(np.sum(diffs <= current_threshold))
         else:
             degeneracies[i] = 0
 
-    # Define colors
-    # 1: Blue, 2: Green, 3: Red, 4: Black
     color_map = {
         0: 'blue',   # no degeneracy
         1: 'green',  # one degenerate pair
@@ -815,62 +952,85 @@ def plot_degeneracy_on_path_3d(k_points, eigenvalues, threshold=0.01, title="Deg
         3: 'black'   # 4-fold
     }
     
-    # Draw faint grey box cornered at 0,0,0 to pi,pi,pi?
+    fig = go.Figure()
+
+    # Draw faint grey box cornered at 0,0,0 to pi,pi,pi
     box_min = np.array([0, 0, 0])
     box_max = np.array([np.pi, np.pi, np.pi])
     
-    # Draw box edges
-    # Generate vertices
-    from itertools import product
-
-    # We can just construct the 12 edges
+    # Box edges
     # x-aligned
     for y in [box_min[1], box_max[1]]:
         for z in [box_min[2], box_max[2]]:
-            ax.plot([box_min[0], box_max[0]], [y, y], [z, z], color='grey', alpha=0.3, linewidth=1)
+            fig.add_trace(go.Scatter3d(
+                x=[box_min[0], box_max[0]], y=[y, y], z=[z, z],
+                mode='lines', line=dict(color='grey', width=2), opacity=0.3, showlegend=False
+            ))
     # y-aligned
     for x in [box_min[0], box_max[0]]:
         for z in [box_min[2], box_max[2]]:
-            ax.plot([x, x], [box_min[1], box_max[1]], [z, z], color='grey', alpha=0.3, linewidth=1)
+            fig.add_trace(go.Scatter3d(
+                x=[x, x], y=[box_min[1], box_max[1]], z=[z, z],
+                mode='lines', line=dict(color='grey', width=2), opacity=0.3, showlegend=False
+            ))
     # z-aligned
     for x in [box_min[0], box_max[0]]:
         for y in [box_min[1], box_max[1]]:
-            ax.plot([x, x], [y, y], [box_min[2], box_max[2]], color='grey', alpha=0.3, linewidth=1)
+            fig.add_trace(go.Scatter3d(
+                x=[x, x], y=[y, y], z=[box_min[2], box_max[2]],
+                mode='lines', line=dict(color='grey', width=2), opacity=0.3, showlegend=False
+            ))
 
+    # Add points (grouped by degeneracy for legend)
+    for deg in set(degeneracies):
+        idx = np.where(degeneracies == deg)[0]
+        color = color_map.get(deg, 'black')
+        if deg == 0:
+            deg_label = 'Non-degenerate (1)'
+        else:
+            deg_label = f'{deg}-fold'
+        
+        fig.add_trace(go.Scatter3d(
+            x=k_points[idx, 0], y=k_points[idx, 1], z=k_points[idx, 2],
+            mode='markers',
+            marker=dict(color=color, size=4),
+            name=deg_label
+        ))
 
-    # Calculate default line width for reference
-    point_size = 30 # "Relatively large"
-
-    # Plot points and connecting lines
-    for i in range(num_points):
+    # Lines connecting adjacent points with same degeneracy
+    # Group segments by color to render faster
+    deg_to_lines = {deg: {'x': [], 'y': [], 'z': []} for deg in set(degeneracies)}
+    for i in range(num_points - 1):
         deg = degeneracies[i]
-        color = color_map.get(deg, 'black') # Default to black if > 4
-        
-        # Plot Point
-        ax.scatter(k_points[i, 0], k_points[i, 1], k_points[i, 2], color=color, s=point_size)
-        
-        # Connect to next if same degeneracy
-        if i < num_points - 1:
-            if degeneracies[i+1] == deg:
-                ax.plot([k_points[i, 0], k_points[i+1, 0]],
-                        [k_points[i, 1], k_points[i+1, 1]],
-                        [k_points[i, 2], k_points[i+1, 2]],
-                        color=color, linewidth=3) # "3 times the thickness" roughly
-            # else: no line or grey line? User implied only connect if same.
+        if degeneracies[i+1] == deg:
+            deg_to_lines[deg]['x'].extend([k_points[i, 0], k_points[i+1, 0], None])
+            deg_to_lines[deg]['y'].extend([k_points[i, 1], k_points[i+1, 1], None])
+            deg_to_lines[deg]['z'].extend([k_points[i, 2], k_points[i+1, 2], None])
 
-    ax.set_xlabel('kx')
-    ax.set_ylabel('ky')
-    ax.set_zlabel('kz')
-    ax.set_title(title)
-    
-    # Create manual legend
-    from matplotlib.lines import Line2D
-    legend_elements = [
-        Line2D([0], [0], marker='o', color='w', label='Non-degenerate (1)', markerfacecolor='blue', markersize=10),
-        Line2D([0], [0], marker='o', color='w', label='1-fold', markerfacecolor='green', markersize=10),
-        Line2D([0], [0], marker='o', color='w', label='2-fold', markerfacecolor='red', markersize=10),
-        Line2D([0], [0], marker='o', color='w', label='3-fold', markerfacecolor='black', markersize=10)
-    ]
-    ax.legend(handles=legend_elements, loc='best')
+    for deg, lines in deg_to_lines.items():
+        if lines['x']:
+            color = color_map.get(deg, 'black')
+            fig.add_trace(go.Scatter3d(
+                x=lines['x'], y=lines['y'], z=lines['z'],
+                mode='lines',
+                line=dict(color=color, width=4),
+                showlegend=False
+            ))
 
-    plt.show()
+    fig.update_layout(
+        title=title,
+        scene=dict(
+            xaxis_title='kx',
+            yaxis_title='ky',
+            zaxis_title='kz',
+            aspectmode='data'
+        )
+    )
+
+    if save_fig and results_dir:
+        filename = "degeneracy_on_path_3d.html"
+        filepath = os.path.join(results_dir, filename)
+        fig.write_html(filepath)
+        print(f"Saved interactive degeneracy 3D plot to: {filepath}")
+    else:
+        fig.show()

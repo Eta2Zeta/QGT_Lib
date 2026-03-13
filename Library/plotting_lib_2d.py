@@ -5,9 +5,11 @@ import math
 from .utilities import replace_zeros_with_nan
 from .plotting_lib_1d import plot_eigenvalues_line
 from matplotlib.colors import TwoSlopeNorm
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from matplotlib.colors import ListedColormap, BoundaryNorm
 
 
-def extract_and_plot_eigenvalues_along_line(kx_grid, ky_grid, eigenvalues, start_k, end_k, num_points=100, bands_to_plot=None):
+def extract_and_plot_eigenvalues_along_line(kx_grid, ky_grid, eigenvalues, start_k, end_k, num_points=100, bands_to_plot=None, results_dir=None, save_fig=False):
     """
     Extracts eigenvalues along a linear path in 2D k-space and plots them.
 
@@ -18,6 +20,8 @@ def extract_and_plot_eigenvalues_along_line(kx_grid, ky_grid, eigenvalues, start
     - end_k: Tuple (kx_end, ky_end).
     - num_points: Number of points along the interpolation line.
     - bands_to_plot: Tuple of band indices to plot.
+    - results_dir: Directory where the plots will be saved.
+    - save_fig: Boolean determining whether to save the plot or show it.
     """
     # Generate points along the line
     k_path_x = np.linspace(start_k[0], end_k[0], num_points)
@@ -61,7 +65,6 @@ def extract_and_plot_eigenvalues_along_line(kx_grid, ky_grid, eigenvalues, start
 
     # Add miniplot (inset)
     # Location: Lower left corner, small
-    from mpl_toolkits.axes_grid1.inset_locator import inset_axes
     # Alternatively, using relative coordinates: [left, bottom, width, height]
     ax_inset = ax.inset_axes([0.05, 0.05, 0.2, 0.2])
     
@@ -85,7 +88,19 @@ def extract_and_plot_eigenvalues_along_line(kx_grid, ky_grid, eigenvalues, start
     ax_inset.set_yticks([])
     ax_inset.set_title("Path in 2D", fontsize=8)
     
-    plt.show()
+    if save_fig and results_dir:
+        import os
+        # Clean up coordinates for filename
+        s_k = f"{start_k[0]:.2f}_{start_k[1]:.2f}".replace('.', 'p')
+        e_k = f"{end_k[0]:.2f}_{end_k[1]:.2f}".replace('.', 'p')
+        filename = f"eigenvalues_along_cut_{s_k}_to_{e_k}.png"
+        filepath = os.path.join(results_dir, filename)
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        print(f"Saved Eigenvalue cut plot to: {filepath}")
+    else:
+        plt.show()
+    
+    plt.close()
 
 
 
@@ -235,21 +250,31 @@ def plot_eigenvalues_surface_colorbar(
     norm=True,                # if True, all bands share Normalize(-z_limit, z_limit); if False, auto per-band
     stride_size=3,
     color_maps='default',
-    bands_to_plot=None        # NEW: int | iterable[int] | None (None => all bands)
+    bands_to_plot=None,       # NEW: int | iterable[int] | None (None => all bands)
+    results_dir=None,
+    save_fig=False,
+    filename="eigenvalues_surface_2d.html",
+    show=True
 ):
     """
-    Plot selected eigenvalue bands as 3D surfaces with individual colorbars.
+    Plot selected eigenvalue bands as 3D interactive HTML surfaces with toggleable bands.
 
     Parameters:
     - kx, ky            : 2D arrays (meshgrid) for k-space
     - eigenvalues       : 3D array, shape (Nk, Nk, Nb)
     - dim               : number of bands; if None, inferred as eigenvalues.shape[2]
-    - z_limit           : used when norm=True (shared Normalize(-z_limit, z_limit))
-    - norm              : True -> shared Normalize; False -> per-band autoscale
-    - stride_size       : surface stride
+    - z_limit           : used when norm=True (shared limits)
+    - norm              : True -> shared scaling; False -> per-band autoscale
+    - stride_size       : surface stride for downsampling
     - color_maps        : 'default' | str | list[str]
     - bands_to_plot     : which band indices to plot (e.g. 0, or (0,2,5)); None -> all
+    - results_dir       : Output directory to save the file.
+    - save_fig          : Whether to save the HTML file locally in the `results_dir`.
+    - filename          : Output filename.
+    - show              : Whether to show the plot if not saving.
     """
+    import plotly.graph_objects as go
+    
     # Infer number of bands if not provided
     if dim is None:
         if eigenvalues.ndim != 3:
@@ -270,62 +295,70 @@ def plot_eigenvalues_surface_colorbar(
         print("The bands you are asking to plot exceed the dimension of the Hamiltonian")
         raise IndexError(f"bands_to_plot contains out-of-range indices {bad}; valid range is [0, {dim-1}]")
 
-    # Prepare colormaps
+    # Prepare colormaps for Plotly
     if color_maps == 'default':
-        color_maps = ['viridis', 'magma', 'coolwarm', 'plasma', 'inferno', 'cividis']
+        color_maps = ['Viridis', 'RdBu', 'Plasma', 'Earth', 'Inferno', 'Jet', 'Cividis', 'Hot', 'Spectral']
     elif isinstance(color_maps, str):
         color_maps = [color_maps] * max(1, len(bands))
 
-    # Shared norm (if requested)
-    shared_norm = plt.Normalize(vmin=-z_limit, vmax=z_limit) if norm else None
+    fig = go.Figure()
 
-    fig = plt.figure(figsize=(24, 8))
-    ax = fig.add_subplot(111, projection='3d')
+    # Downsample if stride given
+    if stride_size > 1:
+        kx_plot = kx[::stride_size, ::stride_size]
+        ky_plot = ky[::stride_size, ::stride_size]
+    else:
+        kx_plot = kx
+        ky_plot = ky
 
     for j, band in enumerate(bands):
         Z = replace_zeros_with_nan(eigenvalues[:, :, band])
-        cmap = plt.get_cmap(color_maps[j % len(color_maps)])
+        if stride_size > 1:
+            Z = Z[::stride_size, ::stride_size]
+        
+        cmap = color_maps[j % len(color_maps)]
 
-        # Per-band norm if not sharing
-        band_norm = shared_norm
-        if not norm:
-            # autoscale to this band's data
-            zmin = np.nanmin(Z)
-            zmax = np.nanmax(Z)
-            if not np.isfinite(zmin) or not np.isfinite(zmax) or zmin == zmax:
-                # fallback to symmetric window if degenerate
-                half = z_limit if np.isfinite(z_limit) else 1.0
-                band_norm = plt.Normalize(vmin=-half, vmax=half)
-            else:
-                band_norm = plt.Normalize(vmin=zmin, vmax=zmax)
-
-        # Surface
-        surf = ax.plot_surface(
-            kx, ky, Z,
-            cmap=cmap,
-            norm=band_norm,
-            rstride=stride_size,
-            cstride=stride_size,
-            alpha=0.8
+        if norm and z_limit is not None:
+            cmin = -z_limit
+            cmax = z_limit
+        else:
+            cmin = np.nanmin(Z)
+            cmax = np.nanmax(Z)
+            
+        surface = go.Surface(
+            x=kx_plot, y=ky_plot, z=Z,
+            colorscale=cmap,
+            cmin=cmin,
+            cmax=cmax,
+            opacity=0.8,
+            showscale=False, # Plotly shows colorbars for each trace, hiding them reduces clutter
+            name=f"Band {band}",
+            showlegend=True
         )
+        fig.add_trace(surface)
 
-        # Colorbar for this band
-        mappable = plt.cm.ScalarMappable(cmap=cmap, norm=band_norm)
-        mappable.set_array(Z)
-        cbar = fig.colorbar(mappable, ax=ax, shrink=0.6, aspect=30, pad=0.01)
-        cbar.set_label(f'Band {band} eigenvalues', fontsize=10)
+    fig.update_layout(
+        title='Eigenvalues (2D Surface)',
+        scene=dict(
+            xaxis_title='kx',
+            yaxis_title='ky',
+            zaxis_title='Eigenvalue',
+            zaxis_range=[-z_limit, z_limit] if (norm and z_limit is not None) else None
+        ),
+        margin=dict(r=20, b=10, l=10, t=40)
+    )
 
-    ax.set_title('Eigenvalues (selected bands)')
-    ax.set_xlabel('kx')
-    ax.set_ylabel('ky')
-    ax.set_zlabel('Eigenvalue')
-
-    # If using shared norm, set a symmetric z-limit for the 3D axis for consistent depth scaling
-    if norm and np.isfinite(z_limit):
-        ax.set_zlim(-z_limit, z_limit)
-
-    plt.show()
-    plt.close()
+    if save_fig and results_dir:
+        import os
+        filepath = os.path.join(results_dir, filename)
+        fig.write_html(filepath, include_plotlyjs='cdn')
+        print(f"Surface plot saved to {filepath}")
+    elif filename and save_fig:
+        fig.write_html(filename, include_plotlyjs='cdn')
+        print(f"Surface plot saved to {filename}")
+        
+    if show and not (save_fig and results_dir):
+        fig.show()
 
 
 def plot_individual_eigenvalues(kx, ky, eigenvalues, dim=6, z_limit=300, stride_size=3, color_maps='default'):
@@ -824,6 +857,90 @@ def plot_g_components_line(k_line, g_xx, g_yy, trace, angle_deg):
     plt.legend()
     plt.grid(True)
     plt.show()
+    
+def get_plot_limits(Z, limit=None, zlim_percentile=None):
+    """
+    Calculate symmetric z-limits for plotting, optionally constrained by
+    an absolute limit or a percentile of the data. No margin is added.
+    """
+    if Z is None:
+        return None
+
+    # Filter out NaNs and infs
+    valid_Z = Z[np.isfinite(Z)]
+    if len(valid_Z) == 0:
+        return None
+
+    zmin = np.min(valid_Z)
+    zmax = np.max(valid_Z)
+
+    # Handle constant field
+    if zmax == zmin:
+        delta = 1.0 if zmax == 0 else 0.05 * abs(zmax)
+        return (zmin - delta, zmax + delta)
+
+    # Symmetric about 0
+    abs_max = max(abs(zmin), abs(zmax))
+    
+    abs_use = abs_max
+    if zlim_percentile is not None:
+        abs_use = np.percentile(np.abs(valid_Z), zlim_percentile)
+
+    # If an absolute limit is provided and is tighter than the data/percentile, clamp to it
+    if limit is not None:
+        lim = float(limit)
+        if lim < abs_use:
+            abs_use = lim
+
+    # Avoid degenerate range
+    if abs_use == 0.0:
+        abs_use = 1.0
+
+    return (-abs_use, abs_use)
+
+
+def get_limits_asym(Z, limit=None, zlim_percentile=99):
+    """
+    Calculate asymmetric z-limits for plotting metric or eigenvalue data.
+    The maximum limit is determined by the data's percentile (e.g. 99th),
+    and the minimum is determined by the true minimum of the valid data.
+    """
+    if Z is None:
+        return None
+
+    # Filter out NaNs and infs
+    valid_Z = Z[np.isfinite(Z)]
+    if len(valid_Z) == 0:
+        return None
+
+    zmin = np.min(valid_Z)
+    zmax = np.max(valid_Z)
+
+    # Handle constant field
+    if zmax == zmin:
+        delta = 1.0 if zmax == 0 else 0.05 * abs(zmax)
+        return (zmin - delta, zmax + delta)
+
+    # The minimum is just the actual minimum of the data
+    actual_min = zmin
+    
+    # Calculate upper limit based on percentile if requested
+    actual_max = zmax
+    if zlim_percentile is not None:
+        actual_max = np.percentile(valid_Z, zlim_percentile)
+
+    # If an absolute limit is provided and tighter than the data/percentile, clamp it
+    if limit is not None:
+        lim = float(limit)
+        if actual_max > lim:
+            actual_max = lim
+
+    # Ensure min isn't somehow greater than clamped max
+    if actual_min >= actual_max:
+        actual_min = actual_max - 1.0
+
+    return (actual_min, actual_max)
+
 
 def plot_qmt_eig_berry_trace_2d(
     kx, ky,
@@ -836,7 +953,9 @@ def plot_qmt_eig_berry_trace_2d(
     zlim_berry=None,
     zlim_trace=None,
     title="QGT: Eigenvalue, Berry Curvature, and Trace (2D Heatmaps)",
-    components="xy"
+    components="xy",
+    results_dir=None,
+    save_fig=False
 ):
     """
     Make a 1×3 row of 2D heatmaps for:
@@ -870,42 +989,9 @@ def plot_qmt_eig_berry_trace_2d(
         berry_label = f"Im(Q_xy) ({components})"
     Z_trace = replace_zeros_with_nan(trace_array)
 
-    def get_limits(Z, limit=None, margin_frac=0.05):
-        if Z is None:
-            return None
-
-        zmin = np.nanmin(Z)
-        zmax = np.nanmax(Z)
-        if not np.isfinite(zmin) or not np.isfinite(zmax):
-            return None
-
-        # Handle constant field
-        if zmax == zmin:
-            delta = 1.0 if zmax == 0 else 0.05 * abs(zmax)
-            return (zmin - delta, zmax + delta)
-
-        # Symmetric about 0
-        abs_max = max(abs(zmin), abs(zmax))
-
-        # If a limit is provided and is tighter than data, clamp to it
-        if limit is not None:
-            lim = float(limit)
-            abs_use = lim if lim < abs_max else abs_max
-        else:
-            abs_use = abs_max
-
-        # Optional symmetric margin (still symmetric)
-        abs_use = abs_use * (1.0 + float(margin_frac))
-
-        # Avoid degenerate range
-        if abs_use == 0.0:
-            abs_use = 1.0
-
-        return (-abs_use, abs_use)
-
-    zlim_eig   = get_limits(Z_eig, None)
-    zlim_berry_tuple = get_limits(Z_berry, zlim_berry)
-    zlim_trace_tuple = get_limits(Z_trace, zlim_trace)
+    zlim_eig   = get_limits_asym(Z_eig, None, zlim_percentile=None)
+    zlim_berry_tuple = get_plot_limits(Z_berry, zlim_berry)
+    zlim_trace_tuple = get_limits_asym(Z_trace, zlim_trace)
 
     # Figure & axes (1 row, 3 cols)
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
@@ -930,7 +1016,6 @@ def plot_qmt_eig_berry_trace_2d(
             # Make 0 map to the *center color* (white-ish in many diverging maps)
             if cfg["title"] in [berry_label, "Trace Tr[g]"]:
                 if vmin is not None and vmax is not None and vmin < 0 < vmax:
-                    from matplotlib.colors import TwoSlopeNorm
                     norm = TwoSlopeNorm(vmin=vmin, vcenter=0.0, vmax=vmax)
 
             im = ax.pcolormesh(kx, ky, Z, cmap=cmap, shading="auto",
@@ -940,9 +1025,6 @@ def plot_qmt_eig_berry_trace_2d(
             # Use native matplotlib format_coord to show the exact z-value on hover
             def make_format_coord(ax_curr, Z_arr, kx_arr, ky_arr):
                 def format_coord(x, y):
-                    # Find nearest index in the kx, ky grid
-                    # kx_arr[0,:] gives the x-coordinates, ky_arr[:,0] gives the y-coordinates
-                    # Note: pcolormesh coordinates can be slightly offset from cell centers
                     x_idx = np.abs(kx_arr[0, :] - x).argmin()
                     y_idx = np.abs(ky_arr[:, 0] - y).argmin()
                     
@@ -960,11 +1042,144 @@ def plot_qmt_eig_berry_trace_2d(
         ax.axis('scaled') # square aspect ratio
         
     plt.tight_layout(rect=(0, 0, 1, 0.95))
-    plt.show()
+    
+    if save_fig and results_dir:
+        import os
+        filename = f"qgt_2d_band_{eigenvalue_band}_{components}.png"
+        filepath = os.path.join(results_dir, filename)
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        print(f"Saved 2D QGT plot to: {filepath}")
+    else:
+        plt.show()
+        
     plt.close()
 
 
-def plot_degeneracy_2d(kx, ky, eigenvalues, threshold=0.01, title="Degeneracy Map (2D)"):
+def plot_eigen_and_all_berry_2d(
+    kx, ky,
+    eigenvalues,              # shape: (Nk, Nk, Nb)
+    g_xy_imag,                # shape: (Nk, Nk); Im(Q_xy)
+    g_xz_imag,                # shape: (Nk, Nk); Im(Q_xz)
+    g_yz_imag,                # shape: (Nk, Nk); Im(Q_yz)
+    eigenvalue_band=0,
+    convert_berry_from_imQ=True,  # If True, Ω = -2 * Im(Q_ij)
+    cmaps=('viridis', 'coolwarm', 'coolwarm', 'coolwarm'),
+    zlim_berry=None,
+    zlim_percentile=None,
+    title="Eigenvalue and Berry Curvature Components (2D Heatmaps)",
+    results_dir=None,
+    save_fig=False
+):
+    """
+    Make a 1x4 row of 2D heatmaps for:
+      - Eigenvalue band 'eigenvalue_band'
+      - Berry curvature Ω_xy
+      - Berry curvature Ω_xz
+      - Berry curvature Ω_yz
+
+    Args:
+      kx, ky            : 2D grids (meshgrid)
+      eigenvalues       : 3D array (Nk, Nk, Nb)
+      g_xy_imag         : 2D array Im(Q_xy)
+      g_xz_imag         : 2D array Im(Q_xz)
+      g_yz_imag         : 2D array Im(Q_yz)
+      eigenvalue_band   : which band to plot from eigenvalues
+      convert_berry_from_imQ : if True, uses Ω = -2 * Im(Q_ij)
+      cmaps             : tuple of 4 colormaps
+      zlim_berry        : max absolute limit for berry panels; None -> auto limit
+      zlim_percentile   : limit automatically calculated as a percentile of the abs data
+      title             : figure title
+    """
+    # Extract data
+    if eigenvalues is not None:
+        Z_eig = replace_zeros_with_nan(eigenvalues[:, :, eigenvalue_band])
+    else:
+        Z_eig = None
+
+    if convert_berry_from_imQ:
+        Z_berry_xy = replace_zeros_with_nan(-2.0 * g_xy_imag)
+        Z_berry_xz = replace_zeros_with_nan(-2.0 * g_xz_imag)
+        Z_berry_yz = replace_zeros_with_nan(-2.0 * g_yz_imag)
+        berry_label_xy = "Berry Curvature Ω (xy)"
+        berry_label_xz = "Berry Curvature Ω (xz)"
+        berry_label_yz = "Berry Curvature Ω (yz)"
+    else:
+        Z_berry_xy = replace_zeros_with_nan(g_xy_imag)
+        Z_berry_xz = replace_zeros_with_nan(g_xz_imag)
+        Z_berry_yz = replace_zeros_with_nan(g_yz_imag)
+        berry_label_xy = "Im(Q_xy)"
+        berry_label_xz = "Im(Q_xz)"
+        berry_label_yz = "Im(Q_yz)"
+
+    zlim_eig   = get_limits_asym(Z_eig, None, zlim_percentile=None)
+    zlim_berry_xy_tuple = get_plot_limits(Z_berry_xy, zlim_berry, zlim_percentile)
+    zlim_berry_xz_tuple = get_plot_limits(Z_berry_xz, zlim_berry, zlim_percentile)
+    zlim_berry_yz_tuple = get_plot_limits(Z_berry_yz, zlim_berry, zlim_percentile)
+
+    # Figure & axes (1 row, 4 cols)
+    fig, axes = plt.subplots(1, 4, figsize=(24, 5))
+    if title:
+        fig.suptitle(title, fontsize=14)
+
+    panels = [
+        dict(Z=Z_eig,      cmap=cmaps[0], title=f"Eigenvalue Band {eigenvalue_band+1}" if Z_eig is not None else "Eigenvalue (No Data)", zlim=zlim_eig),
+        dict(Z=Z_berry_xy, cmap=cmaps[1], title=berry_label_xy, zlim=zlim_berry_xy_tuple),
+        dict(Z=Z_berry_xz, cmap=cmaps[2], title=berry_label_xz, zlim=zlim_berry_xz_tuple),
+        dict(Z=Z_berry_yz, cmap=cmaps[3], title=berry_label_yz, zlim=zlim_berry_yz_tuple),
+    ]
+
+    for ax, cfg in zip(axes, panels):
+        Z = cfg["Z"]
+        cmap = cfg["cmap"]
+        zlim = cfg["zlim"]
+        vmin, vmax = zlim if zlim is not None else (None, None)
+
+        if Z is not None:
+            norm = None
+
+            # Make 0 map to the *center color* (white-ish in many diverging maps)
+            if "Berry" in cfg["title"] or "Im(Q_" in cfg["title"]:
+                if vmin is not None and vmax is not None and vmin < 0 < vmax:
+                    norm = TwoSlopeNorm(vmin=vmin, vcenter=0.0, vmax=vmax)
+
+            im = ax.pcolormesh(kx, ky, Z, cmap=cmap, shading="auto",
+                            norm=norm, vmin=None if norm else vmin, vmax=None if norm else vmax)
+            fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+            
+            # Use native matplotlib format_coord to show the exact z-value on hover
+            def make_format_coord(ax_curr, Z_arr, kx_arr, ky_arr):
+                def format_coord(x, y):
+                    x_idx = np.abs(kx_arr[0, :] - x).argmin()
+                    y_idx = np.abs(ky_arr[:, 0] - y).argmin()
+                    
+                    if 0 <= y_idx < Z_arr.shape[0] and 0 <= x_idx < Z_arr.shape[1]:
+                        z_val = Z_arr[y_idx, x_idx]
+                        return f"kx={x:.4f}, ky={y:.4f}  |  Value = {z_val:.6g}"
+                    return f"kx={x:.4f}, ky={y:.4f}"
+                return format_coord
+
+            ax.format_coord = make_format_coord(ax, Z, kx, ky)
+
+        ax.set_title(cfg['title'])
+        ax.set_xlabel('kx')
+        ax.set_ylabel('ky')
+        ax.axis('scaled') # square aspect ratio
+        
+    plt.tight_layout(rect=(0, 0, 1, 0.95))
+    
+    if save_fig and results_dir:
+        import os
+        filename = f"qgt_2d_all_berry_band_{eigenvalue_band}.png"
+        filepath = os.path.join(results_dir, filename)
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        print(f"Saved 2D all-Berry plot to: {filepath}")
+    else:
+        plt.show()
+        
+    plt.close()
+
+
+def plot_degeneracy_2d(kx, ky, eigenvalues, threshold=0.01, title="Degeneracy Map (2D)", sym_points=True, results_dir=None, save_fig=False):
     """
     Plot a 2D map where colors indicate the number of band degeneracies at each k-point.
     
@@ -973,6 +1188,8 @@ def plot_degeneracy_2d(kx, ky, eigenvalues, threshold=0.01, title="Degeneracy Ma
     - eigenvalues: 3D array of eigenvalues [nkx, nky, nbands].
     - threshold: Relative threshold (fraction of max gap) to consider bands degenerate.
     - title: Plot title.
+    - sym_points: If True, overlays default high-symmetry points ((0,0), (pi,0), (pi,pi), (0,pi)).
+                  If array-like, uses the provided points.
     """
     nkx, nky, nbands = eigenvalues.shape
     degeneracy_map = np.zeros((nkx, nky), dtype=int)
@@ -990,36 +1207,81 @@ def plot_degeneracy_2d(kx, ky, eigenvalues, threshold=0.01, title="Degeneracy Ma
                 # Avoid zero division or extremely small gaps
                 current_thresh = max(threshold * max_gap, 1e-10)
                 
-                # Count how many gaps are smaller than threshold
-                # This counts number of "touchings". 
-                # e.g. 2 degenerate bands -> 1 touching
-                # 3 degenerate bands -> 2 touchings (or maybe 1 if blocked, but typically diffs will show 2 small gaps)
                 degeneracy_map[i, j] = np.sum(diffs <= current_thresh)
             else:
                 degeneracy_map[i, j] = 0
                 
     # Plot
     fig, ax = plt.subplots(figsize=(10, 8))
-    
-    # Use a discrete colormap
-    # 0 -> Blue (No degeneracy)
-    # 1 -> Green (2-fold)
-    # 2 -> Red (3-fold or two 2-fold)
-    # 3+ -> Black
-    
-    # We can use imshow or pcolormesh
-    # Let's use pcolormesh
-    
-    # Custom colormap
-    from matplotlib.colors import ListedColormap, BoundaryNorm
-    
+
     # Define colors for 0, 1, 2, 3+
     colors = ['blue', 'green', 'red', 'black']
+    from matplotlib.colors import ListedColormap, BoundaryNorm
     cmap = ListedColormap(colors)
     bounds = [-0.5, 0.5, 1.5, 2.5, 10.5] # Bins centered at 0, 1, 2, 3+
     norm = BoundaryNorm(bounds, cmap.N)
     
     im = ax.pcolormesh(kx, ky, degeneracy_map, cmap=cmap, norm=norm, shading='auto')
+    
+    # Overlay Symmetry Points
+    if sym_points is not False:
+        if sym_points is True:
+            # Connect all points to form a perimeter and diagonals
+            # Gamma -> X -> M -> Y -> Gamma -> M
+            path = np.array([
+                [0, 0],
+                [np.pi, 0],
+                [np.pi, np.pi],
+                [0, np.pi],
+                [0, 0],
+                [np.pi, np.pi], # Cross-diagonal from (0,0) to (pi,pi)
+                [np.pi, 0],     # Jump back to X (without drawing line to Y)
+                [0, np.pi]      # Cross-diagonal from (pi,0) to (0,pi)
+            ])
+            
+            # Since the path jumps and crosses, the simplest robust pyplot approach to draw connecting lines between all is to plot the perimeter box and diagonals manually.
+            pass  # we will handle drawing differently below to prevent weird connecting segments
+            
+        else:
+            path = np.array(sym_points)
+            labels = [f"P{idx}" for idx in range(len(path))]
+            ax.plot(path[:, 0], path[:, 1], color='white', linewidth=2, linestyle='--', label='Symmetry Path')
+            ax.scatter(path[:, 0], path[:, 1], color='white', s=50, zorder=5)
+            
+            for (x, y), label in zip(path, labels):
+                if label: 
+                    ax.annotate(label, (x, y), textcoords="offset points", xytext=(5,5), ha='left', color='white', fontsize=12, fontweight='bold')
+            ax.legend(loc='upper right')
+
+        if sym_points is True:
+            # Custom drawing to ensure all 4 points connect to every other point
+            pts = {
+                "Gamma": (0, 0),
+                "X": (np.pi, 0),
+                "M": (np.pi, np.pi),
+                "Y": (0, np.pi)
+            }
+            labels_disp = {"Gamma": "(0,0)", "X": "($\pi$,0)", "M": "($\pi$,$\pi$)", "Y": "(0,$\pi$)"}
+            
+            # Draw all pairs
+            lines_to_draw = [
+                ("Gamma", "X"), ("X", "M"), ("M", "Y"), ("Y", "Gamma"), # Perimeter
+                ("Gamma", "M"), ("X", "Y")                              # Diagonals
+            ]
+            
+            for p1, p2 in lines_to_draw:
+                x_vals = [pts[p1][0], pts[p2][0]]
+                y_vals = [pts[p1][1], pts[p2][1]]
+                # Only add the label to the legend once
+                lbl = 'Symmetry Lines' if p1 == "Gamma" and p2 == "X" else "_nolegend_"
+                ax.plot(x_vals, y_vals, color='white', linewidth=2, linestyle='--', label=lbl)
+                
+            # Draw point markers and labels
+            for k, (x, y) in pts.items():
+                ax.scatter(x, y, color='white', s=50, zorder=5)
+                ax.annotate(labels_disp[k], (x, y), textcoords="offset points", xytext=(5,5), ha='left', color='white', fontsize=12, fontweight='bold')
+                
+            ax.legend(loc='upper right')
     
     ax.set_title(title)
     ax.set_xlabel('kx')
@@ -1031,5 +1293,12 @@ def plot_degeneracy_2d(kx, ky, eigenvalues, threshold=0.01, title="Degeneracy Ma
     cbar.set_label('Degeneracy Count (small gaps)')
     
     plt.tight_layout()
-    plt.show()
+    if save_fig and results_dir:
+        import os
+        filename = f"degeneracy_2d.png"
+        filepath = os.path.join(results_dir, filename)
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        print(f"Saved Degeneracy map to: {filepath}")
+    else:
+        plt.show()
     plt.close()

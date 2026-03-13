@@ -1,0 +1,35 @@
+{
+  "dki": 0.05026548245743669,
+  "dkj": 0.05026548245743669,
+  "hamiltonian_name": "gWaveAltermagnetHamiltonian",
+  "hamiltonian_params": {
+    "A0": 0.0,
+    "Jx": 0.0,
+    "Jy": 0.0,
+    "Jz": 0.2,
+    "analytic_magnus": false,
+    "lamb": 0.0,
+    "lamb_z": 0.2,
+    "magnus_order": 1,
+    "mu": 0,
+    "omega": 0.0,
+    "polarization": "left",
+    "t1": 0.3,
+    "t2": 0.3,
+    "t3": 0.3,
+    "t4": 0.3
+  },
+  "include_endpoints": false,
+  "ki_range": [
+    -3.7199785858400993,
+    3.7199785858400993
+  ],
+  "kj_range": [
+    -3.7199785858400993,
+    3.7199785858400993
+  ],
+  "kk": 0.7853981633974483,
+  "kvals_mode": "centered",
+  "mesh_spacing": 150,
+  "order": "xyz"
+}
