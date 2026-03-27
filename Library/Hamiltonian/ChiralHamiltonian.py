@@ -86,6 +86,48 @@ class ChiralHamiltonian(hamiltonian):
                 H[2*l:2*l+2, 2*(l+1):2*(l+1)+2] = U   # super-diagonal
 
         return H
+
+    def H0(self):
+        """
+        Unperturbed chiral Hamiltonian, H0. 
+        Contains the static interlayer coupling blocks (L and U) and the potential V.
+        Excludes the kinetic D block.
+        """
+        n = self.n
+        H = np.zeros((2*n, 2*n), dtype=complex)
+
+        L = self._L_block()
+        U = self._U_block()
+
+        for l in range(n):
+            # add displacement-field onsite to this layer (A & B equally)
+            Vl = self._V_layer[l]
+            H[2*l:2*l+2, 2*l:2*l+2] += Vl * self._I2
+
+            # interlayer couplings
+            if l < n - 1:
+                H[2*(l+1):2*(l+1)+2, 2*l:2*l+2] = L   # sub-diagonal
+                H[2*l:2*l+2, 2*(l+1):2*(l+1)+2] = U   # super-diagonal
+
+        return H
+
+    def Hprime(self, kx, ky):
+        """
+        Perturbation Hamiltonian, H_prime.
+        Contains only the k-dependent kinetic intralayer block (D).
+        Excludes the potential V, which is in H0.
+        """
+        n = self.n
+        H = np.zeros((2*n, 2*n), dtype=complex)
+
+        D = self._D_block(kx, ky)
+
+        for l in range(n):
+            # chiral intralayer block
+            H[2*l:2*l+2, 2*l:2*l+2] = D
+
+        return H
+
     # ---- PSEUDO-EIGENVECTORS (holomorphic chiral basis) ----
 
     def _kpm(self, kx: float, ky: float):
