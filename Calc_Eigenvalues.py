@@ -370,7 +370,7 @@ def calculation_3d_sym_points(hamiltonian=hamiltonian, force_new=True):
     num_points_per_segment = 100
     
     # Use centralized helper function to get high-symmetry paths
-    k_path, k_dist, node_indices, path_labels, path_points = generate_3d_sym_lines(num_points_per_segment)
+    k_path, k_dist, node_indices, path_labels, path_points = generate_3d_sym_lines(num_points_per_segment, space_group=194)
     
     # Setup directories
     file_paths, use_existing, results_dir, meta_target = setup_3D_sym_points_results_directory(

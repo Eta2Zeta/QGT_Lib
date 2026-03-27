@@ -844,57 +844,121 @@ def centered_kvals(k_range: float, N: int) -> np.ndarray:
     centers = 0.5 * (edges[:-1] + edges[1:])
     return centers
 
-def generate_3d_sym_lines(num_points_per_segment=100):
+def generate_3d_sym_lines(num_points_per_segment=100, space_group=58, a=1.0):
     """
-    Generates k-points along the high-symmetry path Z-G-S-R-T-Y-S-X-U-R-Z.
-    
-    Returns:
-    - all_k_points: (N, 3) array of k-points
-    - all_k_dist: (N,) array of cumulative distance along the path
-    - node_indices: list of indices into the arrays where the path hits a high-symmetry point
-    - path_labels: name of each high-symmetry point in sequence
-    - path_points: (11, 3) the actual (kx, ky, kz) coordinates of the path nodes in sequence
+    Generates k-points along a high-symmetry path for the requested space group.
+
+    Parameters
+    ----------
+    num_points_per_segment : int
+        Number of k-points *per segment* (exclusive of the start point of
+        each segment, inclusive of the end point).
+    space_group : int
+        Crystal space group number.
+        - 58  : Orthorhombic (Pnnm).  Path: Z-G-S-R-T-Y-S-X-U-R-Z.
+                Points use units of π (a = b = c = 1 implied).
+        - 194 : Hexagonal (P6₃/mmc).  Path: G-M-K-G-A-L-H-A.
+                In-plane coordinates use lattice constant `a`;
+                out-of-plane coordinate uses π (c-axis half-reciprocal-lattice).
+    a : float
+        Lattice constant for space group 194 (default 1.0).
+        Ignored for space group 58.
+
+    Returns
+    -------
+    all_k_points : ndarray, shape (N, 3)
+        k-points along the path.
+    all_k_dist : ndarray, shape (N,)
+        Cumulative distance along the path.
+    node_indices : list of int
+        Indices into the arrays where the path reaches a high-symmetry point.
+    path_labels : list of str
+        Name of each high-symmetry node in sequence (length = len(node_indices)).
+    path_points : ndarray, shape (M, 3)
+        Cartesian k-coordinates of the nodes in sequence.
     """
-    # Define High Symmetry Points
-    points = {
-        "G": np.array([0, 0, 0]),
-        "X": np.array([np.pi, 0, 0]),
-        "S": np.array([np.pi, np.pi, 0]),
-        "Y": np.array([0, np.pi, 0]),
-        "Z": np.array([0, 0, np.pi]),  # Zetta
-        "U": np.array([np.pi, 0, np.pi]),
-        "R": np.array([np.pi, np.pi, np.pi]),
-        "T": np.array([0, np.pi, np.pi])
-    }
-    
-    # Path Sequence
-    path_labels = ["Z", "G", "S", "R", "T", "Y", "S", "X", "U", "R", "Z"]
+
+    # ------------------------------------------------------------------
+    # Space group 58 – Orthorhombic (Pnnm)
+    # ------------------------------------------------------------------
+    if space_group == 58:
+        points = {
+            "G": np.array([0,      0,      0     ]),
+            "X": np.array([np.pi,  0,      0     ]),
+            "S": np.array([np.pi,  np.pi,  0     ]),
+            "Y": np.array([0,      np.pi,  0     ]),
+            "Z": np.array([0,      0,      np.pi ]),
+            "U": np.array([np.pi,  0,      np.pi ]),
+            "R": np.array([np.pi,  np.pi,  np.pi ]),
+            "T": np.array([0,      np.pi,  np.pi ]),
+        }
+        path_labels = ["Z", "G", "S", "R", "T", "Y", "S", "X", "U", "R", "Z"]
+
+    # ------------------------------------------------------------------
+    # Space group 194 – Hexagonal (P6₃/mmc)
+    # ------------------------------------------------------------------
+    elif space_group == 194:
+        #   M-point : (0,       2π/√3,    0)   ← (0, 2/√3) × π
+        #   K-point : (2π/3,    2π/√3,    0)   ← (2/3, 2/√3) × π
+        #   A       : (0,       0,         π)   ← Γ shifted by kz = π
+        #   L       : (0,       2π/√3,    π)   ← M shifted by kz = π
+        #   H       : (2π/3,    2π/√3,    π)   ← K shifted by kz = π
+        kM_y = 2 * np.pi / np.sqrt(3)   # = (2/√3) × π
+        kK_x = 2 * np.pi / 3            # = (2/3)  × π
+        kz_A = np.pi
+
+        points = {
+            "G": np.array([0,     0,      0    ]),
+            "M": np.array([0,     kM_y,   0    ]),
+            "K": np.array([kK_x,  kM_y,   0    ]),
+            "A": np.array([0,     0,      kz_A ]),
+            "L": np.array([0,     kM_y,   kz_A ]),
+            "H": np.array([kK_x,  kM_y,   kz_A ]),
+        }
+        # Standard hexagonal path:  G -> M -> K -> G -> A -> L -> H -> A
+        # New requested path: L -> H -> A -> L -> M -> H -> K -> M -> G -> K -> A -> G -> L
+        path_labels = ["L", "H", "A", "L", "M", "H", "K", "M", "G", "K", "A", "G", "L"]
+
+    else:
+        raise ValueError(
+            f"space_group={space_group} is not supported. "
+            "Currently supported: 58 (orthorhombic), 194 (hexagonal)."
+        )
+
+    # ------------------------------------------------------------------
+    # Build path (common logic)
+    # ------------------------------------------------------------------
     path_points = [points[label] for label in path_labels]
-    
+
     all_k_points = []
-    all_k_dist = []
-    node_indices = []
-    
-    cum_dist = 0.0
-    
-    # First point
+    all_k_dist   = []
+    node_indices  = []
+    cum_dist      = 0.0
+
+    # First node
     all_k_points.append(path_points[0])
     all_k_dist.append(cum_dist)
     node_indices.append(0)
-    
+
     for i in range(len(path_points) - 1):
         start = path_points[i]
-        end = path_points[i+1]
-        
-        dist = np.linalg.norm(end - start)
-        pts = np.linspace(start, end, num_points_per_segment + 1)[1:]
-        dists = np.linspace(0, dist, num_points_per_segment + 1)[1:]
-        
+        end   = path_points[i + 1]
+
+        dist  = np.linalg.norm(end - start)
+        pts   = np.linspace(start, end, num_points_per_segment + 1)[1:]
+        dists = np.linspace(0, dist,  num_points_per_segment + 1)[1:]
+
         for p, d in zip(pts, dists):
             all_k_points.append(p)
             all_k_dist.append(cum_dist + d)
-            
+
         cum_dist += dist
         node_indices.append(len(all_k_points) - 1)
-        
-    return np.array(all_k_points), np.array(all_k_dist), node_indices, path_labels, np.array(path_points)
+
+    return (
+        np.array(all_k_points),
+        np.array(all_k_dist),
+        node_indices,
+        path_labels,
+        np.array(path_points),
+    )

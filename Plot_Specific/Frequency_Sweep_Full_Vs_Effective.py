@@ -149,8 +149,12 @@ def main():
     ax3.legend(fontsize='small')
     ax3.grid(True, alpha=0.3)
     
+    
     plt.tight_layout()
-    plt.show()
+    # Save the plot instead of showing it
+    save_path = os.path.join(os.path.dirname(__file__), 'Frequency_Sweep_Comparison.png')
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    print(f"Plot saved to: {save_path}")
 
 if __name__ == "__main__":
     main()

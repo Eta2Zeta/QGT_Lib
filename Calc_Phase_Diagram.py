@@ -12,11 +12,13 @@ from functools import partial
 # from Library import * 
 from Library.Hamiltonian_v1 import *
 from Library.Hamiltonian.Hamiltonian_v2 import * 
-from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian 
+from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
+from Library.Hamiltonian.gWaveAltermagnetHamiltonian import gWaveAltermagnetHamiltonian
 from Library.eigenvalue_calc_lib import *
 from Library.QGT_lib import *
 from Library.topology import *
-from Library.utilities import setup_qgt_nd_results_dir_json, setup_qgt_nd_results_dir
+from Library.utilities import setup_qgt_nd_results_dir_json, setup_qgt_nd_results_dir, generate_3d_sym_lines
+from Library.Hamiltonian_helper import get_Hamiltonian
 
 from Library.plotting_lib_2d import *
 
@@ -196,6 +198,24 @@ def _worker_qgt_point(arg, h_template, kx, ky, mesh_spacing, band, z_cutoff):
         hamiltonian_array, hamiltonian_prime_array,
     )
 
+def _worker_sym_point(arg, h_template, k_path):
+    if len(arg) == 3: param_values, idx, progress_label = arg
+    else: param_values, idx = arg
+
+    H = copy.deepcopy(h_template)
+    for k, v in param_values.items(): setattr(H, k, v)
+
+    num_points = len(k_path)
+    dim = int(H.dim)
+    eigenvalues = np.zeros((num_points, dim))
+
+    for i in range(num_points):
+        k_curr = k_path[i]
+        H_mat, _ = get_Hamiltonian(H, k_curr[0], k_curr[1], k_curr[2])
+        evals = np.linalg.eigvalsh(H_mat)
+        eigenvalues[i, :] = np.sort(evals)
+
+    return (idx, eigenvalues)
 
 
 # ---------- master driver: compute & save one N-D bundle ----------
@@ -350,11 +370,71 @@ def compute_qgt_nd_parallel(hamiltonian_template,
     print(f"✅ Saved N-D QGT bundle to {bundle_path}")
     return root, bundle_path
 
+def compute_sym_nd_parallel(hamiltonian_template, param_ranges, parameter_spacing,
+                            num_points_per_segment=100, space_group=194, processes=None, force_new_dir=False, float_dtype=np.float64):
+    H_template = copy.deepcopy(hamiltonian_template)
+    k_path, k_dist, node_indices, path_labels, path_points = generate_3d_sym_lines(num_points_per_segment, space_group=space_group)
+    num_k_points, dim = len(k_path), int(getattr(H_template, "dim", 0))
+
+    points_with_idx, names, axes, shape = build_parameter_points(param_ranges, parameter_spacing)
+    total_param_points = int(np.prod(shape))
+
+    def _label_for_idx(tuple): return f"{np.ravel_multi_index(tuple, shape)+1}/{total_param_points}"
+    points_labeled = [(d, idx, _label_for_idx(idx)) for (d, idx) in points_with_idx]
+
+    out_shape = tuple(shape) + (num_k_points, dim)
+    eigenvalues_grid = np.empty(out_shape, dtype=float_dtype)
+
+    import json
+    base = os.path.join(os.getcwd(), "results", "Sym_Phase_Diagram")
+    name = f"{getattr(H_template, 'name', 'Model')}_Sym" + "".join([f"_{k}_{v[0]}to{v[1]}" for k, v in param_ranges.items()])
+    path = os.path.join(base, name)
+    suffix, idx_dir = "", 1
+    while not force_new_dir and os.path.exists(path + suffix):
+        suffix = f"_{idx_dir}"; idx_dir += 1
+    root = path + suffix
+    os.makedirs(root, exist_ok=True)
+    
+    bundle_path = os.path.join(root, "sym_nd_bundle.npz")
+    worker = partial(_worker_sym_point, h_template=H_template, k_path=k_path)
+    procs = processes or min(cpu_count(), max(1, len(points_with_idx)))
+    print(f"Launching 3D Sym N-D sweep on {procs} processes over {len(points_with_idx)} points ...")
+
+    with Pool(processes=procs) as pool:
+        with tqdm(total=len(points_labeled), desc="Sym points calc", unit="pt") as pbar:
+            for result in pool.imap(worker, points_labeled):
+                idx, eigenvalues = result
+                eigenvalues_grid[idx] = eigenvalues
+                pbar.update(1)
+
+    np.savez_compressed(bundle_path, names=np.array(names, dtype=object), shape=np.array(shape, dtype=int),
+                        k_path=k_path, k_dist=k_dist, node_indices=node_indices, path_labels=path_labels,
+                        **{f"axis_{i}_{names[i]}": axes[i] for i in range(len(names))}, eigenvalues_grid=eigenvalues_grid)
+    
+    with open(os.path.join(root, "meta.json"), "w") as f:
+        json.dump({"param_ranges": param_ranges, "spacing": parameter_spacing, "space_group": space_group}, f, indent=2)
+
+    print(f"✅ Saved N-D Sym bundle to {bundle_path}")
+    return root, bundle_path
+
 
 # --- Build Hamiltonian template ---
-# H_template = ChiralHamiltonian(A0=0.1, n=5)
-H_template = ChiralHamiltonian(n=5, V=30, A0=0.1)
-H_template.polarization = "left"
+
+# Example 1: ChiralHamiltonian (Uncomment to use)
+# H_template = ChiralHamiltonian(n=5, V=30, A0=0.1)
+# H_template.polarization = "left"
+#
+# param_ranges = {
+#     "omega": (20, 5e3),
+#     "V":     (-10, 50),
+# }
+# parameter_spacing = {
+#     "omega": {"n": 2, "scale": "linear", "inverse": True},
+#     "V":     {"n": 2, "scale": "linear"}
+# }
+
+# Example 2: gWaveAltermagnetHamiltonian
+H_template = gWaveAltermagnetHamiltonian(t1=0.3, t2=0.3, t3=0.3, t4=0.3, mu=0, Jx=0.2, Jy=0.0, Jz=0.0, lamb=0.1, lamb_z=0.1)
 
 # ensure b-vectors exist
 if not hasattr(H_template, "b1") or not hasattr(H_template, "b2"):
@@ -363,14 +443,31 @@ if not hasattr(H_template, "b1") or not hasattr(H_template, "b2"):
     H_template.b2 = (2*np.pi/(3*a)) * np.array([1.0, -np.sqrt(3.0)])
 
 # --- parameter ranges ---
+# Note: An 8-dimensional sweep at n=2 creates 2^8 = 256 configurations.
+# Set "n" to 1 for parameters you want to hold constant at their lower bound, 
+# or increase "n" to actively sweep them!
 param_ranges = {
-    "omega": (20, 5e3),   # drive frequency
-    "V":     (-10, 50),      # onsite potential or whatever V means in your H
+    "t1":     (0.1, 0.5),
+    "t2":     (0.1, 0.5),
+    "t3":     (0.1, 0.5),
+    "t4":     (0.1, 0.5),
+    "Jx":     (0.0, 0.5),
+    "Jz":     (0.0, 0.5),
+    "lamb":   (0.0, 0.5),
+    "lamb_z": (0.0, 0.5),
 }
 
+parameter_spacing = 4
+
 parameter_spacing = {
-    "omega": {"n": 2, "scale": "linear", "inverse": True},
-    "V":     {"n": 2, "scale": "linear"}
+    "t1":     {"n": parameter_spacing, "scale": "linear"},
+    "t2":     {"n": parameter_spacing, "scale": "linear"},
+    "t3":     {"n": parameter_spacing, "scale": "linear"},
+    "t4":     {"n": parameter_spacing, "scale": "linear"},
+    "Jx":     {"n": parameter_spacing, "scale": "linear"},
+    "Jz":     {"n": parameter_spacing, "scale": "linear"},
+    "lamb":   {"n": parameter_spacing, "scale": "linear"},
+    "lamb_z": {"n": parameter_spacing, "scale": "linear"},
 }
 
 # --- k-grid ---
@@ -380,16 +477,29 @@ ky_range = (-k, k)
 mesh_spacing = 20   # bump up for production
 
 def main():
-    root, bundle_path = compute_qgt_nd_parallel(
+    # Example: Run standard QGT phase diagram
+    # root, bundle_path = compute_qgt_nd_parallel(
+    #     hamiltonian_template=H_template,
+    #     param_ranges=param_ranges,
+    #     parameter_spacing=parameter_spacing,
+    #     kx_range=kx_range,
+    #     ky_range=ky_range,
+    #     mesh_spacing=mesh_spacing,
+    #     band=4,            # which band to evaluate
+    #     z_cutoff=1e2,
+    #     processes=None,    # auto-choose CPU count
+    #     force_new_dir=False,
+    #     float_dtype=np.float32
+    # )
+
+    # Example: Run 3D Symmetry point eigenvalue parameter sweep
+    root, bundle_path = compute_sym_nd_parallel(
         hamiltonian_template=H_template,
         param_ranges=param_ranges,
         parameter_spacing=parameter_spacing,
-        kx_range=kx_range,
-        ky_range=ky_range,
-        mesh_spacing=mesh_spacing,
-        band=4,            # which band to evaluate
-        z_cutoff=1e2,
-        processes=None,    # auto-choose CPU count
+        num_points_per_segment=50,
+        space_group=194, 
+        processes=None,    
         force_new_dir=False,
         float_dtype=np.float32
     )

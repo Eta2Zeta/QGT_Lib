@@ -1,0 +1,8 @@
+{
+  "Hamiltonian_Template_Name": "ChiralHamiltonian",
+  "param_ranges": "{'omega': (20, 5000.0), 'V': (-10, 50)}",
+  "parameter_spacing": "{'omega': {'n': 2, 'scale': 'linear', 'inverse': True}, 'V': {'n': 2, 'scale': 'linear'}}",
+  "num_points_per_segment": "50",
+  "space_group": "194",
+  "dim": "10"
+}
