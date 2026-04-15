@@ -1,0 +1,79 @@
+{
+  "param_ranges": {
+    "Jx": [
+      0.0,
+      1
+    ],
+    "Jy": [
+      0.0,
+      1
+    ],
+    "Jz": [
+      0.0,
+      1
+    ],
+    "lamb": [
+      0.0,
+      0.3
+    ],
+    "lamb_z": [
+      0.0,
+      0.3
+    ],
+    "t1": [
+      0.0,
+      0.3
+    ],
+    "t2": [
+      0.0,
+      0.3
+    ],
+    "t3": [
+      0.0,
+      0.3
+    ],
+    "t4": [
+      0.0,
+      0.3
+    ]
+  },
+  "spacing": {
+    "Jx": {
+      "n": 6,
+      "scale": "linear"
+    },
+    "Jy": {
+      "n": 6,
+      "scale": "linear"
+    },
+    "Jz": {
+      "n": 6,
+      "scale": "linear"
+    },
+    "lamb": {
+      "n": 3,
+      "scale": "linear"
+    },
+    "lamb_z": {
+      "n": 3,
+      "scale": "linear"
+    },
+    "t1": {
+      "n": 3,
+      "scale": "linear"
+    },
+    "t2": {
+      "n": 3,
+      "scale": "linear"
+    },
+    "t3": {
+      "n": 3,
+      "scale": "linear"
+    },
+    "t4": {
+      "n": 3,
+      "scale": "linear"
+    }
+  },
+  "space_group": 194
+}

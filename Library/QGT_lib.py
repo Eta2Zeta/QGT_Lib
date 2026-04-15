@@ -171,8 +171,8 @@ def QGT_grid_analytic(
     - eigenvalues: 2D array of eigenvalues to be used for components.
     - order: string defining the axis mapping, e.g. 'xyz' -> (kx,ky,kz)=(ki,kj,kk).
 
-    Returns:
-    - 10-tuple of 2D arrays: g_xx, g_yy, g_zz, g_xy_real, g_xy_imag, g_xz_real, g_xz_imag, g_yz_real, g_yz_imag, trace
+    # Returns:
+    # - 9-tuple of 2D arrays: g_xx, g_yy, g_zz, g_xy_real, g_xy_imag, g_xz_real, g_xz_imag, g_yz_real, g_yz_imag
     """
     g_xx_array = np.zeros(ki.shape)
     g_yy_array = np.zeros(ki.shape)
@@ -183,7 +183,6 @@ def QGT_grid_analytic(
     g_xz_imag_array = np.zeros(ki.shape)
     g_yz_real_array = np.zeros(ki.shape)
     g_yz_imag_array = np.zeros(ki.shape)
-    trace_array = np.zeros(ki.shape)
 
     total_points = ki.shape[0] * ki.shape[1]
 
@@ -195,7 +194,7 @@ def QGT_grid_analytic(
                 # Map (ki,kj,kk) -> (kx,ky,kz) per order mapping
                 kx, ky, kz = map_k_by_order(ki[i, j], kj[i, j], kk, order)
 
-                g_xx, g_yy, g_zz, g_xy_real, g_xy_imag, g_xz_real, g_xz_imag, g_yz_real, g_yz_imag, trace = quantum_geometric_tensor_func(
+                g_xx, g_yy, g_zz, g_xy_real, g_xy_imag, g_xz_real, g_xz_imag, g_yz_real, g_yz_imag = quantum_geometric_tensor_func(
                     hamiltonian, kx, ky, kz=kz, energy=energy
                 )
 
@@ -208,7 +207,6 @@ def QGT_grid_analytic(
                 g_xz_imag_array[i, j] = g_xz_imag if g_xz_imag is not None else 0.0
                 g_yz_real_array[i, j] = g_yz_real if g_yz_real is not None else 0.0
                 g_yz_imag_array[i, j] = g_yz_imag if g_yz_imag is not None else 0.0
-                trace_array[i, j] = trace if trace is not None else 0.0
 
                 pbar.update(1)
 
@@ -222,9 +220,8 @@ def QGT_grid_analytic(
         g_xz_imag_array = np.clip(g_xz_imag_array, -z_cutoff, z_cutoff)
         g_yz_real_array = np.clip(g_yz_real_array, -z_cutoff, z_cutoff)
         g_yz_imag_array = np.clip(g_yz_imag_array, -z_cutoff, z_cutoff)
-        trace_array = np.clip(trace_array, -z_cutoff, z_cutoff)
 
-    return g_xx_array, g_yy_array, g_zz_array, g_xy_real_array, g_xy_imag_array, g_xz_real_array, g_xz_imag_array, g_yz_real_array, g_yz_imag_array, trace_array
+    return g_xx_array, g_yy_array, g_zz_array, g_xy_real_array, g_xy_imag_array, g_xz_real_array, g_xz_imag_array, g_yz_real_array, g_yz_imag_array
 
 
 def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, band_index):

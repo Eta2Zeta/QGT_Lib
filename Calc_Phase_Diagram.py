@@ -11,7 +11,7 @@ from functools import partial
 
 # from Library import * 
 from Library.Hamiltonian_v1 import *
-from Library.Hamiltonian.Hamiltonian_v2 import * 
+from Library.Hamiltonian.Hamiltonian import * 
 from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
 from Library.Hamiltonian.gWaveAltermagnetHamiltonian import gWaveAltermagnetHamiltonian
 from Library.eigenvalue_calc_lib import *
@@ -299,7 +299,7 @@ def compute_qgt_nd_parallel(hamiltonian_template,
         band=band, z_cutoff=z_cutoff
     )
 
-    procs = processes or min(cpu_count(), max(1, len(points_with_idx)))
+    procs = processes or min(max(1, cpu_count() - 1), max(1, len(points_with_idx)))
     # procs = 1
     print(f"Launching QGT N-D sweep on {procs} processes over {len(points_with_idx)} points ...")
 
@@ -397,7 +397,7 @@ def compute_sym_nd_parallel(hamiltonian_template, param_ranges, parameter_spacin
     
     bundle_path = os.path.join(root, "sym_nd_bundle.npz")
     worker = partial(_worker_sym_point, h_template=H_template, k_path=k_path)
-    procs = processes or min(cpu_count(), max(1, len(points_with_idx)))
+    procs = processes or min(max(1, cpu_count() - 1), max(1, len(points_with_idx)))
     print(f"Launching 3D Sym N-D sweep on {procs} processes over {len(points_with_idx)} points ...")
 
     with Pool(processes=procs) as pool:
@@ -447,27 +447,29 @@ if not hasattr(H_template, "b1") or not hasattr(H_template, "b2"):
 # Set "n" to 1 for parameters you want to hold constant at their lower bound, 
 # or increase "n" to actively sweep them!
 param_ranges = {
-    "t1":     (0.1, 0.5),
-    "t2":     (0.1, 0.5),
-    "t3":     (0.1, 0.5),
-    "t4":     (0.1, 0.5),
-    "Jx":     (0.0, 0.5),
-    "Jz":     (0.0, 0.5),
-    "lamb":   (0.0, 0.5),
-    "lamb_z": (0.0, 0.5),
+    "Jx":     (0.0, 1),
+    "Jy":     (0.0, 1),
+    "Jz":     (0.0, 1),
+    "lamb":   (0.0, 0.3),
+    "lamb_z": (0.0, 0.3),
+    "t1":     (0.0, 0.3),
+    "t2":     (0.0, 0.3),
+    "t3":     (0.0, 0.3),
+    "t4":     (0.0, 0.3),
 }
 
-parameter_spacing = 4
+parameter_spacing = 3
 
 parameter_spacing = {
+    "Jx":     {"n": 2*parameter_spacing, "scale": "linear"},
+    "Jy":     {"n": 2*parameter_spacing, "scale": "linear"},
+    "Jz":     {"n": 2*parameter_spacing, "scale": "linear"},
+    "lamb":   {"n": parameter_spacing, "scale": "linear"},
+    "lamb_z": {"n": parameter_spacing, "scale": "linear"},
     "t1":     {"n": parameter_spacing, "scale": "linear"},
     "t2":     {"n": parameter_spacing, "scale": "linear"},
     "t3":     {"n": parameter_spacing, "scale": "linear"},
     "t4":     {"n": parameter_spacing, "scale": "linear"},
-    "Jx":     {"n": parameter_spacing, "scale": "linear"},
-    "Jz":     {"n": parameter_spacing, "scale": "linear"},
-    "lamb":   {"n": parameter_spacing, "scale": "linear"},
-    "lamb_z": {"n": parameter_spacing, "scale": "linear"},
 }
 
 # --- k-grid ---

@@ -9,7 +9,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # from Library import * 
 from Library.Hamiltonian_v1 import *
-from Library.Hamiltonian.Hamiltonian_v2 import * 
+from Library.Hamiltonian.Hamiltonian import * 
 from Library.eigenvalue_calc_lib import *
 from Library.QGT_lib import *
 from Library.topology import *
@@ -120,7 +120,6 @@ def calculate_2d(Force_new=True):
 
         
         elif method_name == "numerical_phase_corrected":
-
             (g_xx_array, g_yy_array, g_zz_array, 
              g_xy_real_array, g_xy_imag_array, 
              g_xz_real_array, g_xz_imag_array, 
@@ -132,20 +131,23 @@ def calculate_2d(Force_new=True):
         
         elif method_name == "array_analytic":
             print("Using Analytic QGT Calculation (Block Diagonalization)...")
-            g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, trace_array = Hamiltonian_Obj.compute_qgt_analytic(
+            g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array = Hamiltonian_Obj.compute_qgt_analytic(
                 ki, kj, band_index=band
             )
+            # Analytic QG computes 2D subsets natively, use zeros for z
+            g_zz_array = np.zeros_like(g_xx_array)
+            trace_array = g_xx_array + g_yy_array + g_zz_array
 
         elif method_name == "analytic":
             print("Using Array Analytic QGT Calculation...")
-            # Assuming QGT_grid_analytic is available in imports
-            # eigenvalues[..., band] extracts the specific band's eigenvalues from the calculation 
             eigenvalues_band = eigenvalues[..., band]
-
-            g_xx_array, g_yy_array, g_zz_array, g_xy_real_array, g_xy_imag_array, g_xz_real_array, g_xz_imag_array, g_yz_real_array, g_yz_imag_array, trace_array = QGT_grid_analytic(
+            g_xx_array, g_yy_array, g_zz_array, \
+            g_xy_real_array, g_xy_imag_array, g_xz_real_array, \
+            g_xz_imag_array, g_yz_real_array, g_yz_imag_array = QGT_grid_analytic(
                 ki, kj, quantum_geometric_tensor_analytic, 
                 Hamiltonian_Obj, kk=kk, z_cutoff=z_cutoff, eigenvalues=eigenvalues_band, order=order
             )
+            trace_array = g_xx_array + g_yy_array + g_zz_array
 
         elif method_name == "semi_numerical":
             print("Using Semi-Numerical QGT Calculation...")
@@ -185,7 +187,6 @@ def calculate_2d(Force_new=True):
                 np.save(os.path.join(temp_dir, f"{key}.npy"), array)
 
         # Save QGT metadata (JSON)
-        # Clean up meta_target for JSON saving (remove objects not serializable)
         meta_info_json = meta_target.copy()
         
         keys_to_remove = ["Hamiltonian_Obj", "ki", "kj"]
@@ -293,27 +294,39 @@ def _qgt_one_band_worker(payload: dict):
     H.A0 = 0.0
     H.omega = 5e3
 
-    if method_name != "numerical":
-        raise ValueError("This worker currently implements numerical only (easy to extend).")
+    if method_name == "numerical":
+        func_target = quantum_geometric_tensor_3d_num_eigenvector_ordered
+    elif method_name == "numerical_phase_corrected":
+        func_target = quantum_geometric_tensor_3d_num_phase_corrected
+    elif method_name == "analytic":
+        func_target = quantum_geometric_tensor_analytic
+    else:
+        raise ValueError(f"Method '{method_name}' not supported by _qgt_one_band_worker yet.")
 
     # --- compute band QGT ---
-    (g_xx, g_yy, g_zz,
-     g_xy_r, g_xy_i,
-     g_xz_r, g_xz_i,
-     g_yz_r, g_yz_i) = QGT_grid_num(
-        ki, kj,
-        eigenvalues, eigenfunctions,
-        # quantum_geometric_tensor_3d_num_eigenvector_ordered,
-        quantum_geometric_tensor_3d_num_phase_corrected,
-        H,
-        delta_k=delta_k,
-        band_index=band,
-        z_cutoff=z_cutoff,
-        kk=kk, 
-        order=order
-    )
-
-    trace = g_xx + g_yy + g_zz
+    if method_name in ["numerical", "numerical_phase_corrected"]:
+        (g_xx, g_yy, g_zz,
+         g_xy_r, g_xy_i,
+         g_xz_r, g_xz_i,
+         g_yz_r, g_yz_i) = QGT_grid_num(
+            ki, kj,
+            eigenvalues, eigenfunctions,
+            func_target,
+            H,
+            delta_k=delta_k,
+            band_index=band,
+            z_cutoff=z_cutoff,
+            kk=kk, 
+            order=order
+        )
+        trace = g_xx + g_yy + g_zz
+    elif method_name == "analytic":
+        eigenvalues_band = eigenvalues[..., band]
+        g_xx, g_yy, g_zz, g_xy_r, g_xy_i, g_xz_r, g_xz_i, g_yz_r, g_yz_i = QGT_grid_analytic(
+            ki, kj, func_target, 
+            H, kk=kk, z_cutoff=z_cutoff, eigenvalues=eigenvalues_band, order=order
+        )
+        trace = g_xx + g_yy + g_zz
 
     # return numpy arrays to parent (these are much smaller than the eigenfunctions)
     return {
@@ -330,7 +343,7 @@ def _qgt_one_band_worker(payload: dict):
         "trace": np.array(trace),
     }
 
-def calculate_2d_all_bands(Force_new=True):
+def calculate_2d_all_bands(Force_new=True, method_name="numerical_phase_corrected"):
     # ---- your existing setup/load block ----
     z_cutoff = 1000
     z_percentile = 95
@@ -359,7 +372,6 @@ def calculate_2d_all_bands(Force_new=True):
         kj_range = meta_info["kj_range"]
         order = meta_info["order"]
 
-    method_name = "numerical"
     delta_k = 1e-5
 
     n_bands = Hamiltonian_Obj.dim # Number of bands
@@ -503,5 +515,5 @@ def calculate_2d_all_bands(Force_new=True):
 
 
 if __name__ == '__main__':
-    calculate_2d_all_bands(Force_new=False)
+    calculate_2d_all_bands(Force_new=False, method_name="numerical_phase_corrected")
     # calculate_2d(Force_new=False)

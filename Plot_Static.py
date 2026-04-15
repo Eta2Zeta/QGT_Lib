@@ -8,7 +8,7 @@ import sys
 # sys.path.append(os.getcwd()) # Usually typically handled by running from root
 
 from Library.plotting_lib_2d import plot_qmt_eig_berry_trace_3d
-import Library.Hamiltonian.Hamiltonian_v2
+import Library.Hamiltonian.Hamiltonian
 import Library.Hamiltonian.ChiralHamiltonian
 # Apply backward compatibility patch if needed for old pickles
 try:

@@ -1,0 +1,47 @@
+{
+  "param_ranges": {
+    "Jx": [
+      0.0,
+      1
+    ],
+    "Jy": [
+      0.0,
+      1
+    ],
+    "Jz": [
+      0.0,
+      1
+    ],
+    "lamb": [
+      0.0,
+      0.3
+    ],
+    "lamb_z": [
+      0.0,
+      0.3
+    ]
+  },
+  "spacing": {
+    "Jx": {
+      "n": 10,
+      "scale": "linear"
+    },
+    "Jy": {
+      "n": 10,
+      "scale": "linear"
+    },
+    "Jz": {
+      "n": 10,
+      "scale": "linear"
+    },
+    "lamb": {
+      "n": 5,
+      "scale": "linear"
+    },
+    "lamb_z": {
+      "n": 5,
+      "scale": "linear"
+    }
+  },
+  "space_group": 194
+}

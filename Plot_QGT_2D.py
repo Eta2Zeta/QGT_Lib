@@ -181,7 +181,13 @@ def plot_all_2d_berries_from_directory(target_dir):
     print("Done all-Berry plots.")
 
 if __name__ == "__main__":
-    # target_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/gWaveAltermagnetHamiltonian/Jz_0"
-    target_dir = "/Users/hongyuzhang/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/gWaveAltermagnetHamiltonian/Jz_0"
-    # plot_qgt_from_directory(target_dir)  # Fails due to metadata keys 
-    plot_all_2d_berries_from_directory(target_dir)
+    import os
+    base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/gWaveAltermagnetHamiltonian"
+    
+    for subdir in os.listdir(base_dir):
+        target_dir = os.path.join(base_dir, subdir)
+        if os.path.isdir(target_dir) and os.path.exists(os.path.join(target_dir, "meta_info.pkl")):
+            print(f"\n--- Processing: {subdir} ---")
+            plot_all_2d_berries_from_directory(target_dir)
+            # You can also uncomment the next line to run plot_qgt_from_directory
+            # plot_qgt_from_directory(target_dir)

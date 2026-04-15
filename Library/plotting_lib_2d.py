@@ -955,7 +955,8 @@ def plot_qmt_eig_berry_trace_2d(
     title="QGT: Eigenvalue, Berry Curvature, and Trace (2D Heatmaps)",
     components="xy",
     results_dir=None,
-    save_fig=False
+    save_fig=False,
+    space_group=194
 ):
     """
     Make a 1×3 row of 2D heatmaps for:
@@ -1041,6 +1042,34 @@ def plot_qmt_eig_berry_trace_2d(
         ax.set_ylabel('ky')
         ax.axis('scaled') # square aspect ratio
         
+        # Add symmetry triangle
+        if space_group == 194:
+            kM_y = 2 * np.pi / np.sqrt(3)
+            kK_x = 2 * np.pi / 3
+            kE_x = np.pi
+            kE_y = np.pi / np.sqrt(3)
+            pts = {"G": (0, 0), "M": (0, kM_y), "K": (kK_x, kM_y), "E": (kE_x, kE_y)}
+            path = ["G", "M", "K", "G", "E", "K"]
+            x_vals = [pts[p][0] for p in path]
+            y_vals = [pts[p][1] for p in path]
+            
+            # Use white so it's visible on most dark colormaps
+            ax.plot(x_vals, y_vals, color='white', linewidth=1.5, linestyle='--')
+            
+            for p_name, (px, py) in pts.items():
+                ax.scatter(px, py, color='white', s=30, zorder=5)
+                # Add label
+                if p_name == "G":
+                    offset = (-10, -10)
+                elif p_name == "M":
+                    offset = (-10, -15)
+                elif p_name == "E":
+                    offset = (10, -5)
+                else:  # K
+                    offset = (10, -15)
+                disp_name = r'$\Gamma$' if p_name == "G" else p_name
+                ax.annotate(disp_name, (px, py), textcoords="offset points", xytext=offset, ha='center', color='white', fontsize=12, fontweight='bold')
+        
     plt.tight_layout(rect=(0, 0, 1, 0.95))
     
     if save_fig and results_dir:
@@ -1068,7 +1097,8 @@ def plot_eigen_and_all_berry_2d(
     zlim_percentile=None,
     title="Eigenvalue and Berry Curvature Components (2D Heatmaps)",
     results_dir=None,
-    save_fig=False
+    save_fig=False,
+    space_group=194
 ):
     """
     Make a 1x4 row of 2D heatmaps for:
@@ -1164,6 +1194,34 @@ def plot_eigen_and_all_berry_2d(
         ax.set_xlabel('kx')
         ax.set_ylabel('ky')
         ax.axis('scaled') # square aspect ratio
+        
+        # Add symmetry triangle
+        if space_group == 194:
+            kM_y = 2 * np.pi / np.sqrt(3)
+            kK_x = 2 * np.pi / 3
+            kE_x = np.pi
+            kE_y = np.pi / np.sqrt(3)
+            pts = {"G": (0, 0), "M": (0, kM_y), "K": (kK_x, kM_y), "E": (kE_x, kE_y)}
+            path = ["G", "M", "K", "G", "E", "K"]
+            x_vals = [pts[p][0] for p in path]
+            y_vals = [pts[p][1] for p in path]
+            
+            # Use white so it's visible on most dark colormaps
+            ax.plot(x_vals, y_vals, color='white', linewidth=1.5, linestyle='--')
+            
+            for p_name, (px, py) in pts.items():
+                ax.scatter(px, py, color='white', s=30, zorder=5)
+                # Add label
+                if p_name == "G":
+                    offset = (-10, -10)
+                elif p_name == "M":
+                    offset = (-10, -15)
+                elif p_name == "E":
+                    offset = (10, -5)
+                else:  # K
+                    offset = (10, -15)
+                disp_name = r'$\Gamma$' if p_name == "G" else p_name
+                ax.annotate(disp_name, (px, py), textcoords="offset points", xytext=offset, ha='center', color='white', fontsize=12, fontweight='bold')
         
     plt.tight_layout(rect=(0, 0, 1, 0.95))
     

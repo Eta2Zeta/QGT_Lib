@@ -133,15 +133,9 @@ def quantum_geometric_tensor_3d_analytic(Hamiltonian, kx, ky, kz, *, trace_from_
     g_yz_real = _call("g_yz_real")
     g_yz_imag = _call("g_yz_imag")
 
-    trace = _call("trace")
-    if trace is None and trace_from_sum:
-        if (g_xx is not None) and (g_yy is not None) and (g_zz is not None):
-            trace = g_xx + g_yy + g_zz
-
     return (
         g_xx, g_yy, g_zz,
         g_xy_real, g_xy_imag,
         g_xz_real, g_xz_imag,
-        g_yz_real, g_yz_imag,
-        trace
+        g_yz_real, g_yz_imag
     )

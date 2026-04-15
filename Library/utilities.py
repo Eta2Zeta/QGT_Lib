@@ -907,6 +907,9 @@ def generate_3d_sym_lines(num_points_per_segment=100, space_group=58, a=1.0):
         kK_x = 2 * np.pi / 3            # = (2/3)  × π
         kz_A = np.pi
 
+        kB_x = np.pi
+        kB_y = np.pi / np.sqrt(3)
+
         points = {
             "G": np.array([0,     0,      0    ]),
             "M": np.array([0,     kM_y,   0    ]),
@@ -914,10 +917,24 @@ def generate_3d_sym_lines(num_points_per_segment=100, space_group=58, a=1.0):
             "A": np.array([0,     0,      kz_A ]),
             "L": np.array([0,     kM_y,   kz_A ]),
             "H": np.array([kK_x,  kM_y,   kz_A ]),
+            "U": np.array([0,     kM_y,   kz_A / 2]), # Between L and M
+            "D": np.array([0,     0,      kz_A / 2]), # Between A and G
+            "P": np.array([kK_x,  kM_y,   kz_A / 2]), # Between H and K
+            "B": np.array([kB_x,  kB_y,   kz_A ]),
+            "C": np.array([kB_x,  kB_y,   kz_A / 2]),
+            "E": np.array([kB_x,  kB_y,   0    ]),
         }
         # Standard hexagonal path:  G -> M -> K -> G -> A -> L -> H -> A
-        # New requested path: L -> H -> A -> L -> M -> H -> K -> M -> G -> K -> A -> G -> L
-        path_labels = ["L", "H", "A", "L", "M", "H", "K", "M", "G", "K", "A", "G", "L"]
+        # path_labels = ["G", "M", "K", "G", "A", "L", "H", "A"]
+        
+        # Old requested path: L -> H -> A -> L -> M -> H -> K -> M -> G -> K -> A -> G -> L
+        # path_labels = ["L", "H", "A", "L", "M", "H", "K", "M", "G", "K", "A", "G", "L"]
+        
+        # Old requested path: LAHLUHPUDPKUMGKMADG
+        # path_labels = list("LAHLUHPUDPKUMGKMADG")
+        
+        # Newest requested path
+        path_labels = list("ALHABHPLUADUPDCPBCAPKDGMKGEKUMDECK")
 
     else:
         raise ValueError(
