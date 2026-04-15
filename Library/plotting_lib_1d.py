@@ -120,7 +120,8 @@ def plot_band_structure_sym(
     linewidth=1.5,
     ylim=None,
     results_dir=None,
-    save_fig=False
+    save_fig=False,
+    use_analytical=False
 ):
     """
     Plots the band structure along a path in k-space with high-symmetry points labeled.
@@ -135,32 +136,54 @@ def plot_band_structure_sym(
     
     num_bands = eigenvalues.shape[1]
     if bands_to_plot is None:
-        bands_to_plot = range(num_bands)
+        bands_to_plot = list(range(num_bands))
     
     plt.figure(figsize=figsize)
     
     # Plot bands - use list comprehension for efficiency if num_bands is large, but loop is fine here
     k_vals = np.array(k_dist)
     
-    # Plot each band. Using 'k-' for all might make them hard to distinguish, 
-    # but standard band structure plots focus on the dispersion, not distinguishing bands by color usually.
-    # Let's use a cycle or just black.
-    # Define styles: Solid Blue and Dashed Red
-    styles = [
-        {'color': 'blue', 'linestyle': '-'},
-        {'color': 'red', 'linestyle': '--'}
-    ]
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 
-    for i, band_idx in enumerate(bands_to_plot):
-        style = styles[i % 2]
-        plt.plot(
-            k_vals, 
-            eigenvalues[:, band_idx], 
-            linestyle=style['linestyle'], 
-            color=style['color'], 
-            linewidth=linewidth, 
-            alpha=0.8
-        )
+    if use_analytical:
+        for i, band_idx in enumerate(bands_to_plot):
+            if band_idx == 0:
+                combo = r"$\alpha=-1, \beta=+1$"
+            elif band_idx == 1:
+                combo = r"$\alpha=-1, \beta=-1$"
+            elif band_idx == 2:
+                combo = r"$\alpha=+1, \beta=-1$"
+            elif band_idx == 3:
+                combo = r"$\alpha=+1, \beta=+1$"
+            else:
+                combo = ""
+            label_text = f'Band {band_idx + 1} ({combo})' if combo else f'Band {band_idx + 1}'
+            
+            plt.plot(
+                k_vals, 
+                eigenvalues[:, band_idx], 
+                linestyle='-', 
+                color=colors[i % len(colors)], 
+                linewidth=linewidth, 
+                alpha=0.8,
+                label=label_text
+            )
+        plt.legend(loc='best')
+    else:
+        # Sort bands from top to bottom
+        bands_to_plot_sorted = sorted(bands_to_plot, reverse=True)
+        for i, band_idx in enumerate(bands_to_plot_sorted):
+            rank = i + 1
+            plt.plot(
+                k_vals, 
+                eigenvalues[:, band_idx], 
+                linestyle='-', 
+                color=colors[i % len(colors)], 
+                linewidth=linewidth, 
+                alpha=0.8,
+                label=f'Rank {rank}'
+            )
+        plt.legend(loc='best')
         
     # Vertical lines at high-symmetry points
     for idx in k_node_indices:

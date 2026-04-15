@@ -159,7 +159,7 @@ class AltermagnetHamiltonian(hamiltonian):
         Uses the block-diagonal structure in sigma_z basis.
         
         Returns:
-            g_xx, g_xy_real, g_xy_imag, g_yy, trace
+            g_xx, g_xy_real, g_xy_imag, g_yy
         """
         kx = np.asarray(kx_arr)
         ky = np.asarray(ky_arr)
@@ -199,12 +199,7 @@ class AltermagnetHamiltonian(hamiltonian):
         ddy_dky_base = 0.5 * self.lamb * sx2 * cy2
         
         # 3. Determine which spin block and which sign (+/-) corresponds to band_index
-        # Energies: E = d0 +/- |d|
-        # We need to evaluate energies to sort them and find which one matches band_index
-        # Since this might vary across the BZ (crossings), we do it per point?
-        # Vectorized approach: calculate all 4 energies, sort, and pick the mask.
-        
-        
+
         # Helper to compute gradients of normalized vector d_hat
         def compute_gradients_dhat(d_vec, dd_dkx, dd_dky):
             # d_vec: (3, N)
@@ -246,7 +241,7 @@ class AltermagnetHamiltonian(hamiltonian):
             # For QGT imag part: g_xy_imag = -0.5 * Omega
             g_xy_imag_plus = -0.5 * omega_plus
             
-            return g_xx, g_xy_real, g_xy_imag_plus, g_yy, trace, d_norm
+            return g_xx, g_xy_real, g_xy_imag_plus, g_yy, d_norm
 
         # --- Block 1: s = +1 (Spin Up) ---
         dy_only = self.lamb * sx2 * sy2
@@ -258,7 +253,7 @@ class AltermagnetHamiltonian(hamiltonian):
         dd_dkx_p = np.array([ddx_dkx, ddy_dkx_base, ddz_dkx])
         dd_dky_p = np.array([ddx_dky, ddy_dky_base, ddz_dky])
         
-        gxx_p, gxy_r_p, gxy_i_p_plus, gyy_p, tr_p, norm_p = compute_block_geom(d_vec_p, dd_dkx_p, dd_dky_p)
+        gxx_p, gxy_r_p, gxy_i_p_plus, gyy_p, norm_p = compute_block_geom(d_vec_p, dd_dkx_p, dd_dky_p)
         
         # Block m (s=-1) => sigma_z = -1
         # d_x = dx, d_y = -dy_only, d_z = dz_kinetic - d_mag
@@ -266,7 +261,7 @@ class AltermagnetHamiltonian(hamiltonian):
         dd_dkx_m = np.array([ddx_dkx, -ddy_dkx_base, ddz_dkx])
         dd_dky_m = np.array([ddx_dky, -ddy_dky_base, ddz_dky])
         
-        gxx_m, gxy_r_m, gxy_i_m_plus, gyy_m, tr_m, norm_m = compute_block_geom(d_vec_m, dd_dkx_m, dd_dky_m)
+        gxx_m, gxy_r_m, gxy_i_m_plus, gyy_m, norm_m = compute_block_geom(d_vec_m, dd_dkx_m, dd_dky_m)
         
         # --- Construct Energies and G Components ---
         E_p_up = d0 + norm_p
@@ -276,12 +271,12 @@ class AltermagnetHamiltonian(hamiltonian):
         E_m_down = d0 - norm_m
         
         # Construct result tuples for gather function
-        # Format: (gxx, gxy_r, gxy_i, gyy, tr)
+        # Format: (gxx, gxy_r, gxy_i, gyy)
         
-        g_p_up = (gxx_p, gxy_r_p, gxy_i_p_plus, gyy_p, tr_p)
-        g_p_down = (gxx_p, gxy_r_p, -gxy_i_p_plus, gyy_p, tr_p)
-        g_m_up = (gxx_m, gxy_r_m, gxy_i_m_plus, gyy_m, tr_m)
-        g_m_down = (gxx_m, gxy_r_m, -gxy_i_m_plus, gyy_m, tr_m)
+        g_p_up = (gxx_p, gxy_r_p, gxy_i_p_plus, gyy_p)
+        g_p_down = (gxx_p, gxy_r_p, -gxy_i_p_plus, gyy_p)
+        g_m_up = (gxx_m, gxy_r_m, gxy_i_m_plus, gyy_m)
+        g_m_down = (gxx_m, gxy_r_m, -gxy_i_m_plus, gyy_m)
         
         # 4. Selection based on band_index
         all_E = np.stack([E_p_down, E_m_down, E_m_up, E_p_up], axis=0)
@@ -306,7 +301,6 @@ class AltermagnetHamiltonian(hamiltonian):
         gxy_r = gather(g_p_down[1], g_m_down[1], g_m_up[1], g_p_up[1], target_indices)
         gxy_i = gather(g_p_down[2], g_m_down[2], g_m_up[2], g_p_up[2], target_indices)
         gyy = gather(g_p_down[3], g_m_down[3], g_m_up[3], g_p_up[3], target_indices)
-        trace = gather(g_p_down[4], g_m_down[4], g_m_up[4], g_p_up[4], target_indices)
         
         # Reshape to original kx shape
         if kx_arr.ndim > 1:
@@ -314,7 +308,6 @@ class AltermagnetHamiltonian(hamiltonian):
             gxy_r = gxy_r.reshape(kx_arr.shape)
             gxy_i = gxy_i.reshape(kx_arr.shape)
             gyy = gyy.reshape(kx_arr.shape)
-            trace = trace.reshape(kx_arr.shape)
             
-        return gxx, gxy_r, gxy_i, gyy, trace
+        return gxx, gxy_r, gxy_i, gyy
 

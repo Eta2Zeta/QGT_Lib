@@ -49,7 +49,6 @@ def main():
         # 2. Effective Hamiltonian 2x2
         # We use compute_static which performs the downfolding numerically
         H_eff_mat = H_eff.compute_static(kx, ky)
-        # Note: compute_static returns 2x2 matrix
         e_eff = np.linalg.eigvalsh(H_eff_mat)
         evals_eff[i, :] = np.sort(e_eff)
 
@@ -117,14 +116,11 @@ def main():
     ymax = np.max(np.abs(evals_eff)) * 1.5
     # Handle NaNs in evals_eff for ylim determination
     if np.all(np.isnan(ymax)):
-         pass # Don't set ylim if all NaNs
+        pass # Don't set ylim if all NaNs
     else:
-         # Filter out ridiculously large values if divergence happened
-         ax3.set_ylim(-200, 200) # Manual limit or smart limit?
-         # User asked for vertical lines where it diverges, so let's try not to clamp too hard, 
-         # but usually spectral plots have reasonable window. 
-         # Let's keep the dynamic limit but guarded.
-         pass
+        # Filter out ridiculously large values if divergence happened
+        ax3.set_ylim(-200, 200) # Manual limit or smart limit?
+        pass
          
     # Let's use a fixed reasonable range or 1.5x of Full Hamiltonian low energy bands?
     # For n=5, V=30, typical energy scale is ~10-100 meV.

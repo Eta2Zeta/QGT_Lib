@@ -48,6 +48,8 @@ def _align_block_svd(prev_vecs, new_vecs, block_inds, eps=1e-12):
     Returns: new_vecs with that block rotated to best match prev_vecs.
     """
     # Build U0, U1 with columns = vectors in the block
+    # 'm' is the number of degenerate eigenvectors in this specific block (e.g., typically 2 or 4)
+    # 'dim' is the total dimension of the Hilbert space
     U0 = np.column_stack([prev_vecs[i] for i in block_inds])  # (dim, m)
     U1 = np.column_stack([new_vecs[i]  for i in block_inds])  # (dim, m)
 
@@ -218,8 +220,6 @@ class Eigenvectors:
         self.phase_factor = phase_factor_array
 
         return new_eigenvalues, aligned
-
-    
 
 
     def get_phase_factors(self):

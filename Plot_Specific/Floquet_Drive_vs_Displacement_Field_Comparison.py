@@ -64,7 +64,7 @@ def main():
     # Grid setup
     # Plot on a 100x100 k grid with kx and ky
     # Assuming range -1 to 1 based on typical BZ usage in codebase (or -0.9 to 0.9)
-    k_range = 1.0
+    k_range = 6.0
     kx_vals = np.linspace(-k_range, k_range, 100)
     ky_vals = np.linspace(-k_range, k_range, 100)
     KX, KY = np.meshgrid(kx_vals, ky_vals)

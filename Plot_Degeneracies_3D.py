@@ -6,7 +6,7 @@ from Library.utilities import generate_3d_sym_lines
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
-def plot_3d_degeneracies(results_dir, threshold=0.01, stride=1, point_opacity=0.5):
+def plot_3d_degeneracies(results_dir, threshold=0.02, stride=1, point_opacity=0.5):
     """
     Plots the 3D map of band degeneracies (crossings) using Plotly and saves as HTML.
     

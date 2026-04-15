@@ -23,10 +23,6 @@ def main():
     # 2x2 Projected Hamiltonian
     H_proj = ChiralHamiltonianProjected(n=n, vF=vF, t1=t1, V=V)
     
-    # k-points setup (1D cut along kx, ky=0)
-    # Range: The projected model is low-energy, so we focus on small k.
-    # beta = vF*k/t1 < 1 is required for validity of expansion, but let's go a bit beyond to see divergence if any.
-    # vF/t1 ~ 1.5. So k should be < 1/1.5 ~ 0.66.
     k_range = 1
     kx_vals = np.linspace(-k_range, k_range, 200)
     ky = 0.0
@@ -47,13 +43,6 @@ def main():
         evals_full[i, :] = np.sort(e_full) # Sort to ensure consistent band ordering
         
         # 2. Projected Hamiltonian 2x2
-        # We can use the analytic method or the matrix diagonalization.
-        # Let's use the matrix diagonalization from compute_static to be consistent with 'Hamiltonian'
-        # H_proj_mat = H_proj.compute_static(kx, ky)
-        # e_proj = np.linalg.eigvalsh(H_proj_mat)
-        # Or use the analytic one provided in the class which might be more exact/faster?
-        # The prompt asks for "calculations", usually implies diagonalization but analytic is fine too.
-        # Let's use analytic_eigenvalues as it is explicitly available.
         e_proj = H_proj.analytic_eigenvalues(kx, ky)
         evals_proj[i, :] = np.sort(e_proj)
 

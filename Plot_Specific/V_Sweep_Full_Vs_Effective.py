@@ -7,7 +7,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
-from Library.Hamiltonian.ChiralHamiltonianEffective import ChiralHamiltonianEffective
+from Library.Hamiltonian.ChiralHamiltonian_SW_Projected import ChiralHamiltonianEffective
 
 
 def compute_results(n, vF, t1, A0, omega, V_vals, kx_vals, ky=0.0):
@@ -30,7 +30,7 @@ def compute_results(n, vF, t1, A0, omega, V_vals, kx_vals, ky=0.0):
             e_full         = np.linalg.eigvalsh(H_mat_full)
             evals_full_list.append(np.sort(e_full))
 
-            H_mat_analytic = H_eff_obj.compute_static_analytic(kx, ky)
+            H_mat_analytic = H_eff_obj.compute_static_analytic(kx, ky, order=1)
             e_analytic     = np.linalg.eigvalsh(H_mat_analytic)
             evals_analytic_list.append(np.sort(e_analytic))
 

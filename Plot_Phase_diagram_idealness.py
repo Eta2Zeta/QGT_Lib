@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import os
 from Library.plotting_utils import load_qgt, filter_entries_by_omega
 from Library.topology import compute_chern_number
-import Library.Hamiltonian.Hamiltonian_v2
+import Library.Hamiltonian.Hamiltonian
 import Library.Hamiltonian.ChiralHamiltonian
 import sys
 import pickle

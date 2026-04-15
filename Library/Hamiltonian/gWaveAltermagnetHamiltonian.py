@@ -192,3 +192,98 @@ class gWaveAltermagnetHamiltonian(hamiltonian):
             H = H.reshape(shape + (4, 4))
             
         return H
+        
+    def get_analytical_eigenvalues(self, kx_arr, ky_arr, kz_arr=0):
+        """
+        Compute the analytical eigenvalues for the g-wave altermagnet Hamiltonian.
+        """
+        kx = np.asarray(kx_arr)
+        ky = np.asarray(ky_arr)
+        if np.ndim(kz_arr) == 0:
+            kz = np.full_like(kx, kz_arr, dtype=float)
+        else:
+            kz = np.asarray(kz_arr)
+            
+        shape = kx.shape
+        kx = kx.flatten()
+        ky = ky.flatten()
+        kz = kz.flatten()
+        
+        # Arguments
+        arg_kx_2 = kx / 2.0
+        arg_sq3ky_2 = np.sqrt(3) * ky / 2.0
+        arg_kz_2 = kz / 2.0
+        
+        ckx = np.cos(kx)
+        ckz = np.cos(kz)
+        
+        ckx_2 = np.cos(arg_kx_2)
+        skx_2 = np.sin(arg_kx_2)
+        
+        csq3ky_2 = np.cos(arg_sq3ky_2)
+        ssq3ky_2 = np.sin(arg_sq3ky_2)
+        
+        ckz_2 = np.cos(arg_kz_2)
+        skz_2 = np.sin(arg_kz_2)
+        
+        skx = np.sin(kx)
+        skz = np.sin(kz)
+        
+        # f_x, f_y
+        fx = skx + skx_2 * csq3ky_2
+        fy = np.sqrt(3) * ckx_2 * ssq3ky_2
+        
+        # eps0
+        term1 = self.t1 * (ckx + 2 * ckx_2 * csq3ky_2)
+        eps0 = term1 + self.t2 * ckz - self.mu
+        
+        # tx, tz
+        tx = self.t3 * ckz_2
+        tz = self.t4 * skz * fy * (fy**2 - 3 * fx**2)
+        
+        # lambda components
+        lam_xk = self.lamb * ckz_2 * (fx**2 - fy**2)
+        lam_yk = -2 * self.lamb * ckz_2 * fx * fy
+        lam_zk = self.lamb_z * skz_2 * fx * (fx**2 - 3 * fy**2)
+        
+        # Squared magnitudes
+        J2 = self.Jx**2 + self.Jy**2 + self.Jz**2
+        lam2 = lam_xk**2 + lam_yk**2 + lam_zk**2
+        
+        # Cross product (lambda x J)
+        cross_x = lam_yk * self.Jz - lam_zk * self.Jy
+        cross_y = lam_zk * self.Jx - lam_xk * self.Jz
+        cross_z = lam_xk * self.Jy - lam_yk * self.Jx
+        cross2 = cross_x**2 + cross_y**2 + cross_z**2
+        
+        # E_{\alpha= \pm, \beta= \pm} = \varepsilon_{0, k} + \alpha (t_x^2 + t_z^2 + \lambda^2 + J^2 + \beta * 2 \sqrt{t_z^2 J^2 + (\lambda \times J)^2})^{1/2}
+        X = tx**2 + tz**2 + lam2 + J2
+        Y = np.sqrt(tz**2 * J2 + cross2)
+        
+        # The 4 bands in ascending order
+        E1 = eps0 - np.sqrt(np.maximum(X + 2 * Y, 0))
+        E2 = eps0 - np.sqrt(np.maximum(X - 2 * Y, 0))
+        E3 = eps0 + np.sqrt(np.maximum(X - 2 * Y, 0))
+        E4 = eps0 + np.sqrt(np.maximum(X + 2 * Y, 0))
+        
+        E = np.stack([E1, E2, E3, E4], axis=-1)
+        
+        if len(shape) > 1:
+            E = E.reshape(shape + (4,))
+            
+        return E
+        
+    def get_spin_operator(self, component='z'):
+        """
+        Returns the spin operator matrix tau_0 \otimes sigma_i for the requested component ('x', 'y', or 'z').
+        Returns a 4x4 complex matrix.
+        """
+        if component == 'x':
+            return np.kron(sigma_0, sigma_x)
+        elif component == 'y':
+            return np.kron(sigma_0, sigma_y)
+        elif component == 'z':
+            return np.kron(sigma_0, sigma_z)
+        else:
+            raise ValueError(f"Unknown spin component: {component}")
+

@@ -18,8 +18,6 @@ def main():
     A0 = 0.1
     
     # Frequencies to sweep
-    # e.g., low, medium, high relative to energy scales
-    # t1 ~ 355 meV. omega=100 would be smaller than t1.
     omega_vals = [50.0, 100.0, 200.0, 500.0] 
     
     # k-points setup (1D cut along kx, ky=0)
@@ -57,9 +55,6 @@ def main():
             # H_eff = H_static + H_magnus_analytic
             H_static = H_proj_obj.compute_static(kx, ky) # 2x2
             
-            # Use the new analytic Magnus term (which handles polarization internally, default 'left')
-            # Check if we should set polarization explicitly? 
-            # The class assumes 'left' by default. We can assume 'left' here too.
             H_magnus = H_proj_obj.analytic_magnus_first_term(kx, ky)
             
             H_eff_proj = H_static + H_magnus
@@ -90,14 +85,10 @@ def main():
         c = colors[idx]
         
         # Only plot the middle bands (low energy)
-        # For n=3 (6 bands), low energy are indices 2 and 3 (0-indexed)
-        # Actually indices are 0..5. Middle are 2, 3.
-        # But let's plot all just in case, but alpha lower for high energy
         for b in range(2*n):
             is_low_energy = (b == n-1 or b == n)
             lw = 1.5 if is_low_energy else 0.5
             alpha = 0.8 if is_low_energy else 0.2
-            label = f"$\omega={omega}$" if (b==n and is_low_energy) else None
             # Only label one band per frequency to avoid clutter
             if b == n:
                  ax1.plot(kx_vals, evals[:, b], color=c, linewidth=lw, alpha=alpha, label=f"$\omega={omega}$")
@@ -157,9 +148,9 @@ def main():
     ax3.set_ylim(-100, 100)
     ax3.legend(fontsize='small')
     ax3.grid(True, alpha=0.3)
-    
     plt.tight_layout()
-    plt.show()
-
+    out_path = os.path.join(os.path.dirname(__file__), "Frequency_Sweep_Full_vs_2x2.png")
+    plt.savefig(out_path, dpi=150)
+    print(f"Saved plot to {out_path}")
 if __name__ == "__main__":
     main()

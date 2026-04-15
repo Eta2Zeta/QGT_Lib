@@ -101,7 +101,327 @@ def plot_3d_qgt_slices(results_dir, quantity, component="xy", slice_plane="xy",
             title=title_b
         )
 
+def plot_3d_qgt_all_slices_dynamic(results_dir, quantity="berry", component="xy", slice_plane="xy",
+                                   bands=None, cmap="RdBu_r", z_limit=None, debug=False, sigma_multiplier=1):
+    """
+    Plots all 2D slices along a specified slice_plane of a 3D dataset, wrapped in
+    an interactive Plotly HTML file with a slider to navigate between slices.
+    """
+    import plotly.graph_objects as go
+    if not os.path.exists(results_dir):
+        print(f"Error: Results directory not found: {results_dir}")
+        return
 
+    # --- load meta ---
+    meta_file = os.path.join(results_dir, "meta_info.pkl")
+    if not os.path.exists(meta_file):
+        meta_file = os.path.join(results_dir, "qgt_meta_info.pkl")
+    if not os.path.exists(meta_file):
+        print(f"Error: Metadata file not found in {results_dir}")
+        return
+
+    print(f"Loading data from {results_dir}...")
+    with open(meta_file, "rb") as f:
+        meta_info = pickle.load(f)
+
+    kx_vals = meta_info["kx_vals"]
+    ky_vals = meta_info["ky_vals"]
+    kz_vals = meta_info["kz_vals"]
+
+    hamiltonian = meta_info.get("Hamiltonian_Obj")
+    hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
+
+    # --- helpers ---
+    def load_arr(name):
+        path = os.path.join(results_dir, f"{name}.npy")
+        return np.load(path) if os.path.exists(path) else None
+
+    def load_component_real(comp):
+        for nm in (f"g_{comp}", f"g_{comp}_real", f"g_{comp}_re"):
+            arr = load_arr(nm)
+            if arr is not None:
+                return arr
+        return None
+
+    def load_component_imag(comp):
+        return load_arr(f"g_{comp}_imag")
+
+    comp = component.lower()
+    if len(comp) != 2 or comp[0] not in "xyz" or comp[1] not in "xyz" or comp[0] == comp[1]:
+        print(f"Error: component must be one of 'xy','xz','yz' (got '{component}')")
+        return
+
+    data_3d = None
+    title_base = ""
+
+    if quantity == "berry":
+        gij_im = load_component_imag(comp)
+        if gij_im is None:
+            print(f"Error: Could not load g_{comp}_imag.npy in {results_dir}")
+            return
+        data_3d = -2.0 * gij_im
+        title_base = f"{hamiltonian_name} Berry Curvature Ω_{comp}"
+
+    elif quantity == "metric":
+        gij_re = load_component_real(comp)
+        if gij_re is None:
+            print(f"Error: Could not load real metric component for g_{comp}")
+            return
+        data_3d = gij_re
+        title_base = f"{hamiltonian_name} Metric g_{comp}"
+
+    else:
+        print(f"Error: Unknown quantity '{quantity}'")
+        return
+
+    import math
+    from plotly.subplots import make_subplots
+
+    n_bands = data_3d.shape[0]
+    if bands is None:
+        bands_0 = list(range(n_bands))
+    else:
+        bands_0 = [int(b) - 1 for b in bands if 0 <= int(b) - 1 < n_bands]
+
+    if len(bands_0) == 0:
+        print("No bands to plot.")
+        return
+
+    # Slice configuration
+    if slice_plane == "xy":
+        x_ax, y_ax = kx_vals, ky_vals
+        z_ax = kz_vals
+        xlabel, ylabel, zlabel = "kx", "ky", "kz"
+        get_slice = lambda b0, idx: data_3d[b0][:, :, idx].T
+    elif slice_plane == "yz":
+        x_ax, y_ax = ky_vals, kz_vals
+        z_ax = kx_vals
+        xlabel, ylabel, zlabel = "ky", "kz", "kx"
+        get_slice = lambda b0, idx: data_3d[b0][idx, :, :].T
+    elif slice_plane == "xz":
+        x_ax, y_ax = kx_vals, kz_vals
+        z_ax = ky_vals
+        xlabel, ylabel, zlabel = "kx", "kz", "ky"
+        get_slice = lambda b0, idx: data_3d[b0][:, idx, :].T
+    else:
+        print(f"Error: Unknown slice plane {slice_plane}")
+        return
+
+    num_plots = len(bands_0)
+    cols = math.ceil(math.sqrt(num_plots))
+    rows = math.ceil(num_plots / cols)
+
+    subplot_titles = [f"Band {b0 + 1}" for b0 in bands_0]
+    fig = make_subplots(rows=rows, cols=cols, subplot_titles=subplot_titles, horizontal_spacing=0.08, vertical_spacing=0.1)
+
+    # Compute limits per band
+    band_limits = {}
+    
+    if debug:
+        import matplotlib.pyplot as plt
+
+    for b0 in bands_0:
+        band_label = b0 + 1
+        vol_data = data_3d[b0]
+        valid = vol_data[np.isfinite(vol_data)]
+        
+        if z_limit:
+            vmin, vmax = z_limit
+        else:
+            if len(valid) == 0:
+                vmin, vmax = -1, 1
+            else:
+                p_low, p_high = np.percentile(valid, [5, 95])
+                bulk_valid = valid[(valid >= p_low) & (valid <= p_high)]
+                if len(bulk_valid) > 0:
+                    avg = np.mean(bulk_valid)
+                    std = np.std(bulk_valid)
+                else:
+                    avg = np.mean(valid)
+                    std = np.std(valid)
+                if std == 0:
+                    std = 1.0
+                
+                filtered = valid[(valid >= avg - sigma_multiplier * std) & (valid <= avg + sigma_multiplier * std)]
+                if len(filtered) == 0:
+                    vmin, vmax = -1.0, 1.0
+                else:
+                    vmin = np.min(filtered)
+                    vmax = np.max(filtered)
+                    abs_max = max(abs(vmin), abs(vmax))
+                    if abs_max == 0:
+                        abs_max = 1.0
+                    vmin, vmax = -abs_max, abs_max
+                    
+        band_limits[b0] = (vmin, vmax, avg, std)
+        
+        if debug:
+            plt.figure(figsize=(10, 6))
+            plot_valid = valid[(valid > avg - 5 * std) & (valid < avg + 5 * std)] if len(valid) > 0 else []
+            if len(plot_valid) > 0:
+                plt.hist(plot_valid, bins=100, alpha=0.7, color='blue', edgecolor='black')
+                plt.axvline(avg, color='red', linestyle='dashed', linewidth=2, label=f'Mean: {avg:.4g}')
+                plt.axvline(vmin, color='green', linestyle='dashed', linewidth=2, label=f'-2 Sigma: {vmin:.4g}')
+                plt.axvline(vmax, color='orange', linestyle='dashed', linewidth=2, label=f'+2 Sigma: {vmax:.4g}')
+                plt.title(f'1D Data Distribution for Band {band_label} ({quantity}_{component})')
+                plt.xlabel('Value')
+                plt.ylabel('Frequency')
+                plt.legend()
+                
+                debug_fname = os.path.join(results_dir, f"debug_dist_{quantity}_{component}_band_{band_label}.png")
+                plt.savefig(debug_fname, dpi=150)
+                print(f"Saved debug distribution plot to: {debug_fname}")
+            plt.close()
+
+    steps = []
+    
+    for i, z_val in enumerate(z_ax):
+        for b_idx, b0 in enumerate(bands_0):
+            r = (b_idx // cols) + 1
+            c = (b_idx % cols) + 1
+            
+            slice_2d = get_slice(b0, i)
+            trace_name = f"Band {b0+1} | {zlabel}={z_val:.3g}"
+            
+            vmin, vmax, avg, std = band_limits[b0]
+            
+            # Position colorbars intelligently on the right side
+            cb_x = 1.02 + 0.08 * (c - 1)
+            cb_y = 1.0 - ((r - 1) + 0.5) / rows
+            cb_len = min(0.9 / rows, 0.45)
+            
+            fig.add_trace(go.Heatmap(
+                z=slice_2d, x=x_ax, y=y_ax,
+                colorscale=cmap,
+                zmin=vmin,
+                zmax=vmax,
+                visible=(i == 0),
+                name=trace_name,
+                colorbar=dict(
+                    title=f"B{b0+1}",
+                    thickness=15,
+                    len=cb_len,
+                    y=cb_y,
+                    yanchor="middle",
+                    x=cb_x
+                ),
+                hovertemplate=f"x: %{{x}}<br>y: %{{y}}<br>Value: %{{z}}<extra></extra>"
+            ), row=r, col=c)
+
+        step = dict(
+            method="update",
+            args=[{"visible": [False] * (len(z_ax) * num_plots)},
+                  {"title": f"{title_base} Grid<br>Slice at {zlabel} = {z_val:.4f}"}],
+            label=f"{z_val:.2f}"
+        )
+        
+        start_idx = i * num_plots
+        for j in range(num_plots):
+            step["args"][0]["visible"][start_idx + j] = True
+            
+        steps.append(step)
+
+    sliders = [dict(
+        active=0,
+        currentvalue={"prefix": f"{zlabel}: "},
+        pad={"t": 50},
+        steps=steps
+    )]
+
+    # Load parameters from meta.json if it exists
+    meta_json_path = os.path.join(results_dir, "meta.json")
+    param_text = ""
+    if os.path.exists(meta_json_path):
+        import json
+        try:
+            with open(meta_json_path, "r") as f:
+                meta_json = json.load(f)
+            params = meta_json.get("hamiltonian_params", {})
+            a0_val = params.get("A0", 0.0)
+            ignore_keys = []
+            if float(a0_val) == 0.0:
+                ignore_keys = ["A0", "analytic_magnus", "magnus_order", "omega", "polarization"]
+            
+            lines = []
+            for k, v in params.items():
+                if k not in ignore_keys:
+                    lines.append(f"{k} = {v}")
+            if lines:
+                param_text = "<b>Hamiltonian Params:</b><br>" + "<br>".join(lines)
+        except Exception as e:
+            print(f"Warning: Could not parse parameters from meta.json: {e}")
+
+    # Build annotations
+    annotations = []
+    plot_width = 400 * cols + 150 + 50 * cols
+    if param_text:
+        cb_max_x = 1.02 + 0.08 * (cols - 1)
+        annotations.append(dict(
+            text=param_text,
+            align='left',
+            showarrow=False,
+            xref='paper',
+            yref='paper',
+            x=cb_max_x + 0.15,
+            y=0.5,
+            xanchor='left',
+            yanchor='middle',
+            bordercolor='black',
+            borderwidth=1,
+            borderpad=10,
+            bgcolor='white',
+            font=dict(size=12)
+        ))
+        plot_width += 250
+        
+    fig.update_layout(
+        sliders=sliders,
+        title=f"{title_base} Grid<br>Slice at {zlabel} = {z_ax[0]:.4f}",
+        width=plot_width,
+        height=400 * rows + 150,
+        margin=dict(r=400) if param_text else None,
+        annotations=annotations
+    )
+    
+    fig.update_xaxes(title_text=xlabel)
+    fig.update_yaxes(title_text=ylabel)
+    
+    # Tie scaleanchor precisely to corresponding xaxis
+    for i in range(1, num_plots + 1):
+        r = ((i - 1) // cols) + 1
+        c = ((i - 1) % cols) + 1
+        x_anchor = f"x{i}" if i > 1 else "x"
+        fig.update_yaxes(scaleanchor=x_anchor, scaleratio=1, row=r, col=c)
+
+    fname = os.path.join(results_dir, f"dynamic_slices_{quantity}_{component}_plane_{slice_plane}_all_bands.html")
+    html_str = fig.to_html(include_plotlyjs='cdn', full_html=False)
+    full_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Dynamic Slices - All Bands</title>
+        <style>
+            body, html {{
+                height: 100%;
+                margin: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                background-color: white;
+            }}
+        </style>
+    </head>
+    <body>
+        <div>
+            {html_str}
+        </div>
+    </body>
+    </html>
+    """
+    with open(fname, "w", encoding="utf-8") as f:
+        f.write(full_html)
+    print(f"Saved interactive grid to: {fname}")
 
 
 def compute_equal_volume_levels(data_3d, count):
@@ -475,13 +795,18 @@ if __name__ == "__main__":
     base_results_path = os.path.join(current_dir, "results/3D_QGT_results/gWaveAltermagnetHamiltonian")
     
     # Placeholder for the specific dataset, using one found in list_dir
-    latest_dataset = "data_set_5"
+    latest_dataset = "data_set_1"
     
     results_dir = os.path.join(base_results_path, latest_dataset)
 
     print(f"Running 3D QGT Slice Plot on: {results_dir}")
     # plot_3d_qgt_slices(results_dir=results_dir, quantity='berry', component='xy', slice_plane="xy", n_slices=3)
     
+    # Run the new dynamic slicing visualization
+    print(f"Generating dynamic all-slices HTML...")
+    plot_3d_qgt_all_slices_dynamic(results_dir=results_dir, quantity='berry', component='yz', slice_plane="xy", bands=[1, 2, 3, 4], debug=False)
+    
     # plot_3d_qgt(results_dir=results_dir, quantity='berry', plane='xy', levels=[0.3, -0.3], kz_range = (0, 0.9*np.pi))
+
     # plot_3d_qgt(results_dir=results_dir, quantity='berry', plane='xy', count=4, bands=[1, 2, 3, 4], plot_step_size = 1, kz_range = (0, 1*np.pi))
-    plot_3d_qgt(results_dir=results_dir, quantity='berry', count=2, bands=[1, 2, 3, 4], plot_step_size = 1, kz_range = (0, 3.14))
+    # plot_3d_qgt(results_dir=results_dir, quantity='berry', count=2, bands=[1, 2, 3, 4], plot_step_size = 1, kz_range = (-3.14, 3.14))

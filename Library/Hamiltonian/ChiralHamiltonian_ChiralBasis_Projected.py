@@ -34,14 +34,6 @@ class ChiralHamiltonianProjected(hamiltonian):
     def theta(self, kx, ky):
         return np.arctan2(ky, kx)  # angle of k-vector
 
-# ... (omitted methods to avoid overly long replacement if not needed, but replace_file_content replaces chunks)
-# I should probably target specific chunks or include the methods in between if they are small, 
-# but here I am targeting __init__ which is at the top, and analytic_magnus is further down.
-# I will use separate calls or a multi_replace?
-# The tool description says "Use this tool ONLY when you are making a SINGLE CONTIGUOUS block of edits".
-# So I must use multi_replace.
-
-
     def N_k(self, k):
         """
         Vectorized, numerically stable N(k).
@@ -133,9 +125,10 @@ class ChiralHamiltonianProjected(hamiltonian):
         E = np.sqrt(V_k**2 + h_off_sq)
         return np.array([-E, E])
     
-
+#@ Derivatives
     def dN_dk(self, k):
         """
+        This is a helper for the derivatives. 
         Analytical derivative ∂N/∂k as defined by:
         ∂N/∂k = [a^2 k^2 (n (a k)^{2n} - (a k)^{2n} + 1) - n (a k)^{2n}]
                 / [k (1 - a^2 k^2)^2 * sqrt(((a k)^{2n} - 1) / (a^2 k^2 - 1))]
@@ -154,7 +147,6 @@ class ChiralHamiltonianProjected(hamiltonian):
         )
         return numerator / denominator
 
-#@ Derivatives
     def d_x(self, kx, ky):
         k = self.k(kx, ky)
         theta = self.theta(kx, ky)
@@ -546,6 +538,9 @@ class ChiralHamiltonianProjected(hamiltonian):
         (Simple constant term, valid for A_+ helicity).
         
         If right polarization (A_- helicity), sign is reversed.
+
+        The difference from the one above is that we are driving the full Hamiltonian and then project it down here. 
+        But the previous one is when we drive the 2x2 Hamiltonian directly.
         """
         # Constant term independent of k
         val = -((self.vF * self.A0) ** 2) / self.omega

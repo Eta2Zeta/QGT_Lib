@@ -8,8 +8,8 @@ import json
 # from Library import * 
 from Library.plotting_lib_2d import *
 from Library.Hamiltonian_v1 import *
-from Library.Hamiltonian.Hamiltonian_v2 import * 
-from Library.Hamiltonian.Chiral_Hamiltonian_Projected import *
+from Library.Hamiltonian.Hamiltonian import * 
+from Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected import *
 from Library.Hamiltonian.gWaveAltermagnetHamiltonian import *
 from Library.Hamiltonian.AltermagnetHamiltonian import *
 from Library.Hamiltonian.RuO2Hamiltonian import *
@@ -44,7 +44,7 @@ os.makedirs(temp_dir, exist_ok=True)
 # hamiltonian = HaldaneHamiltonian(psi = -np.pi/2, M=0)
 # hamiltonian = GrapheneHamiltonian(A0=0)
 # hamiltonian = RuO2Hamiltonian(lamb_z=0)
-hamiltonian = gWaveAltermagnetHamiltonian(t1=0.3, t2=0.3, t3=0.3, t4=0.3, mu=0, Jx=0.2, Jy=0.0, Jz=0.0, lamb=0.1, lamb_z=0.1)
+hamiltonian = gWaveAltermagnetHamiltonian(t1=0.3, t2=0.3, t3=0.3, t4=0.3, mu=0, Jx=0.0, Jy=0.0, Jz=0.2, lamb=0.1, lamb_z=0.1)
 k_max = 1.2*np.pi
 bands = (0,1)
 dim = hamiltonian.dim
@@ -364,7 +364,7 @@ def calculation_3d(hamiltonian=hamiltonian, force_new=True, include_end_points=T
                        results_dir=results_dir, save_fig=True)
 
 
-def calculation_3d_sym_points(hamiltonian=hamiltonian, force_new=True):
+def calculation_3d_sym_points(hamiltonian=hamiltonian, force_new=True, use_analytical=False):
     print("Performing 3D Symmetry Points calculation...")
     
     num_points_per_segment = 100
@@ -387,27 +387,34 @@ def calculation_3d_sym_points(hamiltonian=hamiltonian, force_new=True):
     else:
         print("Calculating eigenvalues along 3D path...")
         
-        
         kx = k_path[:, 0]
+        ky = k_path[:, 1]
+        kz = k_path[:, 2]
         
-        # We can implement a quick helper here or just loop
-        num_points = len(kx)
-        dim = hamiltonian.dim
-        eigenvalues = np.zeros((num_points, dim))
-        
-
-        try:             
-            for idx in tqdm(range(num_points), desc="Calculating path"):
-                 k_curr = k_path[idx]
-                 H, _ = get_Hamiltonian(hamiltonian, k_curr[0], k_curr[1], k_curr[2])
-                 evals = np.linalg.eigvalsh(H)
-                 # sort
-                 evals = np.sort(evals)
-                 eigenvalues[idx, :] = evals
-                 
-        except Exception as e:
-            print(f"Error in calculation: {e}")
-            raise e
+        if use_analytical and hasattr(hamiltonian, 'get_analytical_eigenvalues'):
+            print("Using analytical eigenvalue expression...")
+            eigenvalues = hamiltonian.get_analytical_eigenvalues(kx, ky, kz)
+        else:
+            if use_analytical:
+                print("Analytical expression not found for this Hamiltonian. Falling back to numerical calculation...")
+            
+            # We can implement a quick helper here or just loop
+            num_points = len(kx)
+            dim = hamiltonian.dim
+            eigenvalues = np.zeros((num_points, dim))
+            
+            try:             
+                for idx in tqdm(range(num_points), desc="Calculating path"):
+                     k_curr = k_path[idx]
+                     H, _ = get_Hamiltonian(hamiltonian, k_curr[0], k_curr[1], k_curr[2])
+                     evals = np.linalg.eigvalsh(H)
+                     # sort
+                     evals = np.sort(evals)
+                     eigenvalues[idx, :] = evals
+                     
+            except Exception as e:
+                print(f"Error in calculation: {e}")
+                raise e
             
         # Save results
         np.save(file_paths["eigenvalues"], eigenvalues)
@@ -427,9 +434,10 @@ def calculation_3d_sym_points(hamiltonian=hamiltonian, force_new=True):
         eigenvalues, 
         node_indices, 
         path_labels, 
-        title=f"Band Structure along Z-G-S-R-T-Y-S-X-U-R-Z ({hamiltonian.name})",
+        title=f"Band Structure along symmetry path ({hamiltonian.name})",
         results_dir=results_dir,
-        save_fig=True
+        save_fig=True,
+        use_analytical=use_analytical
     )
 
     plot_degeneracy_on_path_3d(
@@ -443,7 +451,7 @@ def calculation_3d_sym_points(hamiltonian=hamiltonian, force_new=True):
 
     
 # calculation_1d()
-# calculation_2d(hamiltonian, force_new=False, include_end_points=False, kk=1*np.pi) 
+calculation_2d(hamiltonian, force_new=False, include_end_points=False, kk=0.5*np.pi) 
 # calculation_3d(hamiltonian, force_new=False, include_end_points=True)
-calculation_3d_sym_points(hamiltonian, force_new=True)
+# calculation_3d_sym_points(hamiltonian, force_new=True, use_analytical=True)
 
