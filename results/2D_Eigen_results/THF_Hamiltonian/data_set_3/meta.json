@@ -1,0 +1,30 @@
+{
+  "dki": 0.12566370614359174,
+  "dkj": 0.12566370614359174,
+  "hamiltonian_name": "THF_Hamiltonian",
+  "hamiltonian_params": {
+    "A0": 0,
+    "G": 0.001,
+    "M": 5,
+    "analytic_magnus": false,
+    "gamma": -25.0,
+    "magnus_order": 1,
+    "nu_star": -50,
+    "nu_star_prime": 13.0,
+    "omega": 3.141592653589793,
+    "polarization": "left"
+  },
+  "include_endpoints": false,
+  "ki_range": [
+    -9.299946464600248,
+    9.299946464600247
+  ],
+  "kj_range": [
+    -9.299946464600248,
+    9.299946464600247
+  ],
+  "kk": 1.5707963267948966,
+  "kvals_mode": "centered",
+  "mesh_spacing": 150,
+  "order": "xyz"
+}

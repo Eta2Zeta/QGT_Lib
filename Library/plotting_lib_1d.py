@@ -218,3 +218,127 @@ def plot_band_structure_sym(
         plt.show()
         
     plt.close()
+
+def plot_band_structure_angles_slider(
+    k_vals,
+    eigenvalues,
+    angles,
+    bands_to_plot=None,
+    title="1D Band Structure vs Angle",
+    results_dir=None,
+    save_fig=False,
+    show=True
+):
+    """
+    Creates an interactive Plotly plot with a slider for the angle.
+    
+    Parameters
+    ----------
+    k_vals : ndarray, shape (num_points_per_line,)
+        The 1D k-coordinates (from -k_max to k_max).
+    eigenvalues : ndarray, shape (num_angles, num_points_per_line, num_bands)
+        The eigenvalues for each angle.
+    angles : ndarray, shape (num_angles,)
+        The angles in radians.
+    bands_to_plot : list or tuple, optional
+        Indices of bands to plot. Defaults to all bands.
+    title : str
+        Plot title.
+    results_dir : str, optional
+        Path to save the HTML interact file.
+    save_fig : bool
+        If True, saves to 'band_structure_angles_slider.html' in results_dir.
+    show : bool
+        If True, opens the Plotly figure.
+    """
+    import plotly.graph_objects as go
+    import os
+    
+    num_angles, num_points, num_bands = eigenvalues.shape
+    
+    if bands_to_plot is None:
+        bands_to_plot = range(num_bands)
+        
+    fig = go.Figure()
+    
+    # Add traces for the first angle (index 0)
+    for b in bands_to_plot:
+        fig.add_trace(go.Scatter(
+            x=k_vals,
+            y=eigenvalues[0, :, b],
+            name=f'Band {b}',
+            mode='lines'
+        ))
+        
+    # Create frames across all angles
+    frames = []
+    for i in range(num_angles):
+        data_frame = [
+            go.Scatter(
+                x=k_vals,
+                y=eigenvalues[i, :, b]
+            ) for b in bands_to_plot
+        ]
+        frames.append(go.Frame(data=data_frame, name=str(i)))
+        
+    fig.frames = frames
+    
+    # Create slider steps
+    steps = []
+    for i, angle in enumerate(angles):
+        step = dict(
+            method='animate',
+            args=[
+                [str(i)],
+                dict(
+                    mode='immediate',
+                    frame=dict(duration=0, redraw=True),
+                    transition=dict(duration=0)
+                )
+            ],
+            label=f"{angle:.3f} rad"
+        )
+        steps.append(step)
+        
+    sliders = [dict(
+        active=0,
+        currentvalue={"prefix": "Angle: "},
+        pad={"t": 50},
+        steps=steps
+    )]
+    
+    fig.update_layout(
+        title=title,
+        xaxis_title="k",
+        yaxis_title="Energy",
+        sliders=sliders,
+        updatemenus=[dict(
+            type="buttons",
+            buttons=[dict(
+                label="Play",
+                method="animate",
+                args=[None, dict(frame=dict(duration=100, redraw=True), 
+                                 fromcurrent=True, transition=dict(duration=0, easing="linear"))]
+            ), dict(
+                label="Pause",
+                method="animate",
+                args=[[None], dict(frame=dict(duration=0, redraw=False), mode="immediate", transition=dict(duration=0))]
+            )],
+            direction="left",
+            pad={"r": 10, "t": 87},
+            showactive=False,
+            x=0.1,
+            xanchor="right",
+            y=0,
+            yanchor="top"
+        )]
+    )
+    
+    # Save/Show logic
+    if save_fig and results_dir:
+        filepath = os.path.join(results_dir, "band_structure_angles_slider.html")
+        fig.write_html(filepath, include_plotlyjs='cdn')
+        print(f"Saved interactive angles plot to: {filepath}")
+        
+    if show:
+        fig.show()

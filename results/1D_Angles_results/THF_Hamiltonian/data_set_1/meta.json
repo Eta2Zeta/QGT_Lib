@@ -1,0 +1,18 @@
+{
+  "hamiltonian_name": "THF_Hamiltonian",
+  "hamiltonian_params": {
+    "omega": 3.141592653589793,
+    "A0": 0,
+    "polarization": "left",
+    "magnus_order": 1,
+    "analytic_magnus": false,
+    "nu_star": -50,
+    "nu_star_prime": 13.0,
+    "gamma": -25.0,
+    "M": 5,
+    "G": 0.001
+  },
+  "k_max": 6.283185307179586,
+  "num_angles": 20,
+  "num_points_per_line": 100
+}

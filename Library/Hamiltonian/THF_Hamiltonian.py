@@ -14,7 +14,7 @@ class THF_Hamiltonian(hamiltonian):
         self.M = M
         self.G = G
     
-    def compute_static(self, kx, ky):
+    def compute_static(self, kx, ky, kz = 0):
         k = np.sqrt(kx**2 + ky**2)
         theta = np.arctan2(ky, kx)
         
@@ -28,3 +28,19 @@ class THF_Hamiltonian(hamiltonian):
         ])
         
         return H_k
+
+    def get_sym_path(self, const_fact=3):
+        """
+        High-symmetry path for the hexagonal (THF) Brillouin zone.
+        K → Γ → M → K
+        """
+        kK_x = const_fact * np.sqrt(3) * np.pi / 2          # K corner
+        kK_y = const_fact * 1/2 * np.pi
+
+        sym_points = {
+            "G": np.array([0.0,   0.0  ]),
+            "K": np.array([kK_x,  kK_y  ]),
+            "M": np.array([kK_x,  0 ]),
+        }
+        path = ["K", "G", "M", "K"]
+        return sym_points, path

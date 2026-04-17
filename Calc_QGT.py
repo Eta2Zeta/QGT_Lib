@@ -500,7 +500,7 @@ def calculate_2d_all_bands(Force_new=True, method_name="numerical_phase_correcte
         print(f"Saved STACKED QGT results for all bands to '{results_subdir}' (and temp/)")
 
     # ---- example plotting: choose a band to view ----
-    band_to_plot_list = [0,1,2,3] 
+    band_to_plot_list = [0,1,2,3,4,5] 
     for band_to_plot in band_to_plot_list: # pick which band you want to visualize
         plot_eigen_and_all_berry_2d(
             ki, kj, eigenvalues, 

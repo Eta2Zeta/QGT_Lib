@@ -316,25 +316,26 @@ def setup_3D_QGT_results_directory(
     print(("Using existing 3D QGT results directory: " if used else "Created new 3D QGT results directory: ") + dir_path)
     return file_paths, used, dir_path, meta_target
 
-def setup_3D_sym_points_results_directory(
+def setup_sym_points_results_directory(
     hamiltonian,
     path_points,
     path_labels,
     num_points_per_segment,
     force_new=False
 ):
+    """
+    Create or reuse a results directory for symmetry-path band structure calculations.
+    Works for both 2D and 3D paths — the dimensionality is inferred from path_points.
+    """
     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
-    base_root = os.path.join(os.getcwd(), "results", "3D_Sym_Points_results", Hamiltonian_name)
+    base_root = os.path.join(os.getcwd(), "results", "Sym_Points_results", Hamiltonian_name)
 
     required_files = ["eigenvalues.npy", "meta.json", "meta_info.pkl"]
 
-    # Convert path_points (list of arrays/lists) to list of lists for JSON serialization
-    # Note: Using .tolist() ensures numpy scalars are converted to python types
     path_points_list = [np.array(p).tolist() for p in path_points]
 
-    # Get Hamiltonian parameters natively as a dictionary
     if hasattr(hamiltonian, "get_parameters_dict"):
-        ham_params = hamiltonian.get_parameters_dict(parameter="3D")
+        ham_params = hamiltonian.get_parameters_dict(parameter="sym")
     else:
         ham_params = {}
 
@@ -343,16 +344,14 @@ def setup_3D_sym_points_results_directory(
         "hamiltonian_params": ham_params,
         "path_labels": path_labels,
         "num_points_per_segment": num_points_per_segment,
-        # precise float handling might be tricky with "path_points", 
-        # but let's store them for exact matching if we want to reuse the same path
-        "path_points": path_points_list
+        "path_points": path_points_list,
     }
 
     dir_path, used = pick_or_create_dataset_dir(
         base_root,
         meta_target=meta_target,
         required_files=required_files,
-        meta_matcher=meta_matcher_all_fields, # Use the robust matcher we have
+        meta_matcher=meta_matcher_all_fields,
         force_new=force_new,
         prefix="data_set_",
         start_index=1,
@@ -360,9 +359,58 @@ def setup_3D_sym_points_results_directory(
 
     file_paths = {
         "eigenvalues": os.path.join(dir_path, "eigenvalues.npy"),
-        "meta_json": os.path.join(dir_path, "meta.json"),
-        "meta_pkl": os.path.join(dir_path, "meta_info.pkl"),
+        "meta_json":   os.path.join(dir_path, "meta.json"),
+        "meta_pkl":    os.path.join(dir_path, "meta_info.pkl"),
     }
 
-    print(("Using existing 3D Sym Points results directory: " if used else "Created new 3D Sym Points results directory: ") + dir_path)
+    print(("Using existing Sym Points results directory: " if used else "Created new Sym Points results directory: ") + dir_path)
+    return file_paths, used, dir_path, meta_target
+
+
+def setup_1D_angles_results_directory(
+    hamiltonian,
+    k_max,
+    num_angles,
+    num_points_per_line,
+    force_new=False
+):
+    """
+    Create or reuse a results directory for 1D angled line band structure calculations.
+    lives under 1D_Angles_results.
+    """
+    Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
+    base_root = os.path.join(os.getcwd(), "results", "1D_Angles_results", Hamiltonian_name)
+
+    required_files = ["eigenvalues.npy", "meta.json", "meta_info.pkl"]
+
+    if hasattr(hamiltonian, "get_parameters_dict"):
+        ham_params = hamiltonian.get_parameters_dict(parameter="1D_Angles")
+    else:
+        ham_params = {}
+
+    meta_target = {
+        "hamiltonian_name": Hamiltonian_name,
+        "hamiltonian_params": ham_params,
+        "k_max": k_max,
+        "num_angles": num_angles,
+        "num_points_per_line": num_points_per_line,
+    }
+
+    dir_path, used = pick_or_create_dataset_dir(
+        base_root,
+        meta_target=meta_target,
+        required_files=required_files,
+        meta_matcher=meta_matcher_all_fields,
+        force_new=force_new,
+        prefix="data_set_",
+        start_index=1,
+    )
+
+    file_paths = {
+        "eigenvalues": os.path.join(dir_path, "eigenvalues.npy"),
+        "meta_json":   os.path.join(dir_path, "meta.json"),
+        "meta_pkl":    os.path.join(dir_path, "meta_info.pkl"),
+    }
+
+    print(("Using existing 1D Angles results directory: " if used else "Created new 1D Angles results directory: ") + dir_path)
     return file_paths, used, dir_path, meta_target

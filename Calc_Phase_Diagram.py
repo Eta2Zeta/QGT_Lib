@@ -10,7 +10,6 @@ from functools import partial
 
 
 # from Library import * 
-from Library.Hamiltonian_v1 import *
 from Library.Hamiltonian.Hamiltonian import * 
 from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
 from Library.Hamiltonian.gWaveAltermagnetHamiltonian import gWaveAltermagnetHamiltonian
