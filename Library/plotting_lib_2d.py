@@ -584,64 +584,75 @@ def plot_neighbor_phases(kx, ky, overall_neighbor_phase_array, dim=6, z_limit=(-
     plt.show()
     plt.close()
 
-def plot_QGT_components_3d(kx, ky, g_xx_array, g_xy_array, g_xy_array_imag, g_yy_array, stride_size=3):
+def plot_QGT_components_3d(
+    kx, ky, g_xx_array, g_xy_array, g_xy_array_imag, g_yy_array,
+    stride_size=3, results_dir=None, save_fig=False, filename="QGT_components_3d.html", show=False
+):
     """
-    Plot g_xx, g_xy, g_yx, and g_yy arrays as 3D surface plots in a single figure.
-
-    Parameters:
-    - kx, ky: 2D arrays for the k-space grid.
-    - g_xx_array, g_xy_array, g_xy_array_imag, g_yy_array: 2D arrays to be plotted as surfaces.
-    - stride_size: Controls the density of points in the surface plot.
+    Plot g_xx, g_xy, g_yx, and g_yy arrays as 3D surface plots in a single figure (Plotly).
     """
-    fig = plt.figure(figsize=(24, 6))
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    import os
 
-    # Determine common z-limits for g_xy_array (real) and g_xy_array_imag (imaginary)
-    # Use nanmin/nanmax to ignore NaNs when computing limits
-    # Separate z-limits
+    if stride_size > 1:
+        kx = kx[::stride_size, ::stride_size]
+        ky = ky[::stride_size, ::stride_size]
+        g_xx_array = g_xx_array[::stride_size, ::stride_size]
+        g_xy_array = g_xy_array[::stride_size, ::stride_size]
+        g_xy_array_imag = g_xy_array_imag[::stride_size, ::stride_size]
+        g_yy_array = g_yy_array[::stride_size, ::stride_size]
+
+    fig = make_subplots(
+        rows=1, cols=4,
+        specs=[[{'type': 'surface'}, {'type': 'surface'}, {'type': 'surface'}, {'type': 'surface'}]],
+        subplot_titles=[
+            'Numerical g_xx (real part)',
+            'Numerical g_xy (real part)',
+            'Numerical g_xy (imaginary part)',
+            'Numerical g_yy (real part)'
+        ]
+    )
+
     g_xy_real_min = np.nanmin(g_xy_array)
     g_xy_real_max = np.nanmax(g_xy_array)
-
     g_xy_imag_min = np.nanmin(g_xy_array_imag)
     g_xy_imag_max = np.nanmax(g_xy_array_imag)
 
-    # Plot g_xx_array
-    ax1 = fig.add_subplot(141, projection='3d')
-    ax1.plot_surface(kx, ky, g_xx_array, cmap='plasma', rstride=stride_size, cstride=stride_size)
-    ax1.set_title('Numerical $g_{xx}$ (real part)')
-    ax1.set_xlabel('kx')
-    ax1.set_ylabel('ky')
-    ax1.set_zlabel('$g_{xx}$')
+    # Helper to add surface
+    def add_surf(Z, col, cmin=None, cmax=None):
+        if cmin is None: cmin = np.nanmin(Z)
+        if cmax is None: cmax = np.nanmax(Z)
+        fig.add_trace(go.Surface(
+            x=kx, y=ky, z=Z, colorscale='Plasma', cmin=cmin, cmax=cmax,
+            showscale=False
+        ), row=1, col=col)
+        
+        # Update axis titles for this specific subplot
+        fig.update_scenes(
+            xaxis_title='kx', yaxis_title='ky',
+            row=1, col=col
+        )
 
-    # Plot g_xy_array (real part)
-    ax2 = fig.add_subplot(142, projection='3d')
-    ax2.plot_surface(kx, ky, g_xy_array, cmap='plasma', rstride=stride_size, cstride=stride_size)
-    ax2.set_title('Numerical $g_{xy}$ (real part)')
-    ax2.set_xlabel('kx')
-    ax2.set_ylabel('ky')
-    ax2.set_zlabel('$g_{xy}$ (real)')
-    ax2.set_zlim(g_xy_real_min, g_xy_real_max)
+    add_surf(g_xx_array, 1)
+    add_surf(g_xy_array, 2, g_xy_real_min, g_xy_real_max)
+    add_surf(g_xy_array_imag, 3, g_xy_imag_min, g_xy_imag_max)
+    add_surf(g_yy_array, 4)
+    
+    fig.update_scenes(zaxis_title='g_xx', row=1, col=1)
+    fig.update_scenes(zaxis_title='g_xy (real)', zaxis_range=[g_xy_real_min, g_xy_real_max], row=1, col=2)
+    fig.update_scenes(zaxis_title='g_xy (imag)', zaxis_range=[g_xy_imag_min, g_xy_imag_max], row=1, col=3)
+    fig.update_scenes(zaxis_title='g_yy', row=1, col=4)
 
-    # Plot g_xy_array_imag (imaginary part)
-    ax3 = fig.add_subplot(143, projection='3d')
-    ax3.plot_surface(kx, ky, g_xy_array_imag, cmap='plasma', rstride=stride_size, cstride=stride_size)
-    ax3.set_title('Numerical $g_{xy}$ (imaginary part)')
-    ax3.set_xlabel('kx')
-    ax3.set_ylabel('ky')
-    ax3.set_zlabel('$g_{xy}$ (imag)')
-    ax3.set_zlim(g_xy_imag_min, g_xy_imag_max)
+    fig.update_layout(title_text='QGT Components (3D)', height=500, width=1600, margin=dict(r=10, b=10, l=10, t=60))
 
-
-    # Plot g_yy_array
-    ax4 = fig.add_subplot(144, projection='3d')
-    ax4.plot_surface(kx, ky, g_yy_array, cmap='plasma', rstride=stride_size, cstride=stride_size)
-    ax4.set_title('Numerical $g_{yy}$ (real part)')
-    ax4.set_xlabel('kx')
-    ax4.set_ylabel('ky')
-    ax4.set_zlabel('$g_{yy}$')
-
-    plt.tight_layout()
-    plt.show()
-    plt.close()
+    if save_fig and results_dir:
+        filepath = os.path.join(results_dir, filename)
+        fig.write_html(filepath, include_plotlyjs='cdn')
+        print(f"Saved QGT components (HTML) to: {filepath}")
+    
+    if show:
+        fig.show()
 
 # If looking for plot_QMT_wtrace_3d, use plot_trace_w_eigenvalue instead.
 def plot_g_components_2d(g_xx_array, g_yy_array, trace_array, k_max=10):
@@ -747,102 +758,92 @@ def plot_qmt_eig_berry_trace_3d(
     eigenvalue_band=0,
     stride_size=2,
     convert_berry_from_imQ=True,  # If True, Ω = -2 * Im(Q_xy) by the standard convention Q_xy = g_xy - i Ω/2
-    cmaps=('viridis', 'coolwarm', 'plasma'),
-    zlims=(None, None, None),     # (zlim_eig, zlim_berry, zlim_trace); each entry None -> auto
-    cbar_shrink=0.7,
-    cbar_aspect=30,
-    title="QGT: Eigenvalue, Berry Curvature, and Trace (3D)"
+    zlim_berry=None,
+    zlim_trace=None,
+    title="QGT: Eigenvalue, Berry Curvature, and Trace (3D)",
+    results_dir=None,
+    save_fig=False,
+    filename="qmt_eig_berry_trace_3d.html",
+    show=False
 ):
     """
-    Make a 1×3 row of 3D surfaces for:
-      - Eigenvalue band 'eigenvalue_band'
-      - Berry curvature Ω (from Im(Q_xy) if convert_berry_from_imQ=True)
-      - Trace of the QGT
-
-    Args:
-      kx, ky            : 2D grids
-      eigenvalues       : 3D array (Nk, Nk, Nb)
-      g_xy_imag         : 2D array Im(Q_xy)
-      trace_array       : 2D array Tr[g]
-      eigenvalue_band   : which band to plot from eigenvalues
-      stride_size       : surface stride
-      convert_berry_from_imQ : if True, uses Ω = -2 * Im(Q_xy) (sign per usual QGT convention)
-      cmaps             : (cmap_eig, cmap_berry, cmap_trace)
-      zlims             : tuple of z-limits for each panel; any None -> auto limit with 5% margin
-      cbar_shrink       : colorbar shrink factor
-      cbar_aspect       : colorbar aspect (larger -> thinner)
-      title             : figure title
+    Make a 1×3 row of 3D surfaces for Eigenvalue, Berry curvature, and Trace using Plotly.
     """
-    # Extract data
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    import os
+
+    if stride_size > 1:
+        kx = kx[::stride_size, ::stride_size]
+        ky = ky[::stride_size, ::stride_size]
+        if eigenvalues is not None:
+            eigenvalues = eigenvalues[::stride_size, ::stride_size, :]
+        g_xy_imag = g_xy_imag[::stride_size, ::stride_size]
+        trace_array = trace_array[::stride_size, ::stride_size]
+
     if eigenvalues is not None:
         Z_eig = replace_zeros_with_nan(eigenvalues[:, :, eigenvalue_band])
     else:
         Z_eig = None
 
     if convert_berry_from_imQ:
-        Z_berry = replace_zeros_with_nan(-2.0 * g_xy_imag)  # Ω = -2 Im(Q_xy)
+        Z_berry = replace_zeros_with_nan(-2.0 * g_xy_imag) 
+        berry_title = "Berry Curvature Ω"
     else:
-        Z_berry = replace_zeros_with_nan(g_xy_imag)         # show Im(Q_xy) directly
+        Z_berry = replace_zeros_with_nan(g_xy_imag)
+        berry_title = "Im(Q_xy)"
+        
     Z_trace = replace_zeros_with_nan(trace_array)
 
-    # Auto z-limits with 5% margin if not provided
-    def auto_limits(Z):
-        if Z is None: return None
-        zmin = np.nanmin(Z)
-        zmax = np.nanmax(Z)
-        if not np.isfinite(zmin) or not np.isfinite(zmax):
-            return None
-        if zmax == zmin:
-            delta = 1.0
-            return (zmin - delta, zmax + delta)
-        margin = 0.05 * (zmax - zmin)
-        return (zmin - margin, zmax + margin)
+    zlim_eig   = get_limits_asym(Z_eig, None, zlim_percentile=None)
+    zlim_berry_tuple = get_plot_limits(Z_berry, zlim_berry)
+    zlim_trace_tuple = get_limits_asym(Z_trace, zlim_trace)
 
-    zlim_eig   = zlims[0] if zlims[0] is not None else auto_limits(Z_eig)
-    zlim_berry = zlims[1] if zlims[1] is not None else auto_limits(Z_berry)
-    zlim_trace = zlims[2] if zlims[2] is not None else auto_limits(Z_trace)
+    fig = make_subplots(
+        rows=1, cols=3,
+        specs=[[{'type': 'surface'}, {'type': 'surface'}, {'type': 'surface'}]],
+        subplot_titles=[
+            f"Eigenvalue Band {eigenvalue_band+1}" if Z_eig is not None else "Eigenvalue (No Data)",
+            berry_title,
+            "Trace Tr[g]"
+        ]
+    )
 
-    # Figure & axes (1 row, 3 cols)
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6), subplot_kw={'projection': '3d'})
-    if title:
-        fig.suptitle(title, fontsize=14)
-
-    # Panels config
     panels = [
-        dict(Z=Z_eig,   cmap=cmaps[0], title=f"Eigenvalue Band {eigenvalue_band+1}" if Z_eig is not None else "Eigenvalue (No Data)",
-             zlabel="Eigenvalue", zlim=zlim_eig),
-        dict(Z=Z_berry, cmap=cmaps[1], title="Berry Curvature Ω" if convert_berry_from_imQ else "Im(Q_xy)",
-             zlabel="Ω" if convert_berry_from_imQ else "Im(Q_xy)", zlim=zlim_berry),
-        dict(Z=Z_trace, cmap=cmaps[2], title="Trace Tr[g]", zlabel="Tr[g]", zlim=zlim_trace),
+        dict(Z=Z_eig,   cmap='Viridis', zlim=zlim_eig, title="Eigenvalue"),
+        dict(Z=Z_berry, cmap='RdBu',    zlim=zlim_berry_tuple, title=berry_title),
+        dict(Z=Z_trace, cmap='Plasma',  zlim=zlim_trace_tuple, title="Tr[g]"),
     ]
 
-    for ax, cfg in zip(axes, panels):
+    for col, cfg in enumerate(panels, start=1):
         Z = cfg['Z']
         cmap = cfg['cmap']
-        norm = None  # you can put Normalize(...) if you want matched color scaling
-        
-        if Z is not None:
-            surf = ax.plot_surface(
-                kx, ky, Z, cmap=cmap, norm=norm,
-                rstride=stride_size, cstride=stride_size, alpha=0.9
-            )
-            
-            # Colorbar per panel (thin)
-            mappable = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-            mappable.set_array(Z)
-            cbar = fig.colorbar(mappable, ax=ax, shrink=cbar_shrink, aspect=cbar_aspect, pad=0.03)
-            cbar.ax.tick_params(labelsize=9)
-            
-        ax.set_title(cfg['title'])
-        ax.set_xlabel('kx')
-        ax.set_ylabel('ky')
-        ax.set_zlabel(cfg['zlabel'])
-        if cfg['zlim'] is not None:
-            ax.set_zlim(*cfg['zlim'])
+        zlim_vals = cfg['zlim']
 
-    plt.tight_layout(rect=(0, 0, 1, 0.95))
-    plt.show()
-    plt.close()
+        if Z is not None:
+            cmin = zlim_vals[0] if zlim_vals is not None else np.nanmin(Z)
+            cmax = zlim_vals[1] if zlim_vals is not None else np.nanmax(Z)
+            
+            fig.add_trace(go.Surface(
+                x=kx, y=ky, z=Z, colorscale=cmap, cmin=cmin, cmax=cmax,
+                showscale=False
+            ), row=1, col=col)
+            
+            fig.update_scenes(
+                xaxis_title='kx', yaxis_title='ky', zaxis_title=cfg['title'],
+                zaxis_range=zlim_vals,
+                row=1, col=col
+            )
+
+    fig.update_layout(title_text=title, height=500, width=1500, margin=dict(r=10, b=10, l=10, t=60))
+
+    if save_fig and results_dir:
+        filepath = os.path.join(results_dir, filename)
+        fig.write_html(filepath, include_plotlyjs='cdn')
+        print(f"Saved QMT 3D components (HTML) to: {filepath}")
+        
+    if show:
+        fig.show()
 
 def plot_g_components_line(k_line, g_xx, g_yy, trace, angle_deg):
     # Plot QGT components

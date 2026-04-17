@@ -846,6 +846,8 @@ def centered_kvals(k_range: float, N: int) -> np.ndarray:
 
 def generate_3d_sym_lines(num_points_per_segment=100, space_group=58, a=1.0):
     """
+    Legacy routine, symmetry points should be moved to the Hamiltonian Objects. 
+
     Generates k-points along a high-symmetry path for the requested space group.
 
     Parameters
@@ -979,3 +981,46 @@ def generate_3d_sym_lines(num_points_per_segment=100, space_group=58, a=1.0):
         path_labels,
         np.array(path_points),
     )
+
+
+def generate_1d_lines_at_angles(k_max, num_angles, num_points_per_line):
+    """
+    Generate 1D straight-line k-paths passing through the origin at various angles.
+    
+    The lines span from -k_max to +k_max. The angle theta varies from 0 to pi
+    (since [-k_max, k_max] along [0, pi) covers the full 2D plane).
+    
+    Parameters
+    ----------
+    k_max : float
+        Maximum magnitude of k along the line.
+    num_angles : int
+        Number of distinct angles to sample between 0 and pi (exclusive of pi).
+    num_points_per_line : int
+        Number of k-points requested along a single line.
+        
+    Returns
+    -------
+    k_path : ndarray, shape (num_angles * num_points_per_line, 2)
+        Flattened array of all k-coordinates for all angles.
+    k_vals : ndarray, shape (num_points_per_line,)
+        The 1D signed distance along the line (-k_max to k_max).
+    angles : ndarray, shape (num_angles,)
+        The angles sampled (in radians).
+    """
+    angles = np.linspace(0, np.pi, num_angles, endpoint=False)
+    k_vals = np.linspace(-k_max, k_max, num_points_per_line)
+    
+    k_path_list = []
+    
+    for theta in angles:
+        kx = k_vals * np.cos(theta)
+        ky = k_vals * np.sin(theta)
+        # Stack into (num_points_per_line, 2)
+        line_k_points = np.column_stack((kx, ky))
+        k_path_list.append(line_k_points)
+        
+    # Flatten across the angles dimension: shape is (num_angles * num_points_per_line, 2)
+    k_path = np.vstack(k_path_list)
+    
+    return k_path, k_vals, angles

@@ -89,6 +89,31 @@ class hamiltonian:
         """
         raise NotImplementedError("Subclasses must implement the 'compute_static' method.")
 
+    def get_sym_path(self):
+        """
+        Return the high-symmetry k-path for this Hamiltonian.
+
+        Subclasses should override this to define their BZ high-symmetry points.
+
+        Returns
+        -------
+        sym_points : dict
+            Mapping of label -> np.ndarray of shape (2,) or (3,) for each
+            high-symmetry point. e.g. {"G": [0,0], "K": [4*pi/3, 0], ...}
+        path : list of str
+            Ordered list of labels defining the path, e.g. ["K", "G", "M", "K"].
+            Repeated labels indicate the path visits that point multiple times.
+
+        Raises
+        ------
+        NotImplementedError
+            If the subclass does not define a symmetry path.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not define a symmetry path. "
+            "Override get_sym_path() to provide one."
+        )
+
     def compute_driven(self, t, kx, ky, kz=0):
         """
         Compute the time-dependent Hamiltonian matrix for a given time t and (kx, ky, kz),

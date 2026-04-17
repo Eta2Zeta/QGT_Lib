@@ -1,5 +1,5 @@
 import numpy as np
-from .Hamiltonian_v2 import hamiltonian
+from .Hamiltonian import hamiltonian
 
 # Define Pauli matrices
 sigma_0 = np.eye(2, dtype=complex)

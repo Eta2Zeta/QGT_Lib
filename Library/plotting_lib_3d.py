@@ -917,120 +917,163 @@ def plot_slice_stack(
 
 def plot_degeneracy_on_path_3d(k_points, eigenvalues, threshold=0.01, title="Degeneracy along Path", results_dir=None, save_fig=False):
     """
-    Plot the k-path in 3D using Plotly, colored by the degree of band degeneracy.
-    
-    Parameters:
-    - k_points: (N, 3) array of k-coordinates (kx, ky, kz).
-    - eigenvalues: (N, num_bands) array of eigenvalues.
-    - threshold: Energy difference threshold to consider bands degenerate.
-    - title: Plot title.
-    - results_dir: Directory to save the plot.
-    - save_fig: If True, saves as HTML.
+    Plot the k-path colored by the degree of band degeneracy.
+
+    Automatically handles both 2D k-paths (N, 2) and 3D k-paths (N, 3):
+      - 2D paths → matplotlib 2D scatter saved as PNG.
+      - 3D paths → interactive Plotly 3D scatter saved as HTML.
+
+    Parameters
+    ----------
+    k_points : ndarray, shape (N, 2) or (N, 3)
+        k-coordinates along the path.
+    eigenvalues : ndarray, shape (N, num_bands)
+        Eigenvalues at each k-point.
+    threshold : float
+        Relative energy-gap threshold to consider bands degenerate.
+    title : str
+        Plot title.
+    results_dir : str, optional
+        Directory to save the plot.
+    save_fig : bool
+        If True, saves the figure to results_dir.
     """
-    import plotly.graph_objects as go
     import os
-    
+
+    k_points = np.asarray(k_points)
+    k_dim = k_points.shape[1]   # 2 or 3
+
     num_points = k_points.shape[0]
     degeneracies = np.zeros(num_points, dtype=int)
-    
-    # Calculate max degeneracy for each point
+
+    # Calculate max degeneracy for each k-point
     for i in range(num_points):
         evals = np.sort(eigenvalues[i])
-        
         diffs = np.diff(evals)
         if len(diffs) > 0:
             max_gap = np.max(diffs)
-            current_threshold = max(threshold * max_gap, 1e-10) 
+            current_threshold = max(threshold * max_gap, 1e-10)
             degeneracies[i] = int(np.sum(diffs <= current_threshold))
-        else:
-            degeneracies[i] = 0
 
     color_map = {
-        0: 'blue',   # no degeneracy
-        1: 'green',  # one degenerate pair
-        2: 'red',    # either 3-fold or two 2-folds
-        3: 'black'   # 4-fold
+        0: 'blue',
+        1: 'green',
+        2: 'red',
+        3: 'black',
     }
-    
-    fig = go.Figure()
 
-    # Draw faint grey box cornered at 0,0,0 to pi,pi,pi
-    box_min = np.array([0, 0, 0])
-    box_max = np.array([np.pi, np.pi, np.pi])
-    
-    # Box edges
-    # x-aligned
-    for y in [box_min[1], box_max[1]]:
-        for z in [box_min[2], box_max[2]]:
-            fig.add_trace(go.Scatter3d(
-                x=[box_min[0], box_max[0]], y=[y, y], z=[z, z],
-                mode='lines', line=dict(color='grey', width=2), opacity=0.3, showlegend=False
-            ))
-    # y-aligned
-    for x in [box_min[0], box_max[0]]:
-        for z in [box_min[2], box_max[2]]:
-            fig.add_trace(go.Scatter3d(
-                x=[x, x], y=[box_min[1], box_max[1]], z=[z, z],
-                mode='lines', line=dict(color='grey', width=2), opacity=0.3, showlegend=False
-            ))
-    # z-aligned
-    for x in [box_min[0], box_max[0]]:
-        for y in [box_min[1], box_max[1]]:
-            fig.add_trace(go.Scatter3d(
-                x=[x, x], y=[y, y], z=[box_min[2], box_max[2]],
-                mode='lines', line=dict(color='grey', width=2), opacity=0.3, showlegend=False
-            ))
+    # ---------------------------------------------------------------
+    # 2D path → matplotlib
+    # ---------------------------------------------------------------
+    if k_dim == 2:
+        fig, ax = plt.subplots(figsize=(8, 6))
 
-    # Add points (grouped by degeneracy for legend)
-    for deg in set(degeneracies):
-        idx = np.where(degeneracies == deg)[0]
-        color = color_map.get(deg, 'black')
-        if deg == 0:
-            deg_label = 'Non-degenerate (1)'
-        else:
-            deg_label = f'{deg}-fold'
-        
-        fig.add_trace(go.Scatter3d(
-            x=k_points[idx, 0], y=k_points[idx, 1], z=k_points[idx, 2],
-            mode='markers',
-            marker=dict(color=color, size=4),
-            name=deg_label
-        ))
-
-    # Lines connecting adjacent points with same degeneracy
-    # Group segments by color to render faster
-    deg_to_lines = {deg: {'x': [], 'y': [], 'z': []} for deg in set(degeneracies)}
-    for i in range(num_points - 1):
-        deg = degeneracies[i]
-        if degeneracies[i+1] == deg:
-            deg_to_lines[deg]['x'].extend([k_points[i, 0], k_points[i+1, 0], None])
-            deg_to_lines[deg]['y'].extend([k_points[i, 1], k_points[i+1, 1], None])
-            deg_to_lines[deg]['z'].extend([k_points[i, 2], k_points[i+1, 2], None])
-
-    for deg, lines in deg_to_lines.items():
-        if lines['x']:
+        for deg in sorted(set(degeneracies)):
+            idx = np.where(degeneracies == deg)[0]
             color = color_map.get(deg, 'black')
+            label = 'Non-degenerate' if deg == 0 else f'{deg + 1}-fold degenerate'
+            ax.scatter(k_points[idx, 0], k_points[idx, 1],
+                       c=color, s=20, label=label, zorder=3)
+
+        # Draw connecting lines coloured by degeneracy
+        for i in range(num_points - 1):
+            deg = degeneracies[i]
+            if degeneracies[i + 1] == deg:
+                color = color_map.get(deg, 'black')
+                ax.plot([k_points[i, 0], k_points[i + 1, 0]],
+                        [k_points[i, 1], k_points[i + 1, 1]],
+                        color=color, linewidth=1.5, zorder=2)
+
+        ax.set_xlabel('kx')
+        ax.set_ylabel('ky')
+        ax.set_title(title)
+        ax.legend(loc='best')
+        ax.set_aspect('equal', adjustable='datalim')
+        plt.tight_layout()
+
+        if save_fig and results_dir:
+            filepath = os.path.join(results_dir, "degeneracy_on_path.png")
+            plt.savefig(filepath, dpi=150, bbox_inches='tight')
+            print(f"Saved degeneracy path plot to: {filepath}")
+        else:
+            plt.show()
+
+        plt.close(fig)
+
+    # ---------------------------------------------------------------
+    # 3D path → Plotly
+    # ---------------------------------------------------------------
+    else:
+        import plotly.graph_objects as go
+
+        fig = go.Figure()
+
+        # Faint BZ reference box
+        box_min = np.array([0, 0, 0])
+        box_max = np.array([np.pi, np.pi, np.pi])
+
+        for y in [box_min[1], box_max[1]]:
+            for z in [box_min[2], box_max[2]]:
+                fig.add_trace(go.Scatter3d(
+                    x=[box_min[0], box_max[0]], y=[y, y], z=[z, z],
+                    mode='lines', line=dict(color='grey', width=2), opacity=0.3, showlegend=False
+                ))
+        for x in [box_min[0], box_max[0]]:
+            for z in [box_min[2], box_max[2]]:
+                fig.add_trace(go.Scatter3d(
+                    x=[x, x], y=[box_min[1], box_max[1]], z=[z, z],
+                    mode='lines', line=dict(color='grey', width=2), opacity=0.3, showlegend=False
+                ))
+        for x in [box_min[0], box_max[0]]:
+            for y in [box_min[1], box_max[1]]:
+                fig.add_trace(go.Scatter3d(
+                    x=[x, x], y=[y, y], z=[box_min[2], box_max[2]],
+                    mode='lines', line=dict(color='grey', width=2), opacity=0.3, showlegend=False
+                ))
+
+        # Points grouped by degeneracy
+        for deg in sorted(set(degeneracies)):
+            idx = np.where(degeneracies == deg)[0]
+            color = color_map.get(deg, 'black')
+            label = 'Non-degenerate (1)' if deg == 0 else f'{deg}-fold'
             fig.add_trace(go.Scatter3d(
-                x=lines['x'], y=lines['y'], z=lines['z'],
-                mode='lines',
-                line=dict(color=color, width=4),
-                showlegend=False
+                x=k_points[idx, 0], y=k_points[idx, 1], z=k_points[idx, 2],
+                mode='markers',
+                marker=dict(color=color, size=4),
+                name=label
             ))
 
-    fig.update_layout(
-        title=title,
-        scene=dict(
-            xaxis_title='kx',
-            yaxis_title='ky',
-            zaxis_title='kz',
-            aspectmode='data'
-        )
-    )
+        # Connecting lines
+        deg_to_lines = {deg: {'x': [], 'y': [], 'z': []} for deg in set(degeneracies)}
+        for i in range(num_points - 1):
+            deg = degeneracies[i]
+            if degeneracies[i + 1] == deg:
+                deg_to_lines[deg]['x'].extend([k_points[i, 0], k_points[i + 1, 0], None])
+                deg_to_lines[deg]['y'].extend([k_points[i, 1], k_points[i + 1, 1], None])
+                deg_to_lines[deg]['z'].extend([k_points[i, 2], k_points[i + 1, 2], None])
 
-    if save_fig and results_dir:
-        filename = "degeneracy_on_path_3d.html"
-        filepath = os.path.join(results_dir, filename)
-        fig.write_html(filepath)
-        print(f"Saved interactive degeneracy 3D plot to: {filepath}")
-    else:
-        fig.show()
+        for deg, lines in deg_to_lines.items():
+            if lines['x']:
+                fig.add_trace(go.Scatter3d(
+                    x=lines['x'], y=lines['y'], z=lines['z'],
+                    mode='lines',
+                    line=dict(color=color_map.get(deg, 'black'), width=4),
+                    showlegend=False
+                ))
+
+        fig.update_layout(
+            title=title,
+            scene=dict(
+                xaxis_title='kx',
+                yaxis_title='ky',
+                zaxis_title='kz',
+                aspectmode='data'
+            )
+        )
+
+        if save_fig and results_dir:
+            filepath = os.path.join(results_dir, "degeneracy_on_path_3d.html")
+            fig.write_html(filepath)
+            print(f"Saved interactive degeneracy 3D plot to: {filepath}")
+        else:
+            fig.show()

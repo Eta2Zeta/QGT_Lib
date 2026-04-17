@@ -42,8 +42,10 @@ def plot_qgt_from_directory(target_dir):
 
     # Extract info from metadata
     try:
-        kx = meta_info["kx"]
-        ky = meta_info["ky"]
+        kx = meta_info.get("kx", meta_info.get("ki", None))
+        ky = meta_info.get("ky", meta_info.get("kj", None))
+        if kx is None or ky is None:
+            raise KeyError("Neither 'kx'/'ky' nor 'ki'/'kj' found in metadata.")
         Hamiltonian_Obj = meta_info.get("Hamiltonian_Obj", None)
         mesh_spacing = meta_info.get("mesh_spacing", "Unknown")
         print(f"Grid loaded. Mesh: {mesh_spacing}")
@@ -76,32 +78,54 @@ def plot_qgt_from_directory(target_dir):
         print("Warning: 'eigenvalues.npy' not found. Some plots will be skipped.")
 
     # Plot Parameters
-    band = 1 # Default, maybe overwrite if in meta?
-    z_cutoff = 1
 
-    # --- Generate Plots ---
+    # Check if we have stacked bands
+    num_bands = 1
+    if g_xx.ndim == 3:
+        num_bands = g_xx.shape[0]
 
-    # 1. 3D Components
-    print("Plotting QGT Components (3D)...")
-    plot_QGT_components_3d(kx, ky, g_xx, g_xy_real, g_xy_imag, g_yy, stride_size=2)
+    for b in range(num_bands):
+        # Extract band slice if 3D, else use arrays as is
+        b_g_xx = g_xx[b] if g_xx.ndim == 3 else g_xx
+        b_g_xy_real = g_xy_real[b] if g_xy_real.ndim == 3 else g_xy_real
+        b_g_xy_imag = g_xy_imag[b] if g_xy_imag.ndim == 3 else g_xy_imag
+        b_g_yy = g_yy[b] if g_yy.ndim == 3 else g_yy
+        b_trace = trace[b] if trace.ndim == 3 else trace
 
-    # 2. Combined Plots
-    print("Plotting QMT/Eig/Berry/Trace (3D)...")
-    plot_qmt_eig_berry_trace_3d(
-        kx, ky, eigenvalues, g_xy_imag, trace,
-        eigenvalue_band=band,
-        zlims=(None, (-z_cutoff, z_cutoff), (-z_cutoff, z_cutoff)),
-        title=f"3D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''}"
-    )
+        print(f"--- Generating Plots for Band {b} ---")
 
-    print("Plotting QMT/Eig/Berry/Trace (2D Heatmaps)...")
-    plot_qmt_eig_berry_trace_2d(
-        kx, ky, eigenvalues, g_xy_imag, trace,
-        eigenvalue_band=band,
-        zlims=(None, (-z_cutoff, z_cutoff), (-z_cutoff, z_cutoff)),
-        title=f"2D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''}"
-    )
-    
+        # 1. 3D Components
+        print(f"Plotting QGT Components (3D) for band {b}...")
+        plot_QGT_components_3d(
+            kx, ky, b_g_xx, b_g_xy_real, b_g_xy_imag, b_g_yy,
+            stride_size=2,
+            results_dir=target_dir,
+            save_fig=True,
+            filename=f"QGT_components_3d_band_{b}.html",
+            show=False
+        )
+
+        # 2. Combined Plots
+        print(f"Plotting QMT/Eig/Berry/Trace (3D) for band {b}...")
+        plot_qmt_eig_berry_trace_3d(
+            kx, ky, eigenvalues, b_g_xy_imag, b_trace,
+            eigenvalue_band=b,
+
+            title=f"3D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {b})",
+            results_dir=target_dir,
+            save_fig=True,
+            filename=f"qmt_eig_berry_trace_3d_band_{b}.html",
+            show=False
+        )
+
+        print(f"Plotting QMT/Eig/Berry/Trace (2D Heatmaps) for band {b}...")
+        plot_qmt_eig_berry_trace_2d(
+            kx, ky, eigenvalues, b_g_xy_imag, b_trace,
+            eigenvalue_band=b,
+            title=f"2D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {b})",
+            results_dir=target_dir,
+            save_fig=True
+        )
     print("Done.")
 
 def plot_all_2d_berries_from_directory(target_dir):
@@ -182,12 +206,12 @@ def plot_all_2d_berries_from_directory(target_dir):
 
 if __name__ == "__main__":
     import os
-    base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/gWaveAltermagnetHamiltonian"
-    
+    # base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/gWaveAltermagnetHamiltonian"
+    base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/THF_Hamiltonian"
     for subdir in os.listdir(base_dir):
         target_dir = os.path.join(base_dir, subdir)
         if os.path.isdir(target_dir) and os.path.exists(os.path.join(target_dir, "meta_info.pkl")):
             print(f"\n--- Processing: {subdir} ---")
-            plot_all_2d_berries_from_directory(target_dir)
+            # plot_all_2d_berries_from_directory(target_dir)
             # You can also uncomment the next line to run plot_qgt_from_directory
-            # plot_qgt_from_directory(target_dir)
+            plot_qgt_from_directory(target_dir)
