@@ -7,7 +7,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
-from Library.Hamiltonian.ChiralHamiltonian_SW_Projected import ChiralHamiltonianEffective
+from Library.Hamiltonian.ChiralHamiltonian_SW_Projected import ChiralHamiltonianSWProjected
 
 
 def compute_results(n, vF, t1, A0, omega, V_vals, kx_vals, ky=0.0):
@@ -20,7 +20,7 @@ def compute_results(n, vF, t1, A0, omega, V_vals, kx_vals, ky=0.0):
         print(f"Processing V = {V}...")
 
         H_full_obj = ChiralHamiltonian(n=n, vF=vF, t1=t1, V=V, omega=omega, A0=A0)
-        H_eff_obj  = ChiralHamiltonianEffective(n=n, vF=vF, t1=t1, V=V, omega=omega, A0=A0)
+        H_eff_obj  = ChiralHamiltonianSWProjected(n=n, vF=vF, t1=t1, V=V, omega=omega, A0=A0)
 
         evals_full_list     = []
         evals_analytic_list = []

@@ -75,8 +75,6 @@ def calculate_spin_density_all_bands(Force_new=True):
         "include_endpoints": True,
         "n_bands": int(n_bands),
         "Hamiltonian_Obj": Hamiltonian_Obj,
-        "ki": ki,
-        "kj": kj,
         "dki": dki, 
         "dkj": dkj,
         "order": order

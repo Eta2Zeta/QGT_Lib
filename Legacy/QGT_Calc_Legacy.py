@@ -15,6 +15,10 @@ from Library.eigenvalue_calc_lib import *
 from Library.QGT_lib import *
 from Library.topology import *
 from Library.utilities import *
+from Library.data_management_utils_1d import *
+from Library.data_management_utils_2d import *
+from Library.data_management_utils_3d import *
+from Library.data_management_utils_nd import *
 from Library.plotting_lib_2d import *
 
 

@@ -3,7 +3,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import os
 import pickle
 import numpy as np
-from Library.plotting_lib_3d import plot_isosurface, plot_slice_stack
+from Library.plotting_lib_3d import plot_slice_stack
 import sys
 import trimesh
 import matplotlib.cm as cm
@@ -795,7 +795,7 @@ if __name__ == "__main__":
     base_results_path = os.path.join(current_dir, "results/3D_QGT_results/gWaveAltermagnetHamiltonian")
     
     # Placeholder for the specific dataset, using one found in list_dir
-    latest_dataset = "data_set_1"
+    latest_dataset = "data_set_6"
     
     results_dir = os.path.join(base_results_path, latest_dataset)
 
@@ -804,7 +804,7 @@ if __name__ == "__main__":
     
     # Run the new dynamic slicing visualization
     print(f"Generating dynamic all-slices HTML...")
-    plot_3d_qgt_all_slices_dynamic(results_dir=results_dir, quantity='berry', component='yz', slice_plane="xy", bands=[1, 2, 3, 4], debug=False)
+    # plot_3d_qgt_all_slices_dynamic(results_dir=results_dir, quantity='berry', component='yz', slice_plane="xy", bands=[1, 2, 3, 4], debug=False)
     
     # plot_3d_qgt(results_dir=results_dir, quantity='berry', plane='xy', levels=[0.3, -0.3], kz_range = (0, 0.9*np.pi))
 

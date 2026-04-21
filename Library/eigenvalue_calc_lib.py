@@ -182,20 +182,16 @@ def line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, band_index=No
     for i, (kx, ky) in enumerate(zip(line_kx, line_ky)):
         if has_valid_k and not Hamiltonian.valid_k_point(kx, ky):
             continue  # leave NaNs
-        try:
-            vals, vecs, pert, mon = eigenvalues_and_vectors_eigenvalue_ordering(
-                Hamiltonian, kx, ky, eigenvector, band_index=band_index
-            )
-            phase_factors = eigenvector.get_phase_factors()
+        vals, vecs, pert, mon = eigenvalues_and_vectors_eigenvalue_ordering(
+            Hamiltonian, kx, ky, eigenvector, band_index=band_index, calculate_perturbation=True
+        )
+        phase_factors = eigenvector.get_phase_factors()
 
-            eigenvalues[i] = vals
-            eigenfunctions[i] = vecs
-            phase_factors_array[i] = phase_factors
-            perturbation_array[i] = pert
-            magnus_operator_norm[i] = mon
-        except Exception:
-            # Just in case any numerical failure occurs
-            continue
+        eigenvalues[i] = vals
+        eigenfunctions[i] = vecs
+        phase_factors_array[i] = phase_factors
+        perturbation_array[i] = pert
+        magnus_operator_norm[i] = mon
 
     if band_index is not None:
         return eigenvalues, eigenfunctions, phase_factors_array, perturbation_array, magnus_operator_norm

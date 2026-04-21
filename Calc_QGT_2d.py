@@ -17,8 +17,7 @@ from Library.utilities import *
 from Library.plotting_lib_2d import *
 from Library.Hamiltonian.RuO2Hamiltonian import *
 from Library.Hamiltonian.gWaveAltermagnetHamiltonian import *
-from Library.data_management_utils import setup_3D_QGT_results_directory
-from Library.data_management_utils_2D import setup_2D_QGT_results_directory
+from Library.data_management_utils_2d import setup_2D_QGT_results_directory
 
 
 def calculate_2d(Force_new=True):
@@ -75,8 +74,6 @@ def calculate_2d(Force_new=True):
         "include_endpoints": True,
         # Objects to include in pickle but exclude from JSON
         "Hamiltonian_Obj": Hamiltonian_Obj,
-        "ki": ki,
-        "kj": kj,
         "dki": dki,
         "dkj": dkj, 
         "order": order
@@ -248,6 +245,38 @@ def calculate_2d(Force_new=True):
         save_fig=True
     )
 
+    # 1. 3D Components
+    print(f"Plotting QGT Components (3D) for band {band}...")
+    plot_QGT_components_3d(
+        ki, kj, g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array,
+        stride_size=2,
+        results_dir=results_subdir,
+        save_fig=True,
+        filename=f"QGT_components_3d_band_{band}.html",
+        show=False
+    )
+
+    # 2. Combined Plots
+    print(f"Plotting QMT/Eig/Berry/Trace (3D) for band {band}...")
+    plot_qmt_eig_berry_trace_3d(
+        ki, kj, eigenvalues, g_xy_imag_array, trace_array,
+        eigenvalue_band=band,
+        title=f"3D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {band})",
+        results_dir=results_subdir,
+        save_fig=True,
+        filename=f"qmt_eig_berry_trace_3d_band_{band}.html",
+        show=False
+    )
+
+    print(f"Plotting QMT/Eig/Berry/Trace (2D Heatmaps) for band {band}...")
+    plot_qmt_eig_berry_trace_2d(
+        ki, kj, eigenvalues, g_xy_imag_array, trace_array,
+        eigenvalue_band=band,
+        title=f"2D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {band})",
+        results_dir=results_subdir,
+        save_fig=True
+    )
+
 
 def _infer_nbands(eigenvalues: np.ndarray, eigenfunctions: np.ndarray) -> int:
     """
@@ -398,8 +427,6 @@ def calculate_2d_all_bands(Force_new=True, method_name="numerical_phase_correcte
 
         # pickle-only objects
         "Hamiltonian_Obj": Hamiltonian_Obj,
-        "ki": ki,
-        "kj": kj,
         "dki": dki, 
         "dkj": dkj,
         "order": order
@@ -500,8 +527,7 @@ def calculate_2d_all_bands(Force_new=True, method_name="numerical_phase_correcte
         print(f"Saved STACKED QGT results for all bands to '{results_subdir}' (and temp/)")
 
     # ---- example plotting: choose a band to view ----
-    band_to_plot_list = [0,1,2,3,4,5] 
-    for band_to_plot in band_to_plot_list: # pick which band you want to visualize
+    for band_to_plot in range(n_bands): # pick which band you want to visualize
         plot_eigen_and_all_berry_2d(
             ki, kj, eigenvalues, 
             g_xy_imag_all[band_to_plot], g_xz_imag_all[band_to_plot], g_yz_imag_all[band_to_plot],
@@ -512,8 +538,40 @@ def calculate_2d_all_bands(Force_new=True, method_name="numerical_phase_correcte
             save_fig=True
         )
 
+        # 1. 3D Components
+        print(f"Plotting QGT Components (3D) for band {band_to_plot}...")
+        plot_QGT_components_3d(
+            ki, kj, g_xx_all[band_to_plot], g_xy_real_all[band_to_plot], g_xy_imag_all[band_to_plot], g_yy_all[band_to_plot],
+            stride_size=2,
+            results_dir=results_subdir,
+            save_fig=True,
+            filename=f"QGT_components_3d_band_{band_to_plot}.html",
+            show=False
+        )
+
+        # 2. Combined Plots
+        print(f"Plotting QMT/Eig/Berry/Trace (3D) for band {band_to_plot}...")
+        plot_qmt_eig_berry_trace_3d(
+            ki, kj, eigenvalues, g_xy_imag_all[band_to_plot], trace_all[band_to_plot],
+            eigenvalue_band=band_to_plot,
+            title=f"3D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {band_to_plot})",
+            results_dir=results_subdir,
+            save_fig=True,
+            filename=f"qmt_eig_berry_trace_3d_band_{band_to_plot}.html",
+            show=False
+        )
+
+        print(f"Plotting QMT/Eig/Berry/Trace (2D Heatmaps) for band {band_to_plot}...")
+        plot_qmt_eig_berry_trace_2d(
+            ki, kj, eigenvalues, g_xy_imag_all[band_to_plot], trace_all[band_to_plot],
+            eigenvalue_band=band_to_plot,
+            title=f"2D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {band_to_plot})",
+            results_dir=results_subdir,
+            save_fig=True
+        )
+
 
 
 if __name__ == '__main__':
-    calculate_2d_all_bands(Force_new=False, method_name="numerical_phase_corrected")
+    calculate_2d_all_bands(Force_new=False, method_name="numerical")
     # calculate_2d(Force_new=False)

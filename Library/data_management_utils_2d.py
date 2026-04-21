@@ -1,7 +1,9 @@
 import os
+import json
 import pickle
-from typing import Dict, Any, Tuple
-from .data_management_utils import pick_or_create_dataset_dir, meta_matcher_all_fields
+import numpy as np
+from typing import Tuple, Dict, Any, List, Optional
+from Library.data_management_utils_common import pick_or_create_result_dir_simple, meta_matcher_all_fields, dump_metadata
 
 def setup_2D_Eigen_results_directory(
     meta_params: Dict[str, Any],
@@ -16,30 +18,20 @@ def setup_2D_Eigen_results_directory(
         results_subdir (str): The path to the results directory.
         meta_target (dict): The metadata dictionary used for matching.
     """
-    Hamiltonian_name = meta_params.get("hamiltonian_name", "Unknown_Hamiltonian")
+    Hamiltonian_name = meta_params["hamiltonian_name"]
     base_root = os.path.join(os.getcwd(), "results", "2D_Eigen_results", Hamiltonian_name)
 
     required_files = ["eigenvalues.npy", "eigenfunctions.npy", "meta.json", "meta_info.pkl"]
 
-    # Extract Hamiltonian parameters
-    hamiltonian = meta_params.get("Hamiltonian_Obj", None)
-    if hamiltonian is not None and hasattr(hamiltonian, "get_parameters_dict"):
-        ham_params = hamiltonian.get_parameters_dict(parameter="2D")
-    else:
-        ham_params = {}
 
-    meta_params["hamiltonian_params"] = ham_params
-
-    dir_path, used = pick_or_create_dataset_dir(
-        base_root,
-        meta_target=meta_params,
-        required_files=required_files,
-        meta_matcher=meta_matcher_all_fields,
+    dir_path, used = pick_or_create_result_dir_simple(
+        base_root=base_root,
+        base_name="dataset_",
+        required_params=meta_params,
         force_new=force_new,
-        prefix="data_set_",
-        start_index=1,
+        required_files=required_files
     )
-
+    
     file_paths = {
         "eigenvalues": os.path.join(dir_path, "eigenvalues.npy"),
         "eigenfunctions": os.path.join(dir_path, "eigenfunctions.npy"),
@@ -51,7 +43,6 @@ def setup_2D_Eigen_results_directory(
     print(("Using existing 2D Eigen results directory: " if used else "Created new 2D Eigen results directory: ") + dir_path)
     
     full_meta = meta_params.copy()
-    full_meta["hamiltonian_name"] = Hamiltonian_name
     
     return file_paths, used, dir_path, full_meta
 
@@ -96,15 +87,17 @@ def setup_2D_QGT_results_directory(
         "meta_info.pkl"
     ]
 
-    dir_path, used = pick_or_create_dataset_dir(
-        base_root,
-        meta_target=meta_params,  # Use filtered target for matching
-        required_files=required_files,
-        meta_matcher=meta_matcher_all_fields,
+    dir_path, used = pick_or_create_result_dir_simple(
+        base_root=base_root,
+        base_name="dataset_",
+        required_params=meta_params,
         force_new=force_new,
-        prefix="data_set_",
-        start_index=1,
+        required_files=required_files
     )
+    
+    if not used:
+        json_meta = {k: v for k, v in meta_params.items() if not k.endswith("_Obj")}
+        dump_metadata(json_meta, os.path.join(dir_path, "parameters.json"))
 
     file_paths = {
         "g_xx": os.path.join(dir_path, "g_xx.npy"),
@@ -157,15 +150,19 @@ def setup_Spin_Density_results_directory(
         "meta_info.pkl"
     ]
 
-    dir_path, used = pick_or_create_dataset_dir(
-        base_root,
-        meta_target=meta_params,
-        required_files=required_files,
-        meta_matcher=meta_matcher_all_fields,
+    dir_path, used = pick_or_create_result_dir_simple(
+        base_root=base_root,
+        base_name="dataset_",
+        required_params=meta_params,
         force_new=force_new,
-        prefix="data_set_",
-        start_index=1,
+        required_files=required_files
     )
+    
+    if not used:
+        # Strip object references when dumping JSON
+        json_meta = {k: v for k, v in meta_params.items() if not k.endswith("_Obj")}
+        with open(os.path.join(dir_path, "parameters.json"), "w") as f:
+            json.dump(json_meta, f, indent=4)
 
     file_paths = {
         "spin_x": os.path.join(dir_path, "spin_x.npy"),

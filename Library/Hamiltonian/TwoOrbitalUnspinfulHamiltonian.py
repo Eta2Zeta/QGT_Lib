@@ -31,7 +31,7 @@ class TwoOrbitalUnspinfulHamiltonian(hamiltonian):
     def alpha_k(self, kx, ky):
         return self.zeta * (np.cos(kx * self.a) + np.cos(ky * self.a))
 
-    def compute_static(self, kx, ky):
+    def compute_static(self, kx, ky, kz=0):
         """
         Compute the static Hamiltonian for the two-orbital unspinful model.
         """
