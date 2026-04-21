@@ -1,0 +1,18 @@
+{
+    "hamiltonian_name": "TwoOrbitalUnspinfulHamiltonian",
+    "ki_range": [
+        -6.199964309733499,
+        6.199964309733501
+    ],
+    "kj_range": [
+        -6.199964309733499,
+        6.199964309733501
+    ],
+    "mesh_spacing": 150,
+    "dki": 0.08377580409572781,
+    "dkj": 0.08377580409572781,
+    "kk": 0.0,
+    "include_endpoints": false,
+    "kvals_mode": "centered",
+    "order": "xyz",
+    "ki": 

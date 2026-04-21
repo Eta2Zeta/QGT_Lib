@@ -7,11 +7,14 @@ import Library.Hamiltonian.Hamiltonian
 import Library.Hamiltonian.ChiralHamiltonian
 import sys
 import pickle
-sys.modules["Library.Hamiltonian_v2"] = Library.Hamiltonian.Hamiltonian_v2
-sys.modules["Library.Hamiltonian_v2.ChiralHamiltonian"] = Library.Hamiltonian.ChiralHamiltonian
-# Fix pickle loading error by patching the module directly
-# We need to assign the CLASS, not the module.
-Library.Hamiltonian.Hamiltonian_v2.ChiralHamiltonian = Library.Hamiltonian.ChiralHamiltonian.ChiralHamiltonian
+# Patch for unpickling old data that references Library.Hamiltonian_v2 (direct module)
+sys.modules["Library.Hamiltonian_v2"] = Library.Hamiltonian.Hamiltonian
+
+# Also ensure ChiralHamiltonian is available in Hamiltonian_v2 for unpickling
+try:
+    Library.Hamiltonian.Hamiltonian.ChiralHamiltonian = Library.Hamiltonian.ChiralHamiltonian.ChiralHamiltonian
+except AttributeError:
+    pass
 
 
 def _join_by_signed_inverse_omega(omegas_left, vals_left, omegas_right, vals_right,

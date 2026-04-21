@@ -207,7 +207,9 @@ def plot_all_2d_berries_from_directory(target_dir):
 if __name__ == "__main__":
     import os
     # base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/gWaveAltermagnetHamiltonian"
-    base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/THF_Hamiltonian"
+    # base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/THF_Hamiltonian"
+    base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/TwoOrbitalUnspinfulHamiltonian"
+
     for subdir in os.listdir(base_dir):
         target_dir = os.path.join(base_dir, subdir)
         if os.path.isdir(target_dir) and os.path.exists(os.path.join(target_dir, "meta_info.pkl")):

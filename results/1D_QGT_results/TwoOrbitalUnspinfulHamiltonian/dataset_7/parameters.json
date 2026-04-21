@@ -1,0 +1,23 @@
+{
+    "hamiltonian_name": "TwoOrbitalUnspinfulHamiltonian",
+    "hamiltonian_params": {
+        "A0": 0.1,
+        "polarization": "left",
+        "magnus_order": 1,
+        "analytic_magnus": false,
+        "t": 1,
+        "mu": 0,
+        "zeta": 1.0,
+        "a": 1
+    },
+    "param_name": "omega",
+    "vmin": 5.0,
+    "vmax": 50.0,
+    "spacing": "linear",
+    "num_param_points": 20,
+    "num_k_points": 100,
+    "angle_deg": 0.0,
+    "kx_shift": 0.0,
+    "ky_shift": 0.0,
+    "k_max": 1.5707963267948966
+}

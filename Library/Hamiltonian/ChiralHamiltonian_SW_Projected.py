@@ -2,7 +2,7 @@ import numpy as np
 from .Hamiltonian_v2 import hamiltonian
 from .ChiralHamiltonian import ChiralHamiltonian
 
-class ChiralHamiltonianEffective(hamiltonian):
+class ChiralHamiltonianSWProjected(hamiltonian):
     """
     Effective 2x2 Hamiltonian for n-layer rhombohedral graphene obtained by 
     downfolding the full 2n x 2n Chiral Hamiltonian using the Schrieffer-Wolff 

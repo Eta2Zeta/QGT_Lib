@@ -11,7 +11,7 @@ sigma_p = np.array([[0, 1],
 sigma_m = np.array([[0, 0],
                     [1, 0]], dtype=complex)  # σ_-
 
-class ChiralHamiltonianProjected(hamiltonian):
+class ChiralHamiltonianChiralBasisProjected(hamiltonian):
     """
     Minimal chiral effective Hamiltonian for n-layer rhombohedral graphene in the chiral basis,
     projected onto low-energy subspace, with a displacement field included.

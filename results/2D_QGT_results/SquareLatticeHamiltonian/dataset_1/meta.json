@@ -1,0 +1,30 @@
+{
+  "band_index": "ALL",
+  "dki": 0.08377580409572781,
+  "dkj": 0.08377580409572781,
+  "hamiltonian_name": "SquareLatticeHamiltonian",
+  "hamiltonian_params": {
+    "A0": 0,
+    "analytic_magnus": false,
+    "magnus_order": 1,
+    "omega": 5.0,
+    "polarization": "left",
+    "t1": 1,
+    "t2": 0.7071067811865475,
+    "t5": 0
+  },
+  "include_endpoints": true,
+  "ki_range": [
+    -6.199964309733499,
+    6.199964309733501
+  ],
+  "kj_range": [
+    -6.199964309733499,
+    6.199964309733501
+  ],
+  "kk": 0.0,
+  "mesh_spacing": 150,
+  "method_name": "numerical",
+  "n_bands": 2,
+  "order": "xyz"
+}

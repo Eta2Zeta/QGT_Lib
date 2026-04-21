@@ -10,19 +10,17 @@ from Library.plotting_lib_2d import *
 from Library.Hamiltonian.Hamiltonian import * 
 from Library.Hamiltonian.THF_Hamiltonian import *
 from Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected import *
+from Library.Hamiltonian.SquareLatticeHamiltonian import *
 from Library.Hamiltonian.gWaveAltermagnetHamiltonian import *
 from Library.Hamiltonian.AltermagnetHamiltonian import *
 from Library.Hamiltonian.RuO2Hamiltonian import *
-from Library.plotting_lib_3d import plot_degeneracy_3d, plot_degeneracy_on_path_3d, plot_isosurface, plot_arbitrary_slice_no_interp, plot_volumetric_cloud
+from Library.plotting_lib_3d import plot_degeneracy_3d, plot_degeneracy_on_path_3d, plot_arbitrary_slice_no_interp, plot_volumetric_cloud
 from Library.plotting_lib_2d import *
 from Library.plotting_lib_2d import plot_degeneracy_2d
 from Library.plotting_lib_1d import *
 from Library.eigenvalue_calc_lib import *
-from Library.Geometry.zones import ZoneDivider
-from Library.utilities import setup_results_directory, centered_kvals, generate_3d_sym_lines, generate_1d_lines_at_angles
-from Library.data_management_utils import setup_3D_Eigen_results_directory, setup_sym_points_results_directory, setup_1D_angles_results_directory
-from Library.Hamiltonian_helper import get_Hamiltonian
-from Library.data_management_utils_2D import setup_2D_Eigen_results_directory
+from Library.utilities import centered_kvals, generate_1d_lines_at_angles
+from Library.data_management_utils_2d import setup_2D_Eigen_results_directory
 
 
 
@@ -30,9 +28,9 @@ from Library.data_management_utils_2D import setup_2D_Eigen_results_directory
 temp_dir = os.path.join(os.getcwd(), "temp")
 os.makedirs(temp_dir, exist_ok=True)
 
-Hamiltonian_Obj = THF_Hamiltonian(A0=0)
+# Hamiltonian_Obj = THF_Hamiltonian(A0=0)
 # Hamiltonian_Obj = TwoOrbitalUnspinfulHamiltonian(zeta=1.0, omega = 10.0, A0=0.1, mu=0, magnus_order = 1)
-# Hamiltonian_Obj = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=0)
+Hamiltonian_Obj = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=0)
 # Hamiltonian_Obj = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=(1-np.sqrt(2))/4)
 # Hamiltonian_Obj = ChiralHamiltonianProjected(n=5, V=30, A0=0.1, omega=1000)
 # bands = (0,1)
@@ -70,10 +68,10 @@ def calculation_2d(Hamiltonian_Obj = Hamiltonian_Obj, force_new=True, include_en
     dkj = 2*k_max/mesh_spacing
     z_limit = 1000
 
-    # Create the results directory
-    # file_paths, use_existing, results_subdir = setup_results_directory(Hamiltonian_Obj, ki_range, kj_range, mesh_spacing, force_new=force_new)
 
     kvals_mode = "endpoints" if include_end_points else "centered"
+
+    ham_params = Hamiltonian_Obj.get_parameters_dict(parameter="2D")
     
     Hamiltonian_name = getattr(Hamiltonian_Obj, "name", "Hamiltonian_Obj")
     
@@ -88,9 +86,7 @@ def calculation_2d(Hamiltonian_Obj = Hamiltonian_Obj, force_new=True, include_en
         "include_endpoints": bool(include_end_points),
         "kvals_mode": str(kvals_mode),
         "order": str(order),
-        "Hamiltonian_Obj": Hamiltonian_Obj,
-        "ki": ki,
-        "kj": kj
+        "hamiltonian_params": ham_params
     }
 
     file_paths, use_existing, results_subdir, meta_target = setup_2D_Eigen_results_directory(
@@ -151,16 +147,14 @@ def calculation_2d(Hamiltonian_Obj = Hamiltonian_Obj, force_new=True, include_en
 
         meta_info_json = meta_target.copy()
         
-        keys_to_remove = ["Hamiltonian_Obj", "ki", "kj"]
-        for key in keys_to_remove:
-            if key in meta_info_json:
-                del meta_info_json[key]
-                
         with open(file_paths["meta_json"], "w") as f:
             json.dump(meta_info_json, f, indent=2, sort_keys=True)
 
         # Save meta information (Pickle) - for objects
         meta_info_pkl = meta_target
+        meta_info_pkl["Hamiltonian_Obj"] = Hamiltonian_Obj
+        meta_info_pkl["ki"] = ki
+        meta_info_pkl["kj"] = kj
 
         # Save the metadata using pickle
         with open(file_paths["meta_pkl"], "wb") as meta_file:

@@ -16,7 +16,8 @@ from Library.Hamiltonian.gWaveAltermagnetHamiltonian import gWaveAltermagnetHami
 from Library.eigenvalue_calc_lib import *
 from Library.QGT_lib import *
 from Library.topology import *
-from Library.utilities import setup_qgt_nd_results_dir_json, setup_qgt_nd_results_dir, generate_3d_sym_lines
+from Library.utilities import generate_3d_sym_lines
+from Library.data_management_utils_nd import setup_qgt_nd_results_dir_json, setup_qgt_nd_results_dir
 from Library.Hamiltonian_helper import get_Hamiltonian
 
 from Library.plotting_lib_2d import *
