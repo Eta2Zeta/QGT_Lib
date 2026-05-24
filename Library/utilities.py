@@ -423,7 +423,93 @@ def generate_3d_sym_lines(num_points_per_segment=100, space_group=58, a=1.0):
     )
 
 
+
+
+def generate_2d_sym_lines(Hamiltonian_Obj, num_points_per_segment=100):
+    """
+    Generate interpolated k-points along the high-symmetry path of a 2D Hamiltonian.
+
+    The symmetry points and path order are obtained from
+    ``Hamiltonian_Obj.get_sym_path()``, so the geometry is always
+    self-consistent with the model's own Brillouin zone definition.
+
+    Parameters
+    ----------
+    Hamiltonian_Obj : hamiltonian
+        A Hamiltonian instance that implements ``get_sym_path()``.
+        The method must return ``(sym_points, path_labels)`` where
+        ``sym_points`` is a dict mapping label -> 1-D array of length 2
+        and ``path_labels`` is an ordered list of labels (may repeat).
+    num_points_per_segment : int
+        Number of k-points per segment, exclusive of the start point and
+        inclusive of the end point (same convention as generate_3d_sym_lines).
+
+    Returns
+    -------
+    all_k_points : ndarray, shape (N, 2)
+        Interpolated k-points along the full path.
+    all_k_dist : ndarray, shape (N,)
+        Cumulative arc-length distance along the path (useful as x-axis
+        when plotting band structures).
+    node_indices : list of int
+        Indices into ``all_k_points`` / ``all_k_dist`` where the path
+        lands on a high-symmetry node.  Length equals ``len(path_labels)``.
+    path_labels : list of str
+        Ordered label sequence as returned by ``get_sym_path()``
+        (may include repeated entries, e.g. ``["G","M","X","G"]``).
+    path_points : ndarray, shape (M, 2)
+        Cartesian k-coordinates of the nodes in sequence.
+
+    Example
+    -------
+    >>> H = SquareLatticeHamiltonian()
+    >>> k_pts, k_dist, node_idx, labels, nodes = generate_2d_sym_lines(H)
+    """
+    sym_points, path_labels = Hamiltonian_Obj.get_sym_path()
+
+    # Resolve labels → coordinate arrays (shape (2,) each)
+    path_points = [np.asarray(sym_points[label], dtype=float)
+                   for label in path_labels]
+
+    # ------------------------------------------------------------------
+    # Build path (same logic as generate_3d_sym_lines)
+    # ------------------------------------------------------------------
+    all_k_points = []
+    all_k_dist   = []
+    node_indices  = []
+    cum_dist      = 0.0
+
+    # First node
+    all_k_points.append(path_points[0])
+    all_k_dist.append(cum_dist)
+    node_indices.append(0)
+
+    for i in range(len(path_points) - 1):
+        start = path_points[i]
+        end   = path_points[i + 1]
+
+        dist  = np.linalg.norm(end - start)
+        pts   = np.linspace(start, end, num_points_per_segment + 1)[1:]
+        dists = np.linspace(0, dist,  num_points_per_segment + 1)[1:]
+
+        for p, d in zip(pts, dists):
+            all_k_points.append(p)
+            all_k_dist.append(cum_dist + d)
+
+        cum_dist += dist
+        node_indices.append(len(all_k_points) - 1)
+
+    return (
+        np.array(all_k_points),   # (N, 2)
+        np.array(all_k_dist),     # (N,)
+        node_indices,             # list of int, length = len(path_labels)
+        path_labels,              # list of str
+        np.array(path_points),    # (M, 2)
+    )
+
+
 def generate_1d_lines_at_angles(k_max, num_angles, num_points_per_line):
+
     """
     Generate 1D straight-line k-paths passing through the origin at various angles.
     

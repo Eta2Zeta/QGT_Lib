@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from Library.plotting_utils import load_qgt, filter_entries_by_omega
 from Library.topology import compute_chern_number
 import Library.Hamiltonian.Hamiltonian
 import Library.Hamiltonian.ChiralHamiltonian
@@ -15,237 +14,6 @@ try:
     Library.Hamiltonian.Hamiltonian.ChiralHamiltonian = Library.Hamiltonian.ChiralHamiltonian.ChiralHamiltonian
 except AttributeError:
     pass
-
-
-def _join_by_signed_inverse_omega(omegas_left, vals_left, omegas_right, vals_right,
-                                  *, drop_overlap=True, tol=1e-9,
-                                  left_sign=-1.0, right_sign=+1.0):
-    """
-    Build a single x-axis using signed 1/omega:
-      left:  x = left_sign * (1/omega_left_sorted)   [default: negative]
-      right: x = right_sign * (1/omega_right_sorted_reversed)  [default: positive]
-
-    Steps:
-      - Sort left omegas low->high and keep matching vals.
-      - Sort right omegas low->high, then reverse to high->low and keep vals.
-      - Optionally drop the duplicate junction if max(omega_left)==max(omega_right).
-      - Return concatenated x and y arrays.
-    """
-    # Left: sort by increasing omega
-    idxL = np.argsort(omegas_left)
-    l_om = np.asarray(omegas_left)[idxL]
-    l_v  = [vals_left[i] for i in idxL]
-    x_left = left_sign * (1.0 / l_om)
-
-    # Right: sort by increasing omega, then reverse (high->low)
-    idxR = np.argsort(omegas_right)
-    r_om_sorted = np.asarray(omegas_right)[idxR]
-    r_v_sorted  = [vals_right[i] for i in idxR]
-    r_om_rev    = r_om_sorted[::-1]
-    r_v_rev     = r_v_sorted[::-1]
-    x_right     = right_sign * (1.0 / r_om_rev)
-
-    # If both runs include the exact same highest omega, drop the first right point
-    if drop_overlap and r_om_sorted.size and np.isclose(l_om[-1], r_om_sorted[-1], atol=tol, rtol=0):
-        r_om_rev = r_om_rev[1:]
-        r_v_rev  = r_v_rev[1:]
-        x_right  = x_right[1:]
-
-    x = np.concatenate([x_left, x_right])
-    y = np.array(l_v + r_v_rev, dtype=float)
-    return x, y
-
-
-# ---------------- joined plots (two datasets) ----------------
-
-def plot_trace_std_vs_signed_invomega_joined(
-    left_folder_name,
-    right_folder_name,
-    *,
-    omega_min_left=None,
-    omega_max_left=None,
-    omega_min_right=None,
-    omega_max_right=None,
-    drop_overlap=True,
-    tol=1e-9,
-    left_sign=-1.0,
-    right_sign=+1.0
-):
-    """Std of Tr[g] over BZ vs signed 1/omega, joined left|right."""
-    entries_L, _ = load_qgt(left_folder_name)
-    entries_R, _ = load_qgt(right_folder_name)
-
-    filt_L = filter_entries_by_omega(entries_L, omega_min_left,  omega_max_left)
-    filt_R = filter_entries_by_omega(entries_R, omega_min_right, omega_max_right)
-    if len(filt_L) == 0 or len(filt_R) == 0:
-        raise ValueError("No omega slices in range for one or both datasets.")
-
-    omegas_L = np.array([float(e["omega"]) for e in filt_L], dtype=float)
-    vals_L   = [np.nanstd(e["trace"]) for e in filt_L]
-
-    omegas_R = np.array([float(e["omega"]) for e in filt_R], dtype=float)
-    vals_R   = [np.nanstd(e["trace"]) for e in filt_R]
-
-    x, y = _join_by_signed_inverse_omega(
-        omegas_L, vals_L, omegas_R, vals_R,
-        drop_overlap=drop_overlap, tol=tol, left_sign=left_sign, right_sign=right_sign
-    )
-
-    plt.figure(figsize=(9, 5))
-    plt.plot(x, y, marker='o', linestyle='-')
-    plt.axvline(0.0, color='k', lw=1, ls='--', alpha=0.5)  # seam at 0
-    plt.xlabel("signed 1 / ω   (left < 0, right > 0)")
-    plt.ylabel("Std. Dev of QGT Trace over BZ")
-    plt.title("Fluctuation of QGT Trace vs signed 1/ω (joined left | right-reversed)")
-    plt.grid(True, axis='both', alpha=0.35)
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_berry_std_vs_signed_invomega_joined(
-    left_folder_name,
-    right_folder_name,
-    *,
-    omega_min_left=None,
-    omega_max_left=None,
-    omega_min_right=None,
-    omega_max_right=None,
-    use_precomputed=False,   # True if entries include 'berry'
-    convert_from_imQ=True,   # if not precomputed: Ω = -2 * Im(Q_xy)
-    drop_overlap=True,
-    tol=1e-9,
-    left_sign=-1.0,
-    right_sign=+1.0
-):
-    """Std of Berry curvature over BZ vs signed 1/omega, joined left|right."""
-    entries_L, _ = load_qgt(left_folder_name)
-    entries_R, _ = load_qgt(right_folder_name)
-
-    filt_L = filter_entries_by_omega(entries_L, omega_min_left,  omega_max_left)
-    filt_R = filter_entries_by_omega(entries_R, omega_min_right, omega_max_right)
-    if len(filt_L) == 0 or len(filt_R) == 0:
-        raise ValueError("No omega slices in range for one or both datasets.")
-
-    omegas_L = np.array([float(e["omega"]) for e in filt_L], dtype=float)
-    vals_L = []
-    for e in filt_L:
-        if use_precomputed and ("berry" in e):
-            berry = np.asarray(e["berry"])
-        else:
-            gim = np.asarray(e["g_xy_imag"])
-            berry = (-2.0 * gim) if convert_from_imQ else gim
-        vals_L.append(np.nanstd(berry))
-
-    omegas_R = np.array([float(e["omega"]) for e in filt_R], dtype=float)
-    vals_R = []
-    for e in filt_R:
-        if use_precomputed and ("berry" in e):
-            berry = np.asarray(e["berry"])
-        else:
-            gim = np.asarray(e["g_xy_imag"])
-            berry = (-2.0 * gim) if convert_from_imQ else gim
-        vals_R.append(np.nanstd(berry))
-
-    x, y = _join_by_signed_inverse_omega(
-        omegas_L, vals_L, omegas_R, vals_R,
-        drop_overlap=drop_overlap, tol=tol, left_sign=left_sign, right_sign=right_sign
-    )
-
-    plt.figure(figsize=(9, 5))
-    plt.plot(x, y, marker='o', linestyle='-')
-    plt.axvline(0.0, color='k', lw=1, ls='--', alpha=0.5)
-    plt.xlabel("signed 1 / ω   (left < 0, right > 0)")
-    plt.ylabel("Std. Dev of Berry Curvature over BZ")
-    plt.title("Fluctuation of Berry Curvature vs signed 1/ω (joined left | right-reversed)")
-    plt.grid(True, axis='both', alpha=0.35)
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_integrated_trace_minus_berry_signed_invomega_joined(
-    left_folder_name,
-    right_folder_name,
-    *,
-    omega_min_left=None,
-    omega_max_left=None,
-    omega_min_right=None,
-    omega_max_right=None,
-    use_precomputed=False,   # True if entries include 'berry'
-    convert_from_imQ=True,   # if not precomputed: Ω = -2 * Im(Q_xy)
-    drop_overlap=True,
-    tol=1e-9,
-    left_sign=-1.0,
-    right_sign=+1.0
-):
-    r"""Plot  \int_{BZ} [ Tr(g) - Ω ] d^2k  vs signed 1/ω, joined left|right."""
-    entries_L, meta_L = load_qgt(left_folder_name)
-    entries_R, meta_R = load_qgt(right_folder_name)
-
-    # sanity: same dkx/dky so the integral is comparable
-    dkx_L, dky_L = float(meta_L["dkx"]), float(meta_L["dky"])
-    dkx_R, dky_R = float(meta_R["dkx"]), float(meta_R["dky"])
-    if not (np.isclose(dkx_L, dkx_R) and np.isclose(dky_L, dky_R)):
-        raise ValueError("dkx/dky differ between datasets; cannot join safely.")
-    area = dkx_L * dky_L
-
-    filt_L = filter_entries_by_omega(entries_L, omega_min_left,  omega_max_left)
-    filt_R = filter_entries_by_omega(entries_R, omega_min_right, omega_max_right)
-    if len(filt_L) == 0 or len(filt_R) == 0:
-        raise ValueError("No omega slices in range for one or both datasets.")
-
-    omegas_L, vals_L = [], []
-    for e in filt_L:
-        w = float(e["omega"])
-        trace = np.asarray(e["trace"])
-        if use_precomputed and ("berry" in e):
-            berry = np.asarray(e["berry"])
-        else:
-            gim = np.asarray(e["g_xy_imag"])
-            berry = (-2.0 * gim) if convert_from_imQ else gim
-        vals_L.append(np.nansum(trace - berry) * area)
-        omegas_L.append(w)
-
-    omegas_R, vals_R = [], []
-    for e in filt_R:
-        w = float(e["omega"])
-        trace = np.asarray(e["trace"])
-        if use_precomputed and ("berry" in e):
-            berry = np.asarray(e["berry"])
-        else:
-            gim = np.asarray(e["g_xy_imag"])
-            berry = (-2.0 * gim) if convert_from_imQ else gim
-        vals_R.append(np.nansum(trace - berry) * area)
-        omegas_R.append(w)
-
-    x, y = _join_by_signed_inverse_omega(
-        np.array(omegas_L, dtype=float), vals_L,
-        np.array(omegas_R, dtype=float), vals_R,
-        drop_overlap=drop_overlap, tol=tol, left_sign=left_sign, right_sign=right_sign
-    )
-
-    plt.figure(figsize=(9, 5))
-    plt.plot(x, y, marker='o', linestyle='-')
-    plt.axvline(0.0, color='k', lw=1, ls='--', alpha=0.5)
-    plt.xlabel("signed 1 / ω   (left < 0, right > 0)")
-    plt.ylabel(r"$\int_{\mathrm{BZ}} [\,\mathrm{Tr}(g) - \Omega\,]\, d^2k$")
-    plt.title(r"Integrated Tr(g) − Ω vs signed 1/ω (joined left | right-reversed)")
-    plt.grid(True, axis='both', alpha=0.35)
-    plt.tight_layout()
-    plt.show()
-    
-# plot_trace_std_vs_signed_invomega_joined("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", 
-#                                  "ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", 
-#                                  omega_min_left=33, omega_min_right=50)
-
-
-# plot_berry_std_vs_signed_invomega_joined("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", 
-#                                  "ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", 
-#                                  omega_min_left=33, omega_min_right=50)
-
-
-# plot_integrated_trace_minus_berry_signed_invomega_joined("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", 
-#                                  "ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", 
-#                                  omega_min_left=33, omega_min_right=50)
 
 # 2D, single data set not joined
 def plot_trace_std_param2d_inverse_omega(result_dir,
@@ -348,22 +116,11 @@ def plot_trace_std_param2d_inverse_omega(result_dir,
 
 
 
-# plot_trace_std_param2d_inverse_omega(
-#     "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_10.000_50.000-omega_50.000_5000.000_-SPACING_V_16_linear-omega_16_log_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1",
-#     x_param="omega", 
-#     y_param="V",
-# )
-# plot_trace_std_param2d_inverse_omega(
-#     "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_10.000_50.000-omega_50.000_5000.000_-SPACING_V_16_linear-omega_16_log_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1",
-#     x_param="omega", 
-#     y_param="V",
-# )
-
-# plot_trace_std_param2d_inverse_omega(
-#     "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_10.000_50.000-omega_50.000_5000.000_-SPACING_V_32_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1",
-#     x_param="omega", 
-#     y_param="V",
-# )
+plot_trace_std_param2d_inverse_omega(
+    "results/2D_QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_10.000_50.000-omega_50.000_5000.000_-SPACING_V_32_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1",
+    x_param="omega", 
+    y_param="V",
+)
 
 # ------------------------------------------------------------------
 # Helpers for joined signed 1/omega plotting (left=negative, right=positive)
@@ -375,30 +132,6 @@ def _load_bundle(path_like):
     if not os.path.exists(bundle_path):
         raise FileNotFoundError(f"Bundle not found: {bundle_path}")
     return np.load(bundle_path, allow_pickle=True)
-
-def _get_b_vectors(path_like):
-    """Load b1, b2 from meta.pkl in the given directory or bundle parent."""
-    
-    # Try to find meta.pkl
-    if os.path.isdir(path_like):
-        meta_path = os.path.join(path_like, "meta.pkl")
-    else:
-        # assume path_like is the bundle file, so parent is dir
-        meta_path = os.path.join(os.path.dirname(path_like), "meta.pkl")
-        
-    if not os.path.exists(meta_path):
-        print(f"Warning: meta.pkl not found at {meta_path}. Cannot load b-vectors.")
-        return None, None
-        
-    with open(meta_path, "rb") as f:
-        meta = pickle.load(f)
-        
-    H = meta.get("Hamiltonian_Template")
-    if H and hasattr(H, "b1") and hasattr(H, "b2"):
-        return H.b1, H.b2
-    else:
-        print("Warning: Hamiltonian template in meta.pkl missing b1/b2.")
-        return None, None
 
 def _axis_for(bundle, i, name):
     key = f"axis_{i}_{name}"
@@ -869,41 +602,41 @@ def plot_slices_qgt_std_param2d_signed_invomega_joined(
 full_Chiral_Hamiltonian_left_drive_dir = "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
 full_Chiral_Hamiltonian_right_drive_dir = "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
 
-plot_qgt_std_param2d_signed_invomega_joined(
-    left_result_dir  ="results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1",
-    right_result_dir ="results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1",
-    y_param="V",            # the shared second parameter
-    quantity="trace",      # "trace" | "berry" | "trace_minus_berry"
-    drop_overlap=True,      # typical when both include the same max ω
-)
+# plot_qgt_std_param2d_signed_invomega_joined(
+#     left_result_dir  ="results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1",
+#     right_result_dir ="results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1",
+#     y_param="V",            # the shared second parameter
+#     quantity="trace",      # "trace" | "berry" | "trace_minus_berry"
+#     drop_overlap=True,      # typical when both include the same max ω
+# )
 
-plot_qgt_std_param2d_signed_invomega_joined(
-    left_result_dir  = full_Chiral_Hamiltonian_left_drive_dir,
-    right_result_dir = full_Chiral_Hamiltonian_right_drive_dir,
-    y_param="V",            # the shared second parameter
-    quantity="berry",      # "trace" | "berry" | "trace_minus_berry"
-    drop_overlap=True,      # typical when both include the same max ω
-    show=True
-)
+# plot_qgt_std_param2d_signed_invomega_joined(
+#     left_result_dir  = full_Chiral_Hamiltonian_left_drive_dir,
+#     right_result_dir = full_Chiral_Hamiltonian_right_drive_dir,
+#     y_param="V",            # the shared second parameter
+#     quantity="berry",      # "trace" | "berry" | "trace_minus_berry"
+#     drop_overlap=True,      # typical when both include the same max ω
+#     show=True
+# )
 
 
-plot_qgt_std_param2d_signed_invomega_joined(
-    left_result_dir  = full_Chiral_Hamiltonian_left_drive_dir,
-    right_result_dir = full_Chiral_Hamiltonian_right_drive_dir,
-    y_param="V",            # the shared second parameter
-    quantity="trace_minus_berry",      # "trace" | "berry" | "trace_minus_berry"
-    drop_overlap=True,      # typical when both include the same max ω
-    show=True
-)
+# plot_qgt_std_param2d_signed_invomega_joined(
+#     left_result_dir  = full_Chiral_Hamiltonian_left_drive_dir,
+#     right_result_dir = full_Chiral_Hamiltonian_right_drive_dir,
+#     y_param="V",            # the shared second parameter
+#     quantity="trace_minus_berry",      # "trace" | "berry" | "trace_minus_berry"
+#     drop_overlap=True,      # typical when both include the same max ω
+#     show=True
+# )
 
-plot_qgt_std_param2d_signed_invomega_joined(
-    left_result_dir  = full_Chiral_Hamiltonian_left_drive_dir,
-    right_result_dir = full_Chiral_Hamiltonian_right_drive_dir,
-    y_param="V",            # the shared second parameter
-    quantity="chern",      # "trace" | "berry" | "trace_minus_berry" | "chern"
-    drop_overlap=True,      # typical when both include the same max ω
-    show=True
-)
+# plot_qgt_std_param2d_signed_invomega_joined(
+#     left_result_dir  = full_Chiral_Hamiltonian_left_drive_dir,
+#     right_result_dir = full_Chiral_Hamiltonian_right_drive_dir,
+#     y_param="V",            # the shared second parameter
+#     quantity="chern",      # "trace" | "berry" | "trace_minus_berry" | "chern"
+#     drop_overlap=True,      # typical when both include the same max ω
+#     show=True
+# )
 
 #! Chiral Projected Hamiltonian 
 right_drive_strong = "results/QGT_ND/RhombohedralGrapheneHamiltonian/A0_0.10-V_30-analytic_magnus_False-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_20.000_5000.000_-SPACING_V_32_linear-omega_48_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"

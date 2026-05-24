@@ -788,10 +788,6 @@ if __name__ == "__main__":
     
     # Using the latest result directory found
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    # base_results_path = os.path.join(current_dir, "results/3D_QGT_results/RuO2Hamiltonian")
-
-    # base_results_path = os.path.join(current_dir, "results/3D_QGT_results/AltermagnetHamiltonian")
-
     base_results_path = os.path.join(current_dir, "results/3D_QGT_results/gWaveAltermagnetHamiltonian")
     
     # Placeholder for the specific dataset, using one found in list_dir

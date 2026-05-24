@@ -9,14 +9,21 @@ from Library.plotting_utils import load_qgt, filter_entries_by_omega
 import sys
 import Library.Hamiltonian.Hamiltonian
 from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
-# Patch for unpickling old data that references Library.Hamiltonian_v2 (direct module)
-sys.modules["Library.Hamiltonian_v2"] = Library.Hamiltonian.Hamiltonian
+from Library.Hamiltonian.SquareLatticeHamiltonian import SquareLatticeHamiltonian
+import Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected
+from Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected import ChiralHamiltonianChiralBasisProjected
 
-# Also ensure ChiralHamiltonian is available in Hamiltonian_v2 for unpickling
-try:
-    Library.Hamiltonian.Hamiltonian.ChiralHamiltonian = ChiralHamiltonian
-except ImportError:
-    pass
+# Patch for unpickling old data that references old module names
+sys.modules["Library.Hamiltonian_v2"] = Library.Hamiltonian.Hamiltonian
+sys.modules["Library.Hamiltonian.Chiral_Hamiltonian_Projected"] = Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected
+
+# Backward-compat patches so pickle can find classes that were moved/renamed.
+# Old .pkl files record the class path at save-time; these lines re-inject them.
+Library.Hamiltonian.Hamiltonian.ChiralHamiltonian = ChiralHamiltonian
+Library.Hamiltonian.Hamiltonian.SquareLatticeHamiltonian = SquareLatticeHamiltonian
+Library.Hamiltonian.Hamiltonian.RhombohedralGrapheneHamiltonian = ChiralHamiltonianChiralBasisProjected
+Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected.Chiral_Hamiltonian_Projected = ChiralHamiltonianChiralBasisProjected
+Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected.RhombohedralGrapheneHamiltonian = ChiralHamiltonianChiralBasisProjected
 
 mpl.rcParams.update({
     "font.size": 8,        # base font size
@@ -29,82 +36,331 @@ mpl.rcParams.update({
 })
 
 
-#@ 2D QGT single-parameter omega sweep dynamic plotting
-def dynamic_2d_trace_vs_omega(folder_name, omega_min=None, omega_max=None):
+def dynamic_2d_qgt_1d_sweep_html(
+        dataset_path,
+        sweep_param,
+        param_min=None, param_max=None,
+        quantity="trace",
+        cmap="inferno",
+        output_html=None):
     """
-    Dynamically visualize the QGT trace (2D heatmap) as a function of omega.
+    Interactive HTML plot (Plotly slider) of a 2-D QGT quantity as one
+    parameter is swept, loading data from the N-D bundle produced by
+    ``Calc_QGT_2D_nd_parameter_sweep.py``.
 
-    Parameters:
-        folder_name (str): Name of the subfolder in 'results/2D_QGT_omega_sweep/'.
-        omega_min (float|None): Keep slices with omega >= omega_min.
-        omega_max (float|None): Keep slices with omega <= omega_max.
+    The swept axis is identified by name from the bundle's ``names`` array
+    (saved as ``axis_{i}_{name}``).  All other parameter axes (if any) are
+    fixed at their middle index.
+
+    Parameters
+    ----------
+    dataset_path : str
+        Absolute path **or** relative to the project root
+        (e.g. ``"results/2D_QGT_ND/SquareLatticeHamiltonian/dataset2"``).
+    sweep_param : str
+        Name of the parameter to sweep (must match a name in the bundle's
+        ``names`` array, e.g. ``"omega"``, ``"V"``, ``"A0"``).
+    param_min / param_max : float | None
+        Optional range filter on the swept parameter (inclusive).
+    quantity : str
+        ``"trace"`` (default), ``"berry"``, or ``"imqxy"``.
+    cmap : str
+        Plotly colorscale name (e.g. ``"inferno"``, ``"RdBu_r"``).
+    output_html : str | None
+        Destination .html file.  Defaults to
+        ``<dataset_path>/dynamic_2d_{quantity}_vs_{sweep_param}.html``.
     """
-    results_path = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", folder_name)
-    qgt_data_path = os.path.join(results_path, "QGT_2D.npy")
-    meta_path = os.path.join(results_path, "meta_info.pkl")
+    import plotly.graph_objects as go
+    import pickle
 
-    if not os.path.exists(qgt_data_path):
-        raise FileNotFoundError(f"QGT data not found in '{results_path}'.")
+    # ---------- resolve path ----------
+    if not os.path.isabs(dataset_path):
+        dataset_path = os.path.join(os.getcwd(), dataset_path)
 
-    with open(meta_path, "rb") as f:
-        meta_info = pickle.load(f)
-    qgt_data = np.load(qgt_data_path, allow_pickle=True)
+    bundle_path = os.path.join(dataset_path, "qgt_nd_bundle.npz")
+    meta_path   = os.path.join(dataset_path, "meta.pkl")
 
-    # Filter by omega range (inclusive). If no bounds provided, keep all.
-    def _in_range(w):
-        if (omega_min is not None) and (w < omega_min): return False
-        if (omega_max is not None) and (w > omega_max): return False
-        return True
+    if not os.path.exists(bundle_path):
+        raise FileNotFoundError(f"ND bundle not found: {bundle_path}")
 
-    filtered = [entry for entry in qgt_data if _in_range(float(entry["omega"]))]
-    if len(filtered) == 0:
-        raise ValueError("No omega slices fall within the requested range.")
+    # ---------- load bundle ----------
+    bundle = np.load(bundle_path, allow_pickle=True)
 
-    kx = meta_info["kx"]
-    ky = meta_info["ky"]
-    omega_values = [float(entry["omega"]) for entry in filtered]
+    names = list(bundle["names"])           # list of swept parameter names
+    shape = list(bundle["shape"])           # lengths along each param axis
+    kx    = bundle["kx"]                   # (Ny, Nx)
+    ky    = bundle["ky"]                   # (Ny, Nx)
 
-    # Global color scaling on truncated data
-    max_trace = max(np.nanmax(entry["trace"]) for entry in filtered)
-    min_trace = min(np.nanmin(entry["trace"]) for entry in filtered)
+    # ---------- find sweep axis ----------
+    if sweep_param not in names:
+        raise ValueError(
+            f"Parameter '{sweep_param}' not found in bundle.\n"
+            f"Available parameters: {names}"
+        )
+    sweep_axis = names.index(sweep_param)
+    param_values = bundle[f"axis_{sweep_axis}_{sweep_param}"]  # 1-D array
 
-    # Initial data
-    initial_index = 0
-    trace0 = filtered[initial_index]["trace"]
+    # ---------- pick QGT field grid ----------
+    # trace_grid shape: (*shape, Ny, Nx)
+    q = quantity.lower()
+    if q == "trace":
+        field_grid = bundle["trace_grid"]
+        label_q    = "QGT Trace"
+    elif q == "berry":
+        field_grid = -2.0 * bundle["g_xy_imag_grid"]
+        label_q    = "Berry Curvature \u03a9"
+    elif q == "imqxy":
+        field_grid = bundle["g_xy_imag_grid"]
+        label_q    = "Im(Q_xy)"
+    else:
+        raise ValueError(f"Unknown quantity '{quantity}'. Use 'trace', 'berry', or 'imqxy'.")
 
-    # Setup figure and axes
-    fig, ax = plt.subplots(figsize=(8, 6))
-    fig.subplots_adjust(bottom=0.2)
+    # ---------- fix all non-sweep axes at their midpoint ----------
+    # Build a tuple of slices/indices: sweep axis → slice(None), others → midpoint
+    n_params = len(names)
+    mid_idx = tuple(
+        slice(None) if ax == sweep_axis else shape[ax] // 2
+        for ax in range(n_params)
+    )
+    # Result: field_grid[mid_idx] has shape (n_sweep, Ny, Nx)
+    field_2d_series = field_grid[mid_idx]
 
-    img = ax.imshow(
-        trace0,
-        origin='lower',
-        extent=[kx.min(), kx.max(), ky.min(), ky.max()],
-        cmap='inferno',
-        vmin=min_trace,
-        vmax=max_trace,
-        aspect='auto'
+    # ---------- range filter on sweep parameter ----------
+    mask = np.ones(len(param_values), dtype=bool)
+    if param_min is not None:
+        mask &= param_values >= param_min
+    if param_max is not None:
+        mask &= param_values <= param_max
+
+    param_values    = param_values[mask]
+    field_2d_series = field_2d_series[mask]    # (n_filtered, Ny, Nx)
+
+    if len(param_values) == 0:
+        raise ValueError(
+            f"No slices of '{sweep_param}' fall within "
+            f"[{param_min}, {param_max}]."
+        )
+
+    # ---------- colour limits ----------
+    finite_vals = field_2d_series[np.isfinite(field_2d_series)]
+    vmin, vmax = float(np.nanmin(finite_vals)), float(np.nanmax(finite_vals))
+    if q != "trace":                       # symmetric colour bar for signed quantities
+        abs_max = max(abs(vmin), abs(vmax))
+        vmin, vmax = -abs_max, abs_max
+
+    # ---------- hamiltonian name (from meta.pkl) ----------
+    ham_name = "Unknown Hamiltonian"
+    if os.path.exists(meta_path):
+        with open(meta_path, "rb") as f:
+            meta = pickle.load(f)
+        ht = meta.get("Hamiltonian_Template")
+        ham_name = getattr(ht, "name", ham_name) if ht is not None else ham_name
+
+    # Fixed-param annotation for the plot title (all axes except sweep)
+    fixed_labels = [
+        f"{names[ax]}={param_values[0]:.4g}"  # placeholder; value doesn't vary
+        for ax in range(n_params)
+        if ax != sweep_axis
+    ]
+    fixed_str = ", ".join(fixed_labels) if fixed_labels else ""
+
+    # ---------- build Plotly figure ----------
+    fig = go.Figure()
+
+    for i, pval in enumerate(param_values):
+        fig.add_trace(go.Heatmap(
+            z=field_2d_series[i].tolist(),
+            x=kx[0, :].tolist(),
+            y=ky[:, 0].tolist(),
+            colorscale=cmap,
+            zmin=vmin, zmax=vmax,
+            visible=(i == 0),
+            name=f"{sweep_param}={pval:.4g}",
+            colorbar=dict(title=label_q, thickness=18),
+            hovertemplate="kx: %{x:.3f}<br>ky: %{y:.3f}<br>Value: %{z:.4g}<extra></extra>",
+        ))
+
+    steps = []
+    for i, pval in enumerate(param_values):
+        visible = [False] * len(param_values)
+        visible[i] = True
+        steps.append(dict(
+            method="update",
+            args=[{"visible": visible},
+                  {"title": f"{ham_name} \u2014 {label_q}<br>"
+                            f"{sweep_param} = {pval:.6g}"
+                            + (f"  ({fixed_str})" if fixed_str else "")}],
+            label=f"{pval:.3g}",
+        ))
+
+    fig.update_layout(
+        title=(f"{ham_name} \u2014 {label_q}<br>"
+               f"{sweep_param} = {param_values[0]:.6g}"
+               + (f"  ({fixed_str})" if fixed_str else "")),
+        xaxis_title="kx",
+        yaxis_title="ky",
+        yaxis=dict(scaleanchor="x", scaleratio=1),
+        sliders=[dict(
+            active=0,
+            currentvalue={"prefix": f"{sweep_param}: ", "font": {"size": 14}},
+            pad={"t": 50},
+            steps=steps,
+        )],
+        width=700, height=680,
+        margin=dict(l=60, r=80, t=100, b=80),
     )
 
-    ax.set_title(f'QGT Trace — $\\omega$ = {omega_values[initial_index]:.6f}')
-    ax.set_xlabel("$k_x$")
-    ax.set_ylabel("$k_y$")
-    cbar = plt.colorbar(img, ax=ax)
-    cbar.set_label("Trace Amplitude")
+    # ---------- load parameters.json for sidebar ----------
+    import json
+    json_path = os.path.join(dataset_path, "parameters.json")
+    sidebar_html = ""
+    if os.path.exists(json_path):
+        with open(json_path, "r", encoding="utf-8") as f:
+            pjson = json.load(f)
 
-    # Slider for omega (over filtered indices)
-    ax_slider = plt.axes([0.15, 0.05, 0.65, 0.03], facecolor='lightgoldenrodyellow')
-    slider = Slider(ax_slider, '$\\omega$', 0, len(omega_values) - 1, valinit=initial_index, valstep=1)
+        def _fmt_val(v):
+            if isinstance(v, float):
+                return f"{v:.6g}"
+            return str(v)
 
-    def update(val):
-        index = int(slider.val)
-        trace = filtered[index]["trace"]
-        img.set_data(trace)
-        ax.set_title(f'QGT Trace — $\\omega$ = {omega_values[index]:.6f}')
-        fig.canvas.draw_idle()
+        def _section(title, rows_html):
+            return (
+                f'<div class="section">'
+                f'<div class="section-title">{title}</div>'
+                f'{rows_html}'
+                f'</div>'
+            )
 
-    slider.on_changed(update)
-    plt.show()
+        def _row(key, val):
+            return f'<div class="row"><span class="key">{key}</span><span class="val">{val}</span></div>'
+
+        # --- Hamiltonian parameters ---
+        ham_rows = "".join(
+            _row(k, _fmt_val(v))
+            for k, v in sorted(pjson.get("parameters", {}).items())
+        )
+
+        # --- Scan ranges ---
+        scan_ranges = pjson.get("scan_ranges", {})
+        scan_spacing = pjson.get("scan_spacing", {})
+        # Handle both old list-of-lists format and new dict format
+        if isinstance(scan_ranges, list):
+            range_items = {entry[0]: {"min": entry[1], "max": entry[2]} for entry in scan_ranges}
+        else:
+            range_items = scan_ranges
+        scan_rows = "".join(
+            _row(
+                name,
+                f'{_fmt_val(info["min"])} → {_fmt_val(info["max"])}'
+                + (f'  ({scan_spacing[name]["count"]} pts, {scan_spacing[name]["scale"]})'
+                   if name in scan_spacing else "")
+            )
+            for name, info in range_items.items()
+        )
+
+        # --- k-grid ---
+        kg = pjson.get("k_grid", {})
+        kgrid_rows = (
+            _row("kx", f'{_fmt_val(kg.get("kx_min","?"))} → {_fmt_val(kg.get("kx_max","?"))}') +
+            _row("ky", f'{_fmt_val(kg.get("ky_min","?"))} → {_fmt_val(kg.get("ky_max","?"))}') +
+            _row("mesh", str(kg.get("mesh", "?")))
+        )
+
+        # --- band ---
+        band_row = _row("band index", str(pjson["band_index"])) if "band_index" in pjson else ""
+
+        sidebar_html = f"""
+<div class="sidebar">
+  <div class="sidebar-header">{pjson.get("hamiltonian_name", ham_name)}</div>
+  {_section("Hamiltonian Parameters", ham_rows)}
+  {_section("Sweep Range", scan_rows)}
+  {_section("k-Grid", kgrid_rows + band_row)}
+</div>"""
+
+    # ---------- write HTML ----------
+    if output_html is None:
+        output_html = os.path.join(
+            dataset_path, f"dynamic_2d_{q}_vs_{sweep_param}.html"
+        )
+
+    plot_html = fig.to_html(include_plotlyjs="cdn", full_html=False)
+    full_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>{ham_name} \u2014 {label_q} vs {sweep_param}</title>
+  <style>
+    *, *::before, *::after {{ box-sizing: border-box; }}
+    body {{
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f0f2f7;
+      margin: 0; padding: 24px;
+      display: flex; justify-content: center; align-items: flex-start; gap: 24px;
+    }}
+    .plot-wrapper {{ flex: 0 0 auto; }}
+    .sidebar {{
+      flex: 0 0 260px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      padding: 0 0 16px 0;
+      overflow: hidden;
+      align-self: flex-start;
+      margin-top: 8px;
+    }}
+    .sidebar-header {{
+      background: linear-gradient(135deg, #3b4fa8 0%, #5b6fd6 100%);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      padding: 14px 16px;
+      word-break: break-word;
+    }}
+    .section {{ padding: 10px 16px 4px 16px; }}
+    .section-title {{
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #8892b0;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #e8ecf4;
+      padding-bottom: 4px;
+    }}
+    .row {{
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 3px 0;
+      font-size: 12.5px;
+      border-bottom: 1px solid #f3f5fb;
+    }}
+    .row:last-child {{ border-bottom: none; }}
+    .key {{
+      color: #4a5568;
+      font-weight: 600;
+      padding-right: 8px;
+      white-space: nowrap;
+    }}
+    .val {{
+      color: #2d3748;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      word-break: break-all;
+    }}
+  </style>
+</head>
+<body>
+  <div class="plot-wrapper">{plot_html}</div>
+  {sidebar_html}
+</body>
+</html>"""
+
+    with open(output_html, "w", encoding="utf-8") as f:
+        f.write(full_html)
+    print(f"Saved interactive HTML to: {output_html}")
+    return output_html
 
 
 def dynamic_2d_trace_hprime_eigs_vs_omega(folder_name, omega_min=None, omega_max=None):
@@ -269,7 +525,6 @@ def dynamic_2d_trace_hprime_eigs_vs_omega(folder_name, omega_min=None, omega_max
 
     slider.on_changed(_update)
     plt.show()
-
 
 
 
@@ -502,187 +757,11 @@ def dynamic_2d_trace_hprime_eigs_vs_omega_dual(
     slider.on_changed(_update)
     plt.show()
 
-def dynamic_2d_berry_vs_omega(folder_name, omega_min=None, omega_max=None):
-    """
-    Dynamically visualize the Berry curvature (2D heatmap) as a function of omega.
-
-    Parameters:
-        folder_name (str): Name of the subfolder in 'results/2D_QGT_omega_sweep/'.
-        omega_min (float|None): Keep slices with omega >= omega_min.
-        omega_max (float|None): Keep slices with omega <= omega_max.
-    """
-
-    results_path = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", folder_name)
-    qgt_data_path = os.path.join(results_path, "QGT_2D.npy")
-    meta_path = os.path.join(results_path, "meta_info.pkl")
-
-    if not os.path.exists(qgt_data_path):
-        raise FileNotFoundError(f"QGT data not found in '{results_path}'.")
-
-    with open(meta_path, "rb") as f:
-        meta_info = pickle.load(f)
-    qgt_data = np.load(qgt_data_path, allow_pickle=True)
-
-    def _in_range(w):
-        if (omega_min is not None) and (w < omega_min): return False
-        if (omega_max is not None) and (w > omega_max): return False
-        return True
-
-    filtered = [entry for entry in qgt_data if _in_range(float(entry["omega"]))]
-    if len(filtered) == 0:
-        raise ValueError("No omega slices fall within the requested range.")
-
-    kx = meta_info["kx"]
-    ky = meta_info["ky"]
-    omega_values = [float(entry["omega"]) for entry in filtered]
-
-    # Global colorbar limits across truncated omega slices
-    max_val = max(np.nanmax(-2 * entry["g_xy_imag"]) for entry in filtered)
-    min_val = min(np.nanmin(-2 * entry["g_xy_imag"]) for entry in filtered)
-
-    initial_index = 0
-    berry0 = -2 * filtered[initial_index]["g_xy_imag"]
-
-    fig, ax = plt.subplots(figsize=(8, 6))
-    fig.subplots_adjust(bottom=0.2)
-
-    img = ax.imshow(
-        berry0,
-        origin='lower',
-        extent=[kx.min(), kx.max(), ky.min(), ky.max()],
-        cmap='coolwarm',
-        vmin=min_val,
-        vmax=max_val,
-        aspect='auto'
-    )
-
-    ax.set_title(f'Berry Curvature — $\\omega$ = {omega_values[initial_index]:.6f}')
-    ax.set_xlabel("$k_x$")
-    ax.set_ylabel("$k_y$")
-    cbar = plt.colorbar(img, ax=ax)
-    cbar.set_label("Berry Curvature (−2 Im[gₓᵧ])")
-
-    ax_slider = plt.axes([0.15, 0.05, 0.65, 0.03], facecolor='lightgoldenrodyellow')
-    slider = Slider(ax_slider, '$\\omega$', 0, len(omega_values) - 1, valinit=initial_index, valstep=1)
-
-    def update(val):
-        index = int(slider.val)
-        berry_curvature = -2 * filtered[index]["g_xy_imag"]
-        img.set_data(berry_curvature)
-        ax.set_title(f'Berry Curvature — $\\omega$ = {omega_values[index]:.6f}')
-        fig.canvas.draw_idle()
-
-    slider.on_changed(update)
-    plt.show()
-
-
-
-#@ 1D plots vs omega
-def plot_metric_vs_omega(
-    folder_name,
-    metric="trace",                 # "trace" | "berry" | "trg-berry"
-    omega_min=None,
-    omega_max=None,
-    *,
-    use_precomputed=False,          # if entries already include 'berry'
-    convert_from_imQ=True,          # if not precomputed: Ω = -2 * Im(Q_xy)
-    return_data=False               # optionally return (omegas, values)
-):
-    """
-    Unified plotting for:
-      - metric="trace":  std_BZ[ Tr(g) ] vs ω
-      - metric="berry":  std_BZ[ Ω ] vs ω  (Ω from entry['berry'] or -2*Im(Q_xy))
-      - metric="trg-berry": ∫_BZ [Tr(g) - Ω] d^2k vs ω  (needs meta['dkx'], meta['dky'])
-
-    Parameters
-    ----------
-    folder_name : str
-        Path fed to load_qgt(folder_name).
-    metric : {"trace", "berry", "trg-berry"}
-        Quantity to aggregate/plot.
-    omega_min, omega_max : float or None
-        Optional frequency filter (inclusive).
-    use_precomputed : bool
-        If True and entries contain 'berry', use it; else derive Ω from g_xy_imag.
-    convert_from_imQ : bool
-        When deriving Ω from g_xy_imag, use Ω = -2 * Im(Q_xy) if True; else Ω = Im(Q_xy).
-        (Sign choice does not affect std but matters for integrals.)
-    return_data : bool
-        If True, return (omegas_sorted, values_sorted) instead of just plotting.
-
-    Notes
-    -----
-    Expects:
-      entries[i] with keys: "omega", "trace", and either "berry" or "g_xy_imag"
-      meta with keys: "dkx", "dky" (only required for metric="trg-berry").
-    """
-    # Load & filter
-    entries, meta = load_qgt(folder_name)
-    filtered = filter_entries_by_omega(entries, omega_min, omega_max)
-
-    if len(filtered) == 0:
-        raise ValueError("No entries after omega filtering; check omega_min/max or data.")
-
-    # Helper to get Berry curvature array for an entry
-    def _get_berry(entry):
-        if use_precomputed and ("berry" in entry):
-            return np.asarray(entry["berry"])
-        gim = np.asarray(entry["g_xy_imag"])
-        return (-2.0 * gim) if convert_from_imQ else gim
-
-    omegas = np.array([float(e["omega"]) for e in filtered], dtype=float)
-
-    if metric == "trace":
-        # std over BZ of Tr(g)
-        vals = np.array([np.nanstd(np.asarray(e["trace"])) for e in filtered], dtype=float)
-        ylab = "Std. Dev over BZ"
-        title = "Fluctuation of QGT Trace vs ω"
-    elif metric == "berry":
-        # std over BZ of Ω
-        vals = np.array([np.nanstd(_get_berry(e)) for e in filtered], dtype=float)
-        ylab = "Std. Dev over BZ"
-        title = "Fluctuation of Berry Curvature vs ω"
-    elif metric == "trg-berry":
-        # integral over BZ of [Tr(g) − Ω]
-        try:
-            dkx = float(meta["dkx"]); dky = float(meta["dky"])
-        except Exception as exc:
-            raise KeyError("meta must contain 'dkx' and 'dky' to integrate over the BZ.") from exc
-        area_element = dkx * dky
-        vals = []
-        for e in filtered:
-            trace = np.asarray(e["trace"])
-            berry = _get_berry(e)
-            integrand = trace - berry
-            vals.append(np.nansum(integrand) * area_element)
-        vals = np.array(vals, dtype=float)
-        ylab = r"$\int_{\mathrm{BZ}} [\mathrm{Tr}(g) - \Omega]\, d^2k$"
-        title = r"Integrated $\mathrm{Tr}(g) - \Omega$ vs $\omega$"
-    else:
-        raise ValueError("metric must be one of: 'trace', 'berry', 'trg-berry'.")
-
-    # Sort by omega for a clean line
-    order = np.argsort(omegas)
-    omegas_sorted = omegas[order]
-    vals_sorted = vals[order]
-
-    # Plot
-    plt.figure(figsize=(8, 5))
-    plt.plot(omegas_sorted, vals_sorted, marker='o', linestyle='-')
-    plt.xscale('log')
-    plt.xlabel("Drive Frequency ω")
-    plt.ylabel(ylab)
-    plt.title(title)
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
-
-    if return_data:
-        return omegas_sorted, vals_sorted
 
 def _wrap_periodic(vals, vmin, vmax):
     L = vmax - vmin
     return (vals - vmin) % L + vmin
+
 
 def _bilinear_sample(grid, x_coords, y_coords, xq, yq, periodic=False, oob_value=None):
     """
@@ -727,6 +806,7 @@ def _bilinear_sample(grid, x_coords, y_coords, xq, yq, periodic=False, oob_value
         f = np.where(inside, f, oob_value)
 
     return f
+
 
 def _line_segment_in_box(x0, y0, theta_rad, xmin, xmax, ymin, ymax, periodic=False, max_len=None):
     """
@@ -995,22 +1075,6 @@ def dynamic_2d_trace_with_line(folder_name, omega_min=None, omega_max=None,
 
     plt.show()
 
-def load_qgt_entries(folder_name):
-    """
-    Load raw QGT entries and metadata from a results folder.
-    Returns: (entries_list, kx, ky)
-    """
-    base = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", folder_name)
-    qgt_path = os.path.join(base, "QGT_2D.npy")
-    meta_path = os.path.join(base, "meta_info.pkl")
-    if not os.path.exists(qgt_path):
-        raise FileNotFoundError(f"QGT data not found in '{base}'.")
-    with open(meta_path, "rb") as f:
-        meta = pickle.load(f)
-    entries = np.load(qgt_path, allow_pickle=True)
-    kx = np.asarray(meta["kx"]); ky = np.asarray(meta["ky"])
-    return list(entries), kx, ky
-
 #@ 2D joined plots
 def dynamic_2d_qgt_vs_omega_joined(
     left_folder_name,
@@ -1130,32 +1194,328 @@ def dynamic_2d_qgt_vs_omega_joined(
     plt.show()
 
 
+def dynamic_2d_qgt_1para_sweep_joined_html(
+    left_dataset_path,
+    right_dataset_path,
+    sweep_param,
+    *,
+    quantity="trace",
+    param_min_left=None,
+    param_max_left=None,
+    param_min_right=None,
+    param_max_right=None,
+    symmetric_cbar=None,   # None → True for berry/imqxy, False for trace
+    drop_overlap=True,
+    tol=1e-9,
+    cmap="inferno",
+    label_left="left",
+    label_right="right",
+    output_html=None,
+):
+    """
+    HTML version of ``dynamic_2d_qgt_vs_omega_joined``, generalised to any
+    sweep parameter and reading from two N-D bundles.
 
-#~ 2D QGT
-#! Left Polarization
-# dynamic_2d_trace_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t50_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
-# plot_trace_std_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t50_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
-# plot_berry_std_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t50_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
-# plot_integrated_trace_minus_berry("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t50_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
+    The left dataset is sorted ascending in ``sweep_param``; the right dataset
+    is sorted *descending* (reversed) and appended — producing a continuous
+    slider that sweeps up from the left range then back down through the right
+    range.  This is useful for comparing e.g. left vs right circular
+    polarisation where each covers a different frequency window.
 
-#! Right Polarization
-# dynamic_2d_trace_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t50_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
+    Parameters
+    ----------
+    left_dataset_path / right_dataset_path : str
+        Paths to the two ND bundle folders (absolute or relative to CWD).
+    sweep_param : str
+        Parameter name swept in both bundles (e.g. ``"omega"``).
+    quantity : str
+        ``"trace"``, ``"berry"``, or ``"imqxy"``.
+    param_min_left / param_max_left : float | None
+        Range filter applied independently to the left dataset.
+    param_min_right / param_max_right : float | None
+        Range filter applied independently to the right dataset.
+    symmetric_cbar : bool | None
+        Force a symmetric colour bar.  ``None`` → True for berry/imqxy.
+    drop_overlap : bool
+        If the highest ``sweep_param`` value is shared between datasets,
+        drop the duplicate from the right side (default True).
+    label_left / label_right : str
+        Short labels shown in slider step annotations and the sidebar.
+    output_html : str | None
+        Output .html path.  Defaults to
+        ``<left_dataset_path>/dynamic_2d_{quantity}_{sweep_param}_joined.html``.
+    """
+    import json as _json
+    import pickle as _pickle
+    import plotly.graph_objects as go
 
-#@ t5=(1-np.sqrt(2))/4
+    # ---- helpers -------------------------------------------------------
+    def _resolve(p):
+        return p if os.path.isabs(p) else os.path.join(os.getcwd(), p)
 
+    def _load(dataset_path):
+        dataset_path = _resolve(dataset_path)
+        bundle_path  = os.path.join(dataset_path, "qgt_nd_bundle.npz")
+        meta_path    = os.path.join(dataset_path, "meta.pkl")
+        json_path    = os.path.join(dataset_path, "parameters.json")
+        if not os.path.exists(bundle_path):
+            raise FileNotFoundError(f"ND bundle not found: {bundle_path}")
+        bundle   = np.load(bundle_path, allow_pickle=True)
+        ham_name = "Unknown"
+        pjson    = None
+        if os.path.exists(json_path):
+            with open(json_path, "r", encoding="utf-8") as f:
+                pjson = _json.load(f)
+            ham_name = pjson.get("hamiltonian_name", ham_name)
+        elif os.path.exists(meta_path):
+            with open(meta_path, "rb") as f:
+                meta = _pickle.load(f)
+            ht = meta.get("Hamiltonian_Template")
+            ham_name = getattr(ht, "name", ham_name) if ht is not None else ham_name
+        return bundle, ham_name, pjson, dataset_path
 
-#~ 2D QGT
-#! Left Polarization
-# dynamic_2d_trace_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega5.00e-02_5.00e_01_spacing_log_points32_1")
-# plot_trace_std_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega5.00e-02_5.00e_01_spacing_log_points32_1")
-# plot_berry_std_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega5.00e-02_5.00e_01_spacing_log_points32_1")
-# plot_integrated_trace_minus_berry("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega5.00e-02_5.00e_01_spacing_log_points32_1")
+    def _get_axis(bundle, param):
+        names = list(bundle["names"])
+        if param not in names:
+            raise ValueError(
+                f"'{param}' not in bundle names {names}"
+            )
+        i = names.index(param)
+        return i, bundle[f"axis_{i}_{param}"], list(bundle["shape"]), names
 
-#! Right Polarization
-# dynamic_2d_trace_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
-# plot_trace_std_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
-# plot_berry_std_vs_omega("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
-# plot_integrated_trace_minus_berry("SquareLatticeHamiltonian/omega5.0_A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_kx-3.14_3.14_ky-3.14_3.14_mesh150_omega1.00e-01_5.00e_01_spacing_log_points32_1")
+    def _field_series(bundle, sweep_axis, shape, q):
+        n_params = len(shape)
+        mid_idx = tuple(
+            slice(None) if ax == sweep_axis else shape[ax] // 2
+            for ax in range(n_params)
+        )
+        if q == "trace":
+            return bundle["trace_grid"][mid_idx]
+        elif q == "berry":
+            return -2.0 * bundle["g_xy_imag_grid"][mid_idx]
+        elif q == "imqxy":
+            return bundle["g_xy_imag_grid"][mid_idx]
+        raise ValueError(f"Unknown quantity '{q}'.")
+
+    def _filter(param_values, field_series, pmin, pmax):
+        mask = np.ones(len(param_values), dtype=bool)
+        if pmin is not None: mask &= param_values >= pmin
+        if pmax is not None: mask &= param_values <= pmax
+        return param_values[mask], field_series[mask]
+
+    # ---- load both datasets --------------------------------------------
+    bundle_L, ham_L, pjson_L, dpath_L = _load(left_dataset_path)
+    bundle_R, ham_R, pjson_R, dpath_R = _load(right_dataset_path)
+
+    # k-grid check
+    kx_L, ky_L = bundle_L["kx"], bundle_L["ky"]
+    kx_R, ky_R = bundle_R["kx"], bundle_R["ky"]
+    if kx_L.shape != kx_R.shape or not np.allclose(kx_L, kx_R):
+        raise ValueError("kx grids differ between the two datasets; cannot join.")
+    kx, ky = kx_L, ky_L
+
+    q = quantity.lower()
+    label_q = {"trace": "QGT Trace",
+                "berry": "Berry Curvature \u03a9",
+                "imqxy": "Im(Q_xy)"}.get(q, quantity)
+
+    # ---- extract sweep axes & fields -----------------------------------
+    ax_L, pv_L, shape_L, names_L = _get_axis(bundle_L, sweep_param)
+    ax_R, pv_R, shape_R, names_R = _get_axis(bundle_R, sweep_param)
+
+    fs_L = _field_series(bundle_L, ax_L, shape_L, q)
+    fs_R = _field_series(bundle_R, ax_R, shape_R, q)
+
+    pv_L, fs_L = _filter(pv_L, fs_L, param_min_left,  param_max_left)
+    pv_R, fs_R = _filter(pv_R, fs_R, param_min_right, param_max_right)
+
+    if len(pv_L) == 0 or len(pv_R) == 0:
+        raise ValueError("No slices after filtering for one or both datasets.")
+
+    # ---- join: left ascending, right descending ------------------------
+    ord_L = np.argsort(pv_L);  pv_L = pv_L[ord_L];  fs_L = fs_L[ord_L]
+    ord_R = np.argsort(pv_R);  pv_R_s = pv_R[ord_R]; fs_R_s = fs_R[ord_R]
+    pv_R_rev = pv_R_s[::-1];   fs_R_rev = fs_R_s[::-1]
+
+    n_left = len(pv_L)
+
+    if drop_overlap and len(pv_R_s) and np.isclose(pv_L[-1], pv_R_s[-1], atol=tol, rtol=0):
+        pv_R_rev = pv_R_rev[1:]
+        fs_R_rev = fs_R_rev[1:]
+
+    pv_join = np.concatenate([pv_L, pv_R_rev])
+    fs_join = np.concatenate([fs_L, fs_R_rev], axis=0)   # (N_total, Ny, Nx)
+
+    # ---- colour limits -------------------------------------------------
+    if symmetric_cbar is None:
+        symmetric_cbar = (q != "trace")
+    finite = fs_join[np.isfinite(fs_join)]
+    vmin_d, vmax_d = float(np.nanmin(finite)), float(np.nanmax(finite))
+    if symmetric_cbar:
+        amax = max(abs(vmin_d), abs(vmax_d))
+        vmin, vmax = -amax, amax
+    else:
+        vmin, vmax = vmin_d, vmax_d
+
+    # ---- build Plotly figure -------------------------------------------
+    fig = go.Figure()
+
+    for i, pval in enumerate(pv_join):
+        src = label_left if i < n_left else label_right
+        fig.add_trace(go.Heatmap(
+            z=fs_join[i].tolist(),
+            x=kx[0, :].tolist(),
+            y=ky[:, 0].tolist(),
+            colorscale=cmap,
+            zmin=vmin, zmax=vmax,
+            visible=(i == 0),
+            name=f"{sweep_param}={pval:.4g} ({src})",
+            colorbar=dict(title=label_q, thickness=18),
+            hovertemplate="kx: %{x:.3f}<br>ky: %{y:.3f}<br>Value: %{z:.4g}<extra></extra>",
+        ))
+
+    steps = []
+    for i, pval in enumerate(pv_join):
+        src = label_left if i < n_left else label_right
+        visible = [False] * len(pv_join)
+        visible[i] = True
+        steps.append(dict(
+            method="update",
+            args=[{"visible": visible},
+                  {"title": f"{label_q}<br>"
+                            f"{sweep_param} = {pval:.6g}  \u2502 {src}"}],
+            label=f"{pval:.3g}",
+        ))
+
+    fig.update_layout(
+        title=f"{label_q}<br>{sweep_param} = {pv_join[0]:.6g}  \u2502 {label_left}",
+        xaxis_title="kx",
+        yaxis_title="ky",
+        yaxis=dict(scaleanchor="x", scaleratio=1),
+        sliders=[dict(
+            active=0,
+            currentvalue={"prefix": f"{sweep_param}: ", "font": {"size": 14}},
+            pad={"t": 50},
+            steps=steps,
+        )],
+        width=700, height=680,
+        margin=dict(l=60, r=80, t=100, b=80),
+    )
+
+    # ---- sidebar (dual panels) -----------------------------------------
+    def _sidebar_panel(pjson, title_label, title_color):
+        if pjson is None:
+            return f'<div class="panel"><div class="panel-head" style="background:{title_color}">{title_label}</div><p style="padding:10px;font-size:12px;color:#666">No parameters.json found.</p></div>'
+
+        def _fv(v):
+            return f"{v:.6g}" if isinstance(v, float) else str(v)
+        def _row(k, v):
+            return f'<div class="row"><span class="key">{k}</span><span class="val">{v}</span></div>'
+        def _sec(t, rows):
+            return f'<div class="section"><div class="section-title">{t}</div>{rows}</div>'
+
+        ham_rows = "".join(_row(k, _fv(v)) for k, v in sorted(pjson.get("parameters", {}).items()))
+
+        scan_ranges  = pjson.get("scan_ranges", {})
+        scan_spacing = pjson.get("scan_spacing", {})
+        if isinstance(scan_ranges, list):
+            range_items = {e[0]: {"min": e[1], "max": e[2]} for e in scan_ranges}
+        else:
+            range_items = scan_ranges
+        scan_rows = "".join(
+            _row(n, f'{_fv(info["min"])} \u2192 {_fv(info["max"])}'
+                 + (f'  ({scan_spacing[n]["count"]} pts, {scan_spacing[n]["scale"]})'
+                    if n in scan_spacing else ""))
+            for n, info in range_items.items()
+        )
+
+        kg = pjson.get("k_grid", {})
+        grid_rows = (
+            _row("kx", f'{_fv(kg.get("kx_min","?"))} \u2192 {_fv(kg.get("kx_max","?"))}') +
+            _row("ky", f'{_fv(kg.get("ky_min","?"))} \u2192 {_fv(kg.get("ky_max","?"))}') +
+            _row("mesh", str(kg.get("mesh", "?")))
+        )
+        band_row = _row("band index", str(pjson["band_index"])) if "band_index" in pjson else ""
+
+        return (
+            f'<div class="panel">'
+            f'<div class="panel-head" style="background:{title_color}">'
+            f'{pjson.get("hamiltonian_name","?")} \u2014 {title_label}</div>'
+            + _sec("Hamiltonian Parameters", ham_rows)
+            + _sec("Sweep Range", scan_rows)
+            + _sec("k-Grid", grid_rows + band_row)
+            + '</div>'
+        )
+
+    sidebar_html = (
+        '<div class="sidebar">'
+        + _sidebar_panel(pjson_L, label_left,  "#3b4fa8")
+        + _sidebar_panel(pjson_R, label_right, "#7b3fa8")
+        + '</div>'
+    )
+
+    # ---- write HTML ----------------------------------------------------
+    if output_html is None:
+        output_html = os.path.join(
+            _resolve(left_dataset_path),
+            f"dynamic_2d_{q}_{sweep_param}_joined.html"
+        )
+
+    plot_html = fig.to_html(include_plotlyjs="cdn", full_html=False)
+    full_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>{label_q} vs {sweep_param} (joined)</title>
+  <style>
+    *, *::before, *::after {{ box-sizing: border-box; }}
+    body {{
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f0f2f7;
+      margin: 0; padding: 24px;
+      display: flex; justify-content: center; align-items: flex-start; gap: 20px;
+    }}
+    .plot-wrapper {{ flex: 0 0 auto; }}
+    .sidebar {{
+      flex: 0 0 270px;
+      display: flex; flex-direction: column; gap: 14px;
+      align-self: flex-start; margin-top: 8px;
+    }}
+    .panel {{
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }}
+    .panel-head {{
+      color: #fff; font-size: 12.5px; font-weight: 700;
+      letter-spacing: 0.03em; padding: 12px 16px; word-break: break-word;
+    }}
+    .section {{ padding: 8px 16px 4px 16px; }}
+    .section-title {{
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: #8892b0;
+      margin-bottom: 5px; border-bottom: 1px solid #e8ecf4; padding-bottom: 3px;
+    }}
+    .row {{
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 3px 0; font-size: 12px; border-bottom: 1px solid #f3f5fb;
+    }}
+    .row:last-child {{ border-bottom: none; }}
+    .key {{ color: #4a5568; font-weight: 600; padding-right: 8px; white-space: nowrap; }}
+    .val {{ color: #2d3748; text-align: right; font-variant-numeric: tabular-nums; word-break: break-all; }}
+  </style>
+</head>
+<body>
+  <div class="plot-wrapper">{plot_html}</div>
+  {sidebar_html}
+</body>
+</html>"""
+
+    with open(output_html, "w", encoding="utf-8") as f:
+        f.write(full_html)
+    print(f"Saved joined HTML to: {output_html}")
+    return output_html
 
 
 #@ Rhombohedral Graphene Hamiltonian
@@ -1172,9 +1532,6 @@ def dynamic_2d_qgt_vs_omega_joined(
 #                                            "RhombohedralGrapheneHamiltonian/A0_0.10-V_30-analytic_magnus_True-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10_kx-0.80_0.80_ky-0.80_0.80_mesh100_omega2.50e_01_5.00e_03_spacing_log_points12_band0_data_set3")
 
 
-
-
-
 # dynamic_2d_trace_with_line(
 #     "ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1",
 #     omega_min=33,
@@ -1187,18 +1544,6 @@ def dynamic_2d_qgt_vs_omega_joined(
 # )
 
 
-# & Left Polarization
-# dynamic_2d_trace_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=33)
-# dynamic_2d_berry_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=33)
-# plot_metric_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=33, metric="berry")
-
-# & Right Polarization
-# dynamic_2d_trace_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=50)
-# dynamic_2d_berry_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=50)
-# plot_trace_std_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=50)
-# plot_berry_std_vs_omega("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=50)
-# plot_integrated_trace_minus_berry("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", omega_min=50)
-
 # dynamic_2d_qgt_vs_omega_joined("ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", 
 #                                  "ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1", 
 #                                  quantity="trace", omega_min_left=33, omega_min_right=50)
@@ -1208,3 +1553,19 @@ def dynamic_2d_qgt_vs_omega_joined(
 #                                  quantity="berry", omega_min_left=33, omega_min_right=50)
 
 
+#@ 2D QGT ND — SquareLatticeHamiltonian omega sweep
+# dataset1: left polarization,  omega in [0.1, 5.0],  mesh 150
+# dataset2: right polarization, omega in [0.1, 50.0], mesh 100
+# dynamic_2d_qgt_1d_sweep_html("results/2D_QGT_ND/SquareLatticeHamiltonian/dataset2", sweep_param="omega")
+
+
+dynamic_2d_qgt_1para_sweep_joined_html(
+    "results/2D_QGT_ND/SquareLatticeHamiltonian/dataset1",  # left
+    "results/2D_QGT_ND/SquareLatticeHamiltonian/dataset2",  # right
+    sweep_param="omega",
+    quantity="trace",
+    param_min_left=0.1,
+    param_min_right=0.5,
+    label_left="left polarization",
+    label_right="right polarization",
+)

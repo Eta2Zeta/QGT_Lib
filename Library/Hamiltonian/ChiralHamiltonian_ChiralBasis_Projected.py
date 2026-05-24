@@ -16,8 +16,8 @@ class ChiralHamiltonianChiralBasisProjected(hamiltonian):
     Minimal chiral effective Hamiltonian for n-layer rhombohedral graphene in the chiral basis,
     projected onto low-energy subspace, with a displacement field included.
     """
-    def __init__(self, vF=542.1, t1=355.16, V=30.0, n=2, omega=2 * np.pi, A0=0, polarization='left'):
-        super().__init__(dim=2, omega=omega, A0=A0, polarization=polarization)
+    def __init__(self, vF=542.1, t1=355.16, V=30.0, n=2, omega=2 * np.pi, A0=0, polarization='left', **kwargs):
+        super().__init__(dim=2, omega=omega, A0=A0, polarization=polarization, **kwargs)
         self.vF = vF
         self.t1 = t1
         self.V = V

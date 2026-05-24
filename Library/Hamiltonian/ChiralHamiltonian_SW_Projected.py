@@ -1,5 +1,5 @@
 import numpy as np
-from .Hamiltonian_v2 import hamiltonian
+from .Hamiltonian import hamiltonian
 from .ChiralHamiltonian import ChiralHamiltonian
 
 class ChiralHamiltonianSWProjected(hamiltonian):

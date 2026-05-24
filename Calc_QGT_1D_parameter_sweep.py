@@ -124,11 +124,12 @@ def sweep_single_param_1d(
 
 if __name__ == '__main__':
     # Default parameters
-    Hamiltonian_Obj = TwoOrbitalUnspinfulHamiltonian(zeta=1.0, omega=10.0, A0=0.1, mu=0, magnus_order=1)
+    Hamiltonian_Obj = SquareLatticeHamiltonian(A0=0.1, omega=1e0, t1=1, t2=1/np.sqrt(2), t5=0)
+    Hamiltonian_Obj.polarization = "right"
 
     sweep_single_param_1d(
         Hamiltonian_Obj, param_name="omega",
-        vmin=5.0, vmax=50.0, spacing="linear",
-        num_param_points=20, num_k_points=100,
-        angle_deg=0.0, band=0, force_new=True
+        vmin=0.05, vmax=10.0, spacing="log",
+        num_param_points=50, num_k_points=200,
+        angle_deg=45.0, kx_shift=0.0, ky_shift=-np.pi/2, band=0, force_new=True
     )

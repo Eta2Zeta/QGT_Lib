@@ -7,7 +7,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
-from Library.Hamiltonian.ChiralHamiltonianEffective import ChiralHamiltonianEffective
+from Library.Hamiltonian.ChiralHamiltonian_SW_Projected import ChiralHamiltonianSWProjected
 
 def main():
     # Parameters
@@ -41,7 +41,7 @@ def main():
         
         # 2. Effective Hamiltonian (Numerical SW projection of Driven Full)
         # We pass magnus_order=1 so the internal full hamiltonian gets the magnus term before projection
-        H_eff_obj = ChiralHamiltonianEffective(n=n, vF=vF, t1=t1, V=V, omega=omega, A0=A0, magnus_order=1)
+        H_eff_obj = ChiralHamiltonianSWProjected(n=n, vF=vF, t1=t1, V=V, omega=omega, A0=A0, magnus_order=1)
         
         evals_full_list = []
         evals_eff_list = []

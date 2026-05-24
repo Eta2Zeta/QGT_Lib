@@ -28,7 +28,7 @@ def QGT_grid_num(
     """
     # Initialize arrays to store tensor components
     shape = ki.shape
-    g_xx_array = np.zeros(shape)
+    g_xx_array = np.zeros(shape) 
     g_yy_array = np.zeros(shape)
     g_zz_array = np.zeros(shape)
 
