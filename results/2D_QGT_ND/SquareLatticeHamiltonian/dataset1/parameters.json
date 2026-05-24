@@ -1,0 +1,33 @@
+{
+    "hamiltonian_name": "SquareLatticeHamiltonian",
+    "parameters": {
+        "A0": 0.1,
+        "analytic_magnus": false,
+        "magnus_order": 1,
+        "omega": 5.0,
+        "polarization": "left",
+        "t1": 1,
+        "t2": 0.7071067811865475,
+        "t5": 0
+    },
+    "scan_ranges": {
+        "omega": {
+            "min": 0.1,
+            "max": 50.0
+        }
+    },
+    "scan_spacing": {
+        "omega": {
+            "count": 30,
+            "scale": "log"
+        }
+    },
+    "k_grid": {
+        "kx_min": -2.5,
+        "kx_max": 2.5,
+        "ky_min": -2.5,
+        "ky_max": 2.5,
+        "mesh": 100
+    },
+    "band_index": 1
+}

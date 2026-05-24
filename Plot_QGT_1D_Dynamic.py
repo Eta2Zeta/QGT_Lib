@@ -105,6 +105,8 @@ def _save_dynamic_qgt_plotly(
     # Configure multiple y-axes
     layout_update = {
         "title": f"{title} — {param_name} = {g_results[0].get(param_name, 0):.6g}",
+        "width": 1100,
+        "height": 700,
         "xaxis": dict(title="k", domain=[0, 0.8]),
         "yaxis": dict(title=dict(text="Eigenvalues", font=dict(color="red")), range=y_bounds['eigen'], tickfont=dict(color="red")),
         "yaxis2": dict(title=dict(text="Trace", font=dict(color="blue")), range=y_bounds['trace'], overlaying="y", side="right", tickfont=dict(color="blue")),
@@ -129,68 +131,6 @@ def _save_dynamic_qgt_plotly(
     # Save to HTML
     fig.write_html(filepath, include_plotlyjs='cdn')
     print(f"✅ Saved interactive Plotly plot to: {filepath}")
-
-
-def dynamic_with_eigenvalues(folder_name, bands=[0, 1]):
-    """
-    Visualize QGT trace, eigenvalues (arbitrary bands), and perturbation dynamically for different omega values.
-    Saves results to a Plotly HTML file.
-    """
-    # Load the saved data
-    result_folder_path = os.path.join(os.getcwd(), "results", "1D_QGT_results", folder_name)
-    g_results_filepath = os.path.join(result_folder_path, "QGT_1D.npy")
-    meta_filepath = os.path.join(result_folder_path, "parameters.json")
-    
-    if not os.path.exists(meta_filepath):
-        meta_filepath = os.path.join(result_folder_path, "meta_info.pkl")
-
-    if not os.path.exists(g_results_filepath):
-        raise FileNotFoundError(f"File '{g_results_filepath}' not found.")
-
-    if meta_filepath.endswith('.json'):
-        with open(meta_filepath, "r") as meta_file:
-            meta_info = json.load(meta_file)
-    else:
-        with open(meta_filepath, "rb") as meta_file:
-            meta_info = pickle.load(meta_file)
-
-    num_points = int(meta_info['num_k_points'])
-    k_max = float(meta_info.get('k_max', np.pi))
-    g_results = np.load(g_results_filepath, allow_pickle=True)
-    k_line = np.linspace(-k_max, k_max, num_points)
-
-    # Compute global y-axis bounds
-    y_min_trace = np.nanmin([np.nanmin(data['trace']) for data in g_results])
-    y_max_trace = np.nanmax([np.nanmax(data['trace']) for data in g_results])
-    y_min_perturb = np.nanmin([np.nanmin(data['perturbation']) for data in g_results])
-    y_max_perturb = np.nanmax([np.nanmax(data['perturbation']) for data in g_results])
-    
-    all_selected_eigs = []
-    for data in g_results:
-        evs = np.array(data['eigenvalues'])
-        if evs.ndim != 2: evs = evs.reshape(evs.shape[0], -1)
-        all_selected_eigs.append(evs[:, bands])
-    
-    if len(all_selected_eigs) > 0:
-        flat_sel = np.concatenate([x.flatten() for x in all_selected_eigs])
-        y_min_eigen = np.nanmin(flat_sel); y_max_eigen = np.nanmax(flat_sel)
-    else:
-        y_min_eigen = 0; y_max_eigen = 1
-
-    y_min_mag = np.nanmin([np.nanmin(data.get('magnus_operator_norm', np.nan)) for data in g_results])
-    y_max_mag = np.nanmax([np.nanmax(data.get('magnus_operator_norm', np.nan)) for data in g_results])
-
-    eigen_buffer = 0.1 * (y_max_eigen - y_min_eigen) if (y_max_eigen != y_min_eigen) else 0.1
-    
-    y_bounds = {
-        'eigen': [y_min_eigen - eigen_buffer, y_max_eigen + eigen_buffer],
-        'trace': [y_min_trace, y_max_trace],
-        'perturb': [y_min_perturb, y_max_perturb],
-        'magnus': [y_min_mag, y_max_mag]
-    }
-
-    html_path = os.path.join(result_folder_path, "dynamic_qgt_plot.html")
-    _save_dynamic_qgt_plotly(html_path, k_line, g_results, bands, y_bounds, param_name="omega", title="QGT Trace & Eigenvalues")
 
 
 def dynamic_with_eigenvalues_single_param(result_dir, band_index1=0, band_index2=1):
@@ -262,55 +202,9 @@ def dynamic_with_eigenvalues_single_param(result_dir, band_index1=0, band_index2
 
 
 if __name__ == "__main__":
-    #! TwoOrbitalUnspinful
-    dynamic_with_eigenvalues("TwoOrbitalUnspinfulHamiltonian/dataset_7")
 
-    #! Conclusion: There is practically no shift in the QGT trace. 
-    
-    #! Sqaure Lattice
-    #@ t5=0
-    #* Centered around at (0, -pi/2)
-    #^ Along 45 degree line
-    #! Left Polarization
-    # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t50_angle45.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega5.00e-02_1.00e_01_spacing_log_points100_1")
-    
-    #! Right Polarization
-    # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t50_angle45.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega1.00e-01_5.00e_01_spacing_log_points100_1")
-    
-    #! x Linear Polarization
-    # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationlinear_x_magnus_order1_t11_t20.7071067811865475_t50_angle45.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega1.00e-01_5.00e_01_spacing_log_points100_1")
-    
-    #^ Along 0 degree line
-    # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t50_angle0.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega5.00e-02_5.00e_01_spacing_log_points100_1")
-    
-    #@ t5=(1-np.sqrt(2))/4
-    #* Centered around at (0, -pi/2)
-    #^ Along 45 degree line
-    #! Left Polarization
-    # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle45.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega5.00e-02_5.00e_01_spacing_log_points100_1")
-    #! Right Polarization
-    # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle45.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega1.00e-01_5.00e_01_spacing_log_points100_1")
-    #! x Linear Polarization
-    # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationlinear_x_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle45.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega1.00e-01_5.00e_01_spacing_log_points100_1")
-    
-    #^ Along 0 degree line 
-    #! Left Polarization
-    # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle0.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega1.00e-01_5.00e_01_spacing_log_points100_1")
-    #! Right Polarization
-    # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle0.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega1.00e-01_5.00e_01_spacing_log_points100_1")
-    #! x Linear Polarization
-    # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationlinear_x_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle0.0_kxshift0.00_kyshift-1.57_points150_kmax4.44_omega1.00e-01_5.00e_01_spacing_log_points100_1")
-    
-    #* Centered around at (0,0)
-    #^ Along 45 degree line 
-    #! Left Polarization
-    # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationleft_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle45.0_kxshift0.00_kyshift0.00_points150_kmax4.44_omega5.00e-02_5.00e_01_spacing_log_points100_1")
-    
-    #! Right Polarization
-    # dynamic_with_eigenvalues("SquareLatticeHamiltonian/A00.1_polarizationright_magnus_order1_t11_t20.7071067811865475_t5-0.10355339059327379_angle45.0_kxshift0.00_kyshift0.00_points150_kmax4.44_omega5.00e-02_5.00e_01_spacing_log_points100_1")
-    
     #! Full Chiral Hamiltonian
     # dynamic_with_eigenvalues("ChiralHamiltonian/A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_angle0.0_kxshift0.00_kyshift0.00_points100_kmax1.57_omega5.00e_00_5.00e_03_spacing_log_points30_2", bands=[0,1,2,3,4, 5,6,7,8,9])
     # dynamic_with_eigenvalues("ChiralHamiltonian/A0_0.10-V_30.00-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-polarization_right-t1_355.16-vF_542.10_angle0.0_kxshift0.00_kyshift0.00_points100_kmax1.57_omega5.00e_00_5.00e_03_spacing_log_points30_1", bands=[4, 5])
     
-    # dynamic_with_eigenvalues_single_param("ChiralHamiltonian/A0_0-V_20.00-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-polarization_left-t1_355.16-vF_542.10_angle0.0_kx0.00_ky0.00_kmax1.57_param_V_5_50_spacing_linear_N20_kN100_data_set1", band_index1=4, band_index2=5)
+    dynamic_with_eigenvalues_single_param("ChiralHamiltonian/A0_0-V_20.00-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-polarization_left-t1_355.16-vF_542.10_angle0.0_kx0.00_ky0.00_kmax1.57_param_V_5_50_spacing_linear_N20_kN100_data_set1", band_index1=4, band_index2=5)

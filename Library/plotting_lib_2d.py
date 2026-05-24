@@ -676,7 +676,7 @@ def plot_qmt_eig_berry_trace_2d(
     components="xy",
     results_dir=None,
     save_fig=False,
-    space_group=194
+    space_group=None
 ):
     """
     Make a 1×3 row of 2D heatmaps for:

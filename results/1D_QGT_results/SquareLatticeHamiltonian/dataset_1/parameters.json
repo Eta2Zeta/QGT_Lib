@@ -1,0 +1,22 @@
+{
+    "hamiltonian_name": "SquareLatticeHamiltonian",
+    "hamiltonian_params": {
+        "A0": 0.1,
+        "polarization": "left",
+        "magnus_order": 1,
+        "analytic_magnus": false,
+        "t1": 1,
+        "t2": 0.7071067811865475,
+        "t5": 0
+    },
+    "param_name": "omega",
+    "vmin": 5.0,
+    "vmax": 50.0,
+    "spacing": "linear",
+    "num_param_points": 20,
+    "num_k_points": 100,
+    "angle_deg": 45.0,
+    "kx_shift": 0.0,
+    "ky_shift": -1.5707963267948966,
+    "k_max": 4.442882938158366
+}

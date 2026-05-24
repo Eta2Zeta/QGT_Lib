@@ -6,6 +6,106 @@ import numpy as np
 from typing import Tuple, Dict, Any, List, Optional
 from Library.data_management_utils_common import pick_or_create_result_dir_simple, dump_metadata
 
+
+def build_parameter_points(
+    param_ranges,
+    parameter_spacing,
+    *,
+    ensure_increasing_axes=True
+):
+    """
+    Build an N-D parameter grid.
+
+    Parameters
+    ----------
+    param_ranges :
+        Dict {name: (min, max)} OR iterable of (name, min, max).
+    parameter_spacing :
+        int, dict {name: int}, dict {name: (n, scale)},
+        or dict {name: {"n": n, "scale": ..., "inverse": bool}}.
+    ensure_increasing_axes :
+        If True (default), each axis is returned in ascending order.
+
+    Returns
+    -------
+    points_with_idx, parameter_names, axes_values, grid_shape
+    """
+
+    # -------- normalize ranges --------
+    if isinstance(param_ranges, dict):
+        items = sorted(param_ranges.items(), key=lambda kv: str(kv[0]))
+        ranges_by_name = {str(k): (float(v[0]), float(v[1])) for k, v in items}
+        parameter_names = [str(k) for k, _ in items]
+    else:
+        items = sorted([(str(n), (float(a), float(b))) for (n, a, b) in param_ranges],
+                       key=lambda x: x[0])
+        ranges_by_name = {k: (a, b) for (k, (a, b)) in items}
+        parameter_names = [k for (k, _) in items]
+
+    # -------- parse spacing spec --------
+    def _parse_one(spec):
+        if isinstance(spec, int):
+            return int(spec), "linear", False
+        if isinstance(spec, (tuple, list)):
+            n = int(spec[0])
+            scale = str(spec[1]).lower() if len(spec) >= 2 else "linear"
+            return n, scale, False
+        if isinstance(spec, dict):
+            n = int(spec.get("n", spec.get("count", 1)))
+            scale = str(spec.get("scale", "linear")).lower()
+            inverse = bool(spec.get("inverse", False))
+            return n, scale, inverse
+        raise ValueError(f"Unrecognized spacing spec: {spec}")
+
+    if isinstance(parameter_spacing, int):
+        per_param = {name: (int(parameter_spacing), "linear", False) for name in parameter_names}
+    elif isinstance(parameter_spacing, dict):
+        per_param = {name: _parse_one(parameter_spacing.get(name, 1)) for name in parameter_names}
+    else:
+        raise ValueError("parameter_spacing must be int or dict")
+
+    # -------- helpers --------
+    def _space_inclusive(a, b, count, *, scale="linear"):
+        a = float(a); b = float(b); count = int(count)
+        if count < 2:
+            return np.array([a], dtype=float)
+        if scale == "linear":
+            return np.linspace(a, b, count, dtype=float)
+        if scale == "log":
+            if a <= 0 or b <= 0:
+                raise ValueError(f"log spacing requires positive endpoints; got [{a}, {b}]")
+            return np.logspace(np.log10(a), np.log10(b), count, dtype=float)
+        raise ValueError("scale must be 'linear' or 'log'")
+
+    # -------- build axes --------
+    axes_values = []
+    for name in parameter_names:
+        pmin, pmax = ranges_by_name[name]
+        count, scale, inverse_flag = per_param[name]
+
+        if not inverse_flag:
+            axis = _space_inclusive(pmin, pmax, count, scale=scale)
+        else:
+            inv_min = 1.0 / float(pmax)
+            inv_max = 1.0 / float(pmin)
+            inv_axis = _space_inclusive(inv_min, inv_max, count, scale=scale)
+            axis = 1.0 / inv_axis
+            if ensure_increasing_axes and axis.size > 1 and axis[0] > axis[-1]:
+                axis = axis[::-1]
+
+        axes_values.append(axis)
+
+    # -------- mesh + enumerate points --------
+    mesh_arrays = np.meshgrid(*axes_values, indexing="ij")
+    grid_shape = tuple(len(ax) for ax in axes_values)
+
+    points_with_idx = []
+    for idx_tuple in np.ndindex(*grid_shape):
+        point = {parameter_names[i]: float(mesh_arrays[i][idx_tuple]) for i in range(len(parameter_names))}
+        points_with_idx.append((point, idx_tuple))
+
+    return points_with_idx, parameter_names, axes_values, grid_shape
+
 def setup_phase_diagram_results_general(
     hamiltonian_template,
     param_ranges,
@@ -84,18 +184,19 @@ def setup_qgt_nd_results_dir(
     def _sanitize(name: str) -> str:
         return re.sub(r"[^\w.\-]", "_", str(name))
         
-    base_root = os.path.join(os.getcwd(), "results", "QGT_ND", _sanitize(Hname))
+    base_root = os.path.join(os.getcwd(), "results", "2D_QGT_ND", _sanitize(Hname))
     
-    # 1. Normalize ranges
-    def _norm_ranges_list(ranges):
-         if isinstance(ranges, dict):
+    # 1. Normalize ranges → dict {name: {"min": ..., "max": ...}}
+    def _norm_ranges_dict(ranges):
+        if isinstance(ranges, dict):
             items = sorted(ranges.items(), key=lambda kv: kv[0])
-            return [[k, float(v[0]), float(v[1])] for k, v in items]
-         items = sorted([[n, float(a), float(b)] for (n, a, b) in ranges], key=lambda x: x[0])
-         return items
-    
-    range_list = _norm_ranges_list(param_ranges)
-    
+            return {k: {"min": float(v[0]), "max": float(v[1])} for k, v in items}
+        items = sorted([(str(n), float(a), float(b)) for (n, a, b) in ranges], key=lambda x: x[0])
+        return {n: {"min": a, "max": b} for (n, a, b) in items}
+
+    range_dict = _norm_ranges_dict(param_ranges)
+    param_names_sorted = list(range_dict.keys())   # sorted alphabetically
+
     # 2. Normalize spacing
     def _parse_spacing(spec):
         if isinstance(spec, int): return int(spec), "linear"
@@ -107,12 +208,12 @@ def setup_qgt_nd_results_dir(
 
     spacing_dict = {}
     if isinstance(parameter_spacing, int):
-         spacing_dict = {n: {"count": int(parameter_spacing), "scale": "linear"} for (n, _, _) in range_list}
+        spacing_dict = {n: {"count": int(parameter_spacing), "scale": "linear"} for n in param_names_sorted}
     elif isinstance(parameter_spacing, dict):
-        for (n, _, _) in range_list:
-             spec = parameter_spacing.get(n, 1)
-             cnt, scl = _parse_spacing(spec)
-             spacing_dict[n] = {"count": cnt, "scale": scl}
+        for n in param_names_sorted:
+            spec = parameter_spacing.get(n, 1)
+            cnt, scl = _parse_spacing(spec)
+            spacing_dict[n] = {"count": cnt, "scale": scl}
             
 
     # Collect all public, simple attributes AND properties
@@ -130,7 +231,7 @@ def setup_qgt_nd_results_dir(
     metadata = {
         "hamiltonian_name": Hname,
         "parameters": params,
-        "scan_ranges": range_list, 
+        "scan_ranges": range_dict,
         "scan_spacing": spacing_dict,
         "k_grid": {
             "kx_min": float(kx_range[0]), "kx_max": float(kx_range[1]),
@@ -155,4 +256,3 @@ def setup_qgt_nd_results_dir(
             
     print(("Using existing (JSON) QGT directory: " if used else "Created new (JSON) QGT directory: ") + dir_path)
     return dir_path, used
-

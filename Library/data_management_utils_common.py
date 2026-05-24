@@ -196,3 +196,42 @@ def meta_matcher_all_fields(
 
     return eq(a, b)
 
+def get_mapped_axis(order: str, axis: str) -> str:
+    """
+    Maps an axis ('x', 'y', 'z') to an index-based character ('i', 'j', 'k')
+    based on the given `order`.
+    """
+    ijk = ["i", "j", "k"]
+    if axis in order:
+        idx = order.index(axis)
+        if idx < len(ijk):
+            return ijk[idx]
+    return axis
+
+def read_meta_axis(meta_info: dict, prefix: str, axis: str, suffix: str = ""):
+    """
+    Reads a parameter from meta_info mapping the axis to i, j, k.
+    Example: read_meta_axis(meta_info, 'k', 'x', '_range') 
+    checks order, e.g., 'xyz' -> 'x' is 'i', returns meta_info['ki_range']
+    """
+    order = meta_info.get("order", "xyz")
+    mapped_char = get_mapped_axis(order, axis)
+    key = f"{prefix}{mapped_char}{suffix}"
+    
+    # Fallback if mapped key doesn't exist but the exact requested one does
+    if key not in meta_info and f"{prefix}{axis}{suffix}" in meta_info:
+        return meta_info[f"{prefix}{axis}{suffix}"]
+        
+    return meta_info[key]
+
+def write_meta_axis(meta_info: dict, prefix: str, axis: str, value: Any, suffix: str = ""):
+    """
+    Writes a parameter to meta_info mapping the axis to i, j, k.
+    Example: write_meta_axis(meta_info, 'k', 'x', kx_array, '_range')
+    checks order, outputs to meta_info['ki_range'].
+    """
+    order = meta_info.get("order", "xyz")
+    mapped_char = get_mapped_axis(order, axis)
+    key = f"{prefix}{mapped_char}{suffix}"
+    meta_info[key] = value
+
