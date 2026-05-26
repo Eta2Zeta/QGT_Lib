@@ -177,7 +177,6 @@ def setup_qgt_nd_results_dir(
 ):
     """
     New version of setup that uses 'datasetN' folders and 'parameters.json'.
-    Includes band_index in metadata check!
     """
     Hname = getattr(hamiltonian_template, "name", "Hamiltonian")
     

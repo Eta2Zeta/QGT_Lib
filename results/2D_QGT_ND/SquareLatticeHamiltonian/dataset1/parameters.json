@@ -18,7 +18,7 @@
     },
     "scan_spacing": {
         "omega": {
-            "count": 30,
+            "count": 6,
             "scale": "log"
         }
     },

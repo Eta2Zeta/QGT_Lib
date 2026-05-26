@@ -23,6 +23,18 @@ class ChiralHamiltonianChiralBasisProjected(hamiltonian):
         self.V = V
         self.n = n
 
+        self.b1 = (2 * np.pi / 3) * np.array([1.0,  np.sqrt(3.0)])
+        self.b2 = (2 * np.pi / 3) * np.array([1.0, -np.sqrt(3.0)])
+
+    def get_sym_path(self):
+        G = np.zeros(2)
+        K = (2.0 * self.b1 + self.b2) / 3.0
+        M = 0.5 * self.b1
+
+        sym_points = {"G": G, "K": K, "M": M}
+        path = ["G", "K", "M", "G"]
+        return sym_points, path
+
     def k(self, kx, ky):
         return np.sqrt(kx**2 + ky**2)
     
@@ -484,19 +496,9 @@ class ChiralHamiltonianChiralBasisProjected(hamiltonian):
 
         return dlnN_minus, dlnN_plus
 
-    def analytic_magnus_first_term_direct(self, kx, ky, return_parts=False):
+    def analytic_magnus_first_term(self, kx, ky, kz=0, return_parts=False):
         """
-        Correct first-order Magnus term for the circular A_+ drive:
-
-            H_F^(1) = (1/ω) [H_{+1}, H_{-1}]
-                     = H^(1)_orborb  +  H^(1)_cross
-
-        Part 1 (orb–orb):  -( |C|^2 / ω ) σ_z
-        Part 2 (cross):    -2 A0 [ (∂_- ln N) C^* σ_+ + (∂_+ ln N) C σ_- ]
-
-        Notes:
-        - C ∝ A0 so both pieces scale ∝ A0^2, but only the orb–orb piece has 1/ω.
-        - This matches the derivation you just wrote down.
+        This is the magnus first term when we drive the 2x2 Hamiltonian directly, not the full one.
         """
         # ----- shared k-geometry -----
         k = np.hypot(kx, ky)
@@ -531,7 +533,7 @@ class ChiralHamiltonianChiralBasisProjected(hamiltonian):
         else:
             return H_orb_orb + H_cross
 
-    def analytic_magnus_first_term(self, kx, ky):
+    def analytic_magnus_first_term_projected(self, kx, ky, kz=0):
         """
         Projected first-order Floquet correction from full Hamiltonian projection:
         H_F^(1), 2x2 = -((vF * A0)^2 / omega) * sigma_z
@@ -797,4 +799,3 @@ class ChiralHamiltonianChiralBasisProjected(hamiltonian):
         """
         k = np.hypot(kx, ky)
         return self.berry_curvature_full_radial(k, band=band)
-

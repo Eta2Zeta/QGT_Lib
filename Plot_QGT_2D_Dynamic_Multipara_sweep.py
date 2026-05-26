@@ -362,5 +362,5 @@ root_left = "results/2D_QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_
 # dynamic_nd_field_with_bands(large_k_left, quantity="trace", bands_to_plot=[0,1,2,3,4,5,6,7,8,9])
 
 
-# dynamic_nd_field_with_bands("results/QGT_ND/SquareLatticeHamiltonian/dataset2", quantity="trace")
+dynamic_nd_field_with_bands("results/2D_QGT_ND/SquareLatticeHamiltonian/dataset1", quantity="trace")
 

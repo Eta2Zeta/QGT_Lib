@@ -7,7 +7,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
-from Library.Hamiltonian.Chiral_Hamiltonian_Projected import ChiralHamiltonianProjected
+from Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected import ChiralHamiltonianChiralBasisProjected
 
 def main():
     # Parameters
@@ -39,7 +39,7 @@ def main():
         H_full_obj = ChiralHamiltonian(n=n, vF=vF, t1=t1, V=V, omega=omega, A0=A0, magnus_order=1)
         
         # 2. Projected Hamiltonian (Analytic Magnus)
-        H_proj_obj = ChiralHamiltonianProjected(n=n, vF=vF, t1=t1, V=V, omega=omega, A0=A0)
+        H_proj_obj = ChiralHamiltonianChiralBasisProjected(n=n, vF=vF, t1=t1, V=V, omega=omega, A0=A0)
         
         evals_full_list = []
         evals_proj_list = []

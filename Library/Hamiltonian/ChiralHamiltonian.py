@@ -36,6 +36,32 @@ class ChiralHamiltonian(hamiltonian):
         self.b1 = (2*np.pi/(3*a)) * np.array([1.0,  np.sqrt(3.0)])
         self.b2 = (2*np.pi/(3*a)) * np.array([1.0, -np.sqrt(3.0)])
 
+    def get_sym_path(self):
+        """
+        High-symmetry path for the graphene Brillouin zone.
+
+        Points are defined from the reciprocal lattice vectors b1 and b2:
+            Γ = 0
+            K = (2 b1 + b2) / 3
+            M = b1 / 2
+
+        Path: Γ -> K -> M -> Γ
+
+        Returns
+        -------
+        sym_points : dict
+            Mapping of label -> np.ndarray of shape (2,).
+        path : list of str
+            Ordered labels defining the path.
+        """
+        G = np.zeros(2)
+        K = (2.0 * self.b1 + self.b2) / 3.0
+        M = 0.5 * self.b1
+
+        sym_points = {"G": G, "K": K, "M": M}
+        path = ["G", "K", "M", "G"]
+        return sym_points, path
+
     @property
     def V(self) -> float:
         return self._V
