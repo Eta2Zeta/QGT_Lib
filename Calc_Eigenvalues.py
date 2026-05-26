@@ -19,6 +19,7 @@ from Library.plotting_lib_2d import *
 from Library.plotting_lib_2d import plot_degeneracy_2d
 from Library.plotting_lib_1d import *
 from Library.eigenvalue_calc_lib import *
+from Library.eigenvalue_calc_lib_1d import eigenvalues_along_path
 from Library.utilities import centered_kvals, generate_1d_lines_at_angles
 from Library.data_management_utils_2d import setup_2D_Eigen_results_directory
 
@@ -32,7 +33,6 @@ os.makedirs(temp_dir, exist_ok=True)
 # Hamiltonian_Obj = TwoOrbitalUnspinfulHamiltonian(zeta=1.0, omega = 10.0, A0=0.1, mu=0, magnus_order = 1)
 Hamiltonian_Obj = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=0)
 # Hamiltonian_Obj = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=(1-np.sqrt(2))/4)
-# Hamiltonian_Obj = ChiralHamiltonianProjected(n=5, V=30, A0=0.1, omega=1000)
 # bands = (0,1)
 # Hamiltonian_Obj = ChiralHamiltonian(n=5, V=30)
 # bands = (4,5)
