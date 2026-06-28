@@ -338,12 +338,8 @@ def dynamic_nd_field_with_bands(
     plt.show()
 
 
-root_right = "results/2D_QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_10.000_50.000-omega_50.000_5000.000_-SPACING_V_16_linear-omega_16_log_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
+root_right = "results/2D_QGT_ND/Legacy/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
 root_left = "results/2D_QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_10.000_50.000-omega_50.000_5000.000_-SPACING_V_16_linear-omega_16_log_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
-
-# New
-# root_right = "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_10.000_50.000-omega_50.000_5000.000_-SPACING_V_32_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
-# root_left = "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_10.000_50.000-omega_50.000_5000.000_-SPACING_V_32_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
 
 # V all the way to -10
 # root_right = "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
@@ -354,7 +350,7 @@ root_left = "results/2D_QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_
 # root_right = "results/QGT_ND/RhombohedralGrapheneHamiltonian/A0_0.10-V_30-analytic_magnus_False-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_1_linear-omega_1_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set2"
 
 # View the trace (default)
-# dynamic_nd_field_with_bands(root_right, quantity="trace", bands_to_plot=[0,1,2,3,4,5,6,7,8,9])
+dynamic_nd_field_with_bands(root_right, quantity="trace", bands_to_plot=[0,1,2,3,4,5,6,7,8,9])
 # dynamic_nd_field_with_bands(root_left, quantity="trace", bands_to_plot=[0,1,2,3,4,5,6,7,8,9])
 
 # PLotting with k space to include all of the first Brillouin zone
@@ -362,5 +358,4 @@ root_left = "results/2D_QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_
 # dynamic_nd_field_with_bands(large_k_left, quantity="trace", bands_to_plot=[0,1,2,3,4,5,6,7,8,9])
 
 
-dynamic_nd_field_with_bands("results/2D_QGT_ND/SquareLatticeHamiltonian/dataset1", quantity="trace")
-
+# dynamic_nd_field_with_bands("results/2D_QGT_ND/SquareLatticeHamiltonian/dataset1", quantity="trace")
