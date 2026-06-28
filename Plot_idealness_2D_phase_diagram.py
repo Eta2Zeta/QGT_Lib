@@ -110,14 +110,6 @@ def plot_trace_std_param2d_inverse_omega(result_dir,
         plt.close(fig)
 
 
-
-# plot_trace_std_param2d_inverse_omega(
-#     "results/2D_QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_10.000_50.000-omega_50.000_5000.000_-SPACING_V_32_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1",
-#     x_param="omega", 
-#     y_param="V",
-# )
-
-
 # ------------------------------------------------------------------
 # Helpers for joined signed 1/omega plotting (left=negative, right=positive)
 # ------------------------------------------------------------------
@@ -595,12 +587,12 @@ def plot_slices_qgt_std_param2d_signed_invomega_joined(
         plt.close(fig)
 
 #! Full Rhombohedral Graphene Hamiltonian
-full_Chiral_Hamiltonian_left_drive_dir = "results/2D_QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
-full_Chiral_Hamiltonian_right_drive_dir = "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
+full_Chiral_Hamiltonian_left_drive_dir = "results/2D_QGT_ND/Legacy/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
+full_Chiral_Hamiltonian_right_drive_dir = "results/2D_QGT_ND/Legacy/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
 
 plot_qgt_std_param2d_signed_invomega_joined(
-    left_result_dir  ="results/2D_QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1",
-    right_result_dir ="results/2D_QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1",
+    left_result_dir  = full_Chiral_Hamiltonian_left_drive_dir,
+    right_result_dir = full_Chiral_Hamiltonian_right_drive_dir,
     y_param="V",            # the shared second parameter
     quantity="trace",      # "trace" | "berry" | "trace_minus_berry"
     drop_overlap=True,      # typical when both include the same max ω

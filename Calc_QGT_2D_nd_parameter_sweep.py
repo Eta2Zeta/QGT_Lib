@@ -288,60 +288,52 @@ def compute_qgt_nd_parallel(
 # }
 # k = 2.5
 
-H_template = ChiralHamiltonianChiralBasisProjected(
-    n=5,
-    vF=542.10,
-    t1=355.16,
-    V=30.0,
-    omega=1000.0,
-    A0=0.10,
-    polarization="right",
-    magnus_order=1,
-    analytic_magnus=True,
-)
-
-param_ranges = {
-    "omega": (30.0, 5000.0),
-}
-
-parameter_spacing = {
-    "omega": {"n": 14, "scale": "log"},
-}
-k = 0.8
-
-
-# H_template = ChiralHamiltonian(
+# H_template = ChiralHamiltonianChiralBasisProjected(
 #     n=5,
-#     a=1.0,
 #     vF=542.10,
 #     t1=355.16,
-#     V=10.0,
-#     valley='K',
-#     omega=2 * np.pi,
+#     V=30.0,
+#     omega=1000.0,
 #     A0=0.10,
-#     polarization='right',
+#     polarization="right",
 #     magnus_order=1,
-#     analytic_magnus=False,
+#     analytic_magnus=True,
 # )
 
 # param_ranges = {
-#     "V": (10.0, 50.0),
-#     "omega": (50.0, 5000.0),
+#     "omega": (30.0, 5000.0),
 # }
 
 # parameter_spacing = {
-#     "V": {"n": 4, "scale": "linear"},
-#     "omega": {"n": 4, "scale": "linear"},
+#     "omega": {"n": 14, "scale": "log"},
 # }
-# k = 0.9
-
-# Ensure b-vectors exist
-if not hasattr(H_template, "b1") or not hasattr(H_template, "b2"):
-    _a = getattr(H_template, "a", 1.0)
-    H_template.b1 = (2 * np.pi / (3 * _a)) * np.array([1.0,  np.sqrt(3.0)])
-    H_template.b2 = (2 * np.pi / (3 * _a)) * np.array([1.0, -np.sqrt(3.0)])
+# k = 0.8
 
 
+H_template = ChiralHamiltonian(
+    n=5,
+    a=1.0,
+    vF=542.10,
+    t1=355.16,
+    V=10.0,
+    valley='K',
+    omega=2 * np.pi,
+    A0=0.10,
+    polarization='right',
+    magnus_order=1,
+    analytic_magnus=False,
+)
+
+param_ranges = {
+    "V": (10.0, 50.0),
+    "omega": (50.0, 5000.0),
+}
+
+parameter_spacing = {
+    "V": {"n": 3, "scale": "linear"},
+    "omega": {"n": 3, "scale": "linear"},
+}
+k = 0.9
 kx_range = (-k, k)
 ky_range = (-k, k)
 mesh_spacing = 100   # bump up for production
