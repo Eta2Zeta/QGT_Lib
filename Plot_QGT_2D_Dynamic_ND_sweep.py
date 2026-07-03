@@ -7,6 +7,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import sys
 import Library.Hamiltonian.Hamiltonian
+from Library.plotting_utils import bz_wigner_seitz_from_bvecs, get_bvecs_from_meta
 # Patch for backward compatibility (unpickling old data)
 sys.modules["Library.Hamiltonian_v2"] = Library.Hamiltonian.Hamiltonian
 from Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected import ChiralHamiltonianChiralBasisProjected
@@ -14,70 +15,6 @@ Library.Hamiltonian.Hamiltonian.RhombohedralGrapheneHamiltonian = ChiralHamilton
 
 from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
 Library.Hamiltonian.Hamiltonian.ChiralHamiltonian = ChiralHamiltonian
-
-def _bz_hexagon_from_bvecs(b1, b2):
-    """
-    Return (xv, yv) arrays of the hexagon vertices (closed) for the 1st BZ
-    built from reciprocal vectors b1, b2 (shape (2,) arrays).
-    """
-
-    # 6 nearest reciprocal vectors
-    Gs = np.array([
-        +b1,
-        +b2,
-        +(b1 + b2),
-        -b1,
-        -b2,
-        -(b1 + b2)
-    ], dtype=float)
-
-    # order by polar angle so adjacent normals give consecutive edges
-    ang = np.arctan2(Gs[:,1], Gs[:,0])
-    order = np.argsort(ang)
-    Gs = Gs[order]
-
-    # for each pair, intersect n_i·k = |n_i|^2/2 with n_{i+1}·k = |n_{i+1}|^2/2
-    verts = []
-    for i in range(6):
-        g1 = Gs[i]
-        g2 = Gs[(i+1) % 6]
-        A = np.stack([g1, g2], axis=0)                    # 2x2
-        c = 0.5 * np.array([np.dot(g1, g1), np.dot(g2, g2)])
-        # solve A k = c
-        kx_ky = np.linalg.solve(A, c)
-        verts.append(kx_ky)
-
-    verts = np.array(verts)
-    # close the polygon for plotting
-    xv = np.append(verts[:,0], verts[0,0])
-    yv = np.append(verts[:,1], verts[0,1])
-    return xv, yv
-
-def _get_bvecs_from_meta(meta):
-    """
-    Try to extract b1, b2 from the saved Hamiltonian template in meta.
-    Fallback to graphene defaults if needed.
-    """
-    b1 = b2 = None
-    if meta is not None:
-        Htemp = meta.get("Hamiltonian_Template", None)
-        if Htemp is not None and hasattr(Htemp, "b1") and hasattr(Htemp, "b2"):
-            b1 = np.asarray(Htemp.b1, dtype=float)
-            b2 = np.asarray(Htemp.b2, dtype=float)
-
-        # fallback: use 'a' if present
-        if (b1 is None or b2 is None):
-            a = getattr(Htemp, "a", 1.0) if Htemp is not None else 1.0
-            b1 = (2*np.pi/(3*a)) * np.array([1.0,  np.sqrt(3.0)], dtype=float)
-            b2 = (2*np.pi/(3*a)) * np.array([1.0, -np.sqrt(3.0)], dtype=float)
-
-    else:
-        # last-resort fallback
-        a = 1.0
-        b1 = (2*np.pi/(3*a)) * np.array([1.0,  np.sqrt(3.0)], dtype=float)
-        b2 = (2*np.pi/(3*a)) * np.array([1.0, -np.sqrt(3.0)], dtype=float)
-
-    return b1, b2
 
 def _load_nd_bundle(root_dir):
     """
@@ -200,29 +137,43 @@ def dynamic_nd_field_with_bands(
     area_element = float(dkx * dky)
 
     # --- bands present? ---
-    if "eigenvalues_sym_grid" not in data.files:
-        raise KeyError("Bundle missing 'eigenvalues_sym_grid'. Please save symmetry line eigenvalues into the npz.")
+    has_band_cut = (
+        "eigenvalues_sym_grid" in data.files
+        and "k_dist" in data.files
+        and "node_indices" in data.files
+        and "path_labels" in data.files
+    )
+    if has_band_cut:
+        eigenvalues_sym_grid = np.asarray(data["eigenvalues_sym_grid"])   # (*param_shape, num_k, Nb)
+        k_dist = np.asarray(data["k_dist"])
+        node_indices = np.asarray(data["node_indices"])
+        path_labels = np.asarray(data["path_labels"])
+        num_bands = eigenvalues_sym_grid.shape[-1]
+    else:
+        eigenvalues_sym_grid = None
+        k_dist = None
+        node_indices = None
+        path_labels = None
+        num_bands = 0
 
-    eigenvalues_sym_grid = np.asarray(data["eigenvalues_sym_grid"])   # (*param_shape, num_k, Nb)
-    k_dist = np.asarray(data["k_dist"])
-    node_indices = np.asarray(data["node_indices"])
-    path_labels = np.asarray(data["path_labels"])
-    path_points = np.asarray(data["path_points"])
-
-    num_bands = eigenvalues_sym_grid.shape[-1]
+    has_path_overlay = "path_points" in data.files and "path_labels" in data.files
+    path_points = np.asarray(data["path_points"]) if has_path_overlay else None
 
     # --- band selection ---
-    if bands_to_plot is None:
-        bands = list(range(num_bands))
-    elif isinstance(bands_to_plot, int):
-        if not (0 <= bands_to_plot < num_bands):
-            raise IndexError(f"Band {bands_to_plot} out of range [0,{num_bands-1}]")
-        bands = [bands_to_plot]
+    if has_band_cut:
+        if bands_to_plot is None:
+            bands = list(range(num_bands))
+        elif isinstance(bands_to_plot, int):
+            if not (0 <= bands_to_plot < num_bands):
+                raise IndexError(f"Band {bands_to_plot} out of range [0,{num_bands-1}]")
+            bands = [bands_to_plot]
+        else:
+            bands = list(bands_to_plot)
+            bad = [b for b in bands if not (0 <= b < num_bands)]
+            if bad:
+                raise IndexError(f"bands_to_plot has out-of-range indices {bad}; valid is [0,{num_bands-1}]")
     else:
-        bands = list(bands_to_plot)
-        bad = [b for b in bands if not (0 <= b < num_bands)]
-        if bad:
-            raise IndexError(f"bands_to_plot has out-of-range indices {bad}; valid is [0,{num_bands-1}]")
+        bands = []
 
     # --- color scale for the 2D field (global over all parameter points) ---
     if symmetric_cbar is None:
@@ -257,34 +208,46 @@ def dynamic_nd_field_with_bands(
     ax_top = divider.append_axes("top", size="25%", pad=0.6)
 
     # --- overlay Brillouin-zone hexagon (black outline) ---
-    b1, b2 = _get_bvecs_from_meta(meta)
-    bx, by = _bz_hexagon_from_bvecs(b1, b2)
+    b1, b2 = get_bvecs_from_meta(meta)
+    bx, by = bz_wigner_seitz_from_bvecs(b1, b2)
     ax2d.plot(bx, by, 'w-', lw=1.8, alpha=0.9)   # white hexagon outline
 
-    # --- overlay symmetry path ---
-    ax2d.plot(path_points[:, 0], path_points[:, 1], 'r--', lw=1.5, label='Sym Path')
-    ax2d.scatter(path_points[:, 0], path_points[:, 1], c='red', s=20, zorder=5)
-    for p, label in zip(path_points, path_labels):
-        ax2d.annotate(str(label), (p[0], p[1]), textcoords="offset points", xytext=(5,5), color='red', fontsize=10, weight='bold')
+    # --- overlay symmetry path, when available ---
+    if has_path_overlay:
+        ax2d.plot(path_points[:, 0], path_points[:, 1], 'r--', lw=1.5, label='Sym Path')
+        ax2d.scatter(path_points[:, 0], path_points[:, 1], c='red', s=20, zorder=5)
+        for p, label in zip(path_points, path_labels):
+            ax2d.annotate(str(label), (p[0], p[1]), textcoords="offset points", xytext=(5,5), color='red', fontsize=10, weight='bold')
 
     # --- draw initial bands (top) ---
-    ev_line = eigenvalues_sym_grid[(*idx_tuple, slice(None), slice(None))]  # (num_k, Nb)
-
     band_lines = []
-    for b in bands:
-        line, = ax_top.plot(k_dist, ev_line[:, b], lw=1.2, label=f"band {b}")
-        band_lines.append(line)
-
     ax_top.set_ylabel("Eigenvalue")
-    ax_top.set_xlim(k_dist[0], k_dist[-1])
-    _set_global_energy_limits(ax_top, eigenvalues_sym_grid, bands)
+    if has_band_cut:
+        ev_line = eigenvalues_sym_grid[(*idx_tuple, slice(None), slice(None))]  # (num_k, Nb)
+        for b in bands:
+            line, = ax_top.plot(k_dist, ev_line[:, b], lw=1.2, label=f"band {b}")
+            band_lines.append(line)
 
-    ax_top.set_xticks(k_dist[node_indices])
-    ax_top.set_xticklabels([str(lbl) for lbl in path_labels])
-    for dist in k_dist[node_indices]:
-        ax_top.axvline(dist, color="black", linestyle="--", linewidth=0.5, alpha=0.5)
+        ax_top.set_xlim(k_dist[0], k_dist[-1])
+        _set_global_energy_limits(ax_top, eigenvalues_sym_grid, bands)
 
-    ax_top.legend(loc="upper right", ncol=min(3, len(bands)), fontsize=8, frameon=True)
+        ax_top.set_xticks(k_dist[node_indices])
+        ax_top.set_xticklabels([str(lbl) for lbl in path_labels])
+        for dist in k_dist[node_indices]:
+            ax_top.axvline(dist, color="black", linestyle="--", linewidth=0.5, alpha=0.5)
+
+        ax_top.legend(loc="upper right", ncol=min(3, len(bands)), fontsize=8, frameon=True)
+    else:
+        ax_top.set_xticks([])
+        ax_top.set_yticks([])
+        ax_top.text(
+            0.5, 0.5,
+            "Symmetry-line eigenvalues unavailable",
+            transform=ax_top.transAxes,
+            ha="center",
+            va="center",
+            color="0.45",
+        )
 
     # --- draw initial 2D field (bottom) ---
     im = ax2d.imshow(
@@ -325,10 +288,11 @@ def dynamic_nd_field_with_bands(
         im.set_data(Z)
         ax2d.set_title(_format_plot_title(idx, Z, names, axes, title, show_integral, quantity, area_element))
 
-        # Update band cut
-        ev_line = eigenvalues_sym_grid[(*idx, slice(None), slice(None))]  # (num_k, Nb)
-        for j, b in enumerate(bands):
-            band_lines[j].set_ydata(ev_line[:, b])
+        # Update band cut, when available
+        if has_band_cut:
+            ev_line = eigenvalues_sym_grid[(*idx, slice(None), slice(None))]  # (num_k, Nb)
+            for j, b in enumerate(bands):
+                band_lines[j].set_ydata(ev_line[:, b])
 
         fig.canvas.draw_idle()
 
@@ -338,12 +302,9 @@ def dynamic_nd_field_with_bands(
     plt.show()
 
 
-root_right = "results/2D_QGT_ND/Legacy/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
-root_left = "results/2D_QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_10.000_50.000-omega_50.000_5000.000_-SPACING_V_16_linear-omega_16_log_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
-
 # V all the way to -10
-# root_right = "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
-# root_left = "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
+root_right = "results/QGT_ND/LegacyWithN>1D/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
+# root_left = "results/QGT_ND/LegacyWithN>1D/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
 
 
 # The chiral basis projected Hamiltonian
@@ -356,6 +317,3 @@ dynamic_nd_field_with_bands(root_right, quantity="trace", bands_to_plot=[0,1,2,3
 # PLotting with k space to include all of the first Brillouin zone
 # large_k_left = "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_20.000_5000.000_-SPACING_V_3_linear-omega_3_linear_-kx-2.50_2.50__ky-2.50_2.50__mesh300_data_set1"
 # dynamic_nd_field_with_bands(large_k_left, quantity="trace", bands_to_plot=[0,1,2,3,4,5,6,7,8,9])
-
-
-# dynamic_nd_field_with_bands("results/2D_QGT_ND/SquareLatticeHamiltonian/dataset1", quantity="trace")

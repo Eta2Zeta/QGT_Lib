@@ -48,26 +48,26 @@ class ChiralHamiltonianSWProjected(hamiltonian):
         H_AB = Hprime[np.ix_(idx_L, idx_H)]
         H_BA = Hprime[np.ix_(idx_H, idx_L)]
         H_BB = H0[np.ix_(idx_H, idx_H)]
-        H_prime_HH = Hprime[np.ix_(idx_H, idx_H)]
+        H_prime_BB = Hprime[np.ix_(idx_H, idx_H)]
         
         
         try:
-            H_HH_inv = np.linalg.inv(H_BB)
+            H_BB_inv = np.linalg.inv(H_BB)
             H_eff = H_AA
             
             if order >= 2:
                 # Second-order correction: - H_LH @ H_HH^(-1) @ H_HL
-                second_order_correction = - (H_AB @ H_HH_inv @ H_BA)
+                second_order_correction = - (H_AB @ H_BB_inv @ H_BA)
                 H_eff = H_eff + second_order_correction
             
             if order >= 3:
                 # Third-order correction: + H_LH @ H_HH^(-1) @ H_prime_HH @ H_HH^(-1) @ H_HL
-                third_order_correction = H_AB @ H_HH_inv @ H_prime_HH @ H_HH_inv @ H_BA
+                third_order_correction = H_AB @ H_BB_inv @ H_prime_BB @ H_BB_inv @ H_BA
                 H_eff = H_eff + third_order_correction
             
             if order >= 4:
                 # Fourth-order correction: - H_LH @ H_HH^(-1) @ H_prime_HH @ H_HH^(-1) @ H_prime_HH @ H_HH^(-1) @ H_HL
-                fourth_order_correction = - (H_AB @ H_HH_inv @ H_prime_HH @ H_HH_inv @ H_prime_HH @ H_HH_inv @ H_BA)
+                fourth_order_correction = - (H_AB @ H_BB_inv @ H_prime_BB @ H_BB_inv @ H_prime_BB @ H_BB_inv @ H_BA)
                 H_eff = H_eff + fourth_order_correction
                 
         except np.linalg.LinAlgError:
@@ -94,26 +94,26 @@ class ChiralHamiltonianSWProjected(hamiltonian):
         idx_H = [i for i in range(self.full_dim) if i not in idx_L]
         
         # Partition the full matrix
-        H_LL = H_full[np.ix_(idx_L, idx_L)]
-        H_LH = H_full[np.ix_(idx_L, idx_H)]   # H_AB
-        H_HL = H_full[np.ix_(idx_H, idx_L)]   # H_BA
-        H_HH = H_full[np.ix_(idx_H, idx_H)]   # H_BB
+        H_AA = H_full[np.ix_(idx_L, idx_L)]
+        H_AB = H_full[np.ix_(idx_L, idx_H)]   # H_AB
+        H_BA = H_full[np.ix_(idx_H, idx_L)]   # H_BA
+        H_BB = H_full[np.ix_(idx_H, idx_H)]   # H_BB
         
         try:
-            H_HH_inv = np.linalg.inv(H_HH)
-            H_eff = H_LL
+            H_HH_inv = np.linalg.inv(H_BB)
+            H_eff = H_AA
             
             if order >= 2:
                 # 2nd order: -H_AB * H_BB^(-1) * H_BA
-                second_order = - (H_LH @ H_HH_inv @ H_HL)
+                second_order = - (H_AB @ H_HH_inv @ H_BA)
                 H_eff = H_eff + second_order
                 
             if order >= 4:
                 H_HH_inv2 = H_HH_inv @ H_HH_inv
                 # Canonical 4th order SWT wavefunction renormalization term:
                 # -1/2 { H_eff^(2), H_AB H_BB^-2 H_BA }
-                term_inv1 = -(H_LH @ H_HH_inv @ H_HL)
-                term_inv2 = (H_LH @ H_HH_inv2 @ H_HL)
+                term_inv1 = -(H_AB @ H_HH_inv @ H_BA)
+                term_inv2 = (H_AB @ H_HH_inv2 @ H_BA)
                 
                 fourth_order = -0.5 * (term_inv1 @ term_inv2 + term_inv2 @ term_inv1)
                 

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from Library.plotting_utils import load_qgt, filter_entries_by_omega
-from Plot_QGT_2D_Dynamic_Multipara_sweep import _load_nd_bundle, _pick_field_grid, _label_from_quantity
+from Plot_QGT_2D_Dynamic_ND_sweep import _load_nd_bundle, _pick_field_grid, _label_from_quantity
 
 
 def _join_by_signed_inverse_omega(omegas_left, vals_left, omegas_right, vals_right,

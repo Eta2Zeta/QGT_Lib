@@ -16,6 +16,7 @@ def main():
     t1 = 355.16
     V = 10.0
     A0 = 0.1
+    polarization = "right"
     
     # Frequencies to sweep
     omega_vals = [50.0, 100.0, 200.0, 500.0] 
@@ -36,10 +37,30 @@ def main():
         
         # 1. Full Hamiltonian (Numerical Magnus)
         # Use magnus_order=1 to get 1st order effective Hamiltonian
-        H_full_obj = ChiralHamiltonian(n=n, vF=vF, t1=t1, V=V, omega=omega, A0=A0, magnus_order=1)
+        H_full_obj = ChiralHamiltonian(
+            n=n,
+            vF=vF,
+            t1=t1,
+            V=V,
+            omega=omega,
+            A0=A0,
+            polarization=polarization,
+            magnus_order=1,
+        )
         
-        # 2. Projected Hamiltonian (Analytic Magnus)
-        H_proj_obj = ChiralHamiltonianChiralBasisProjected(n=n, vF=vF, t1=t1, V=V, omega=omega, A0=A0)
+        # 2. Projected Hamiltonian using the full-drive analytic Magnus term
+        H_proj_obj = ChiralHamiltonianChiralBasisProjected(
+            n=n,
+            vF=vF,
+            t1=t1,
+            V=V,
+            omega=omega,
+            A0=A0,
+            polarization=polarization,
+            magnus_order=1,
+            analytic_magnus=True,
+            magnus_first_term_mode="projected_full_drive",
+        )
         
         evals_full_list = []
         evals_proj_list = []
@@ -51,13 +72,9 @@ def main():
             e_full = np.linalg.eigvalsh(H_eff_full)
             evals_full_list.append(np.sort(e_full))
             
-            # Projected H:
-            # H_eff = H_static + H_magnus_analytic
-            H_static = H_proj_obj.compute_static(kx, ky) # 2x2
-            
-            H_magnus = H_proj_obj.analytic_magnus_first_term(kx, ky)
-            
-            H_eff_proj = H_static + H_magnus
+            # Projected H: use the same base-class effective_hamiltonian path
+            # as the ND sweep.
+            H_eff_proj, _ = H_proj_obj.effective_hamiltonian(kx, ky)
             e_proj = np.linalg.eigvalsh(H_eff_proj)
             evals_proj_list.append(np.sort(e_proj))
             

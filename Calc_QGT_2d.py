@@ -22,7 +22,7 @@ from Library.data_management_utils_2d import setup_2D_QGT_results_directory
 
 def calculate_2d(Force_new=True):
     # Define parameters
-    band =1 # Which band to calculate your QMT on, starting from 0
+    band =5 # Which band to calculate your QMT on, starting from 0
     z_cutoff = .3 #where to cutoff the plot for the z axis when singularties occur
     z_percentile = 99 # percentile to cut off the plot
 
@@ -57,8 +57,8 @@ def calculate_2d(Force_new=True):
         sys.exit(1)
 
     # Define method name for directory naming ("analytic", "numerical", etc.)
-    method_name = "numerical"
-    # method_name = "numerical_phase_corrected"
+    # method_name = "numerical"
+    method_name = "numerical_phase_corrected"
     # method_name = "analytic"
 
     Hamiltonian_name = getattr(Hamiltonian_Obj, "name", "Hamiltonian")
@@ -110,7 +110,7 @@ def calculate_2d(Force_new=True):
              g_xy_real_array, g_xy_imag_array, 
              g_xz_real_array, g_xz_imag_array, 
              g_yz_real_array, g_yz_imag_array) = QGT_grid_num(
-                ki, kj, eigenvalues, eigenfunctions, quantum_geometric_tensor_3d_num_eigenvector_ordered, 
+                ki, kj, eigenvalues, eigenfunctions, quantum_geometric_tensor_3d_num, 
                 Hamiltonian_Obj, delta_k=1e-5, band_index=band, kk=kk
             )
             trace_array = g_xx_array + g_yy_array + g_zz_array
@@ -324,7 +324,7 @@ def _qgt_one_band_worker(payload: dict):
     H.omega = 5e3
 
     if method_name == "numerical":
-        func_target = quantum_geometric_tensor_3d_num_eigenvector_ordered
+        func_target = quantum_geometric_tensor_3d_num
     elif method_name == "numerical_phase_corrected":
         func_target = quantum_geometric_tensor_3d_num_phase_corrected
     elif method_name == "analytic":
@@ -573,5 +573,5 @@ def calculate_2d_all_bands(Force_new=True, method_name="numerical_phase_correcte
 
 
 if __name__ == '__main__':
-    calculate_2d_all_bands(Force_new=False, method_name="numerical")
-    # calculate_2d(Force_new=False)
+    # calculate_2d_all_bands(Force_new=False, method_name="numerical")
+    calculate_2d(Force_new=False)
