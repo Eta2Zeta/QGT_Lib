@@ -1,0 +1,35 @@
+{
+    "hamiltonian_name": "ChiralHamiltonianChiralBasisProjected",
+    "parameters": {
+        "A0": 0.1,
+        "V": 30.0,
+        "analytic_magnus": true,
+        "magnus_first_term_mode": "projected_full_drive",
+        "magnus_order": 1,
+        "n": 5,
+        "omega": 1000.0,
+        "polarization": "right",
+        "t1": 355.16,
+        "vF": 542.1
+    },
+    "scan_ranges": {
+        "omega": {
+            "min": 30.0,
+            "max": 5000.0
+        }
+    },
+    "scan_spacing": {
+        "omega": {
+            "count": 42,
+            "scale": "log"
+        }
+    },
+    "k_grid": {
+        "kx_min": -0.8,
+        "kx_max": 0.8,
+        "ky_min": -0.8,
+        "ky_max": 0.8,
+        "mesh": 100
+    },
+    "band_index": 1
+}

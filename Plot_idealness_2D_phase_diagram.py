@@ -587,8 +587,8 @@ def plot_slices_qgt_std_param2d_signed_invomega_joined(
         plt.close(fig)
 
 #! Full Rhombohedral Graphene Hamiltonian
-full_Chiral_Hamiltonian_left_drive_dir = "results/2D_QGT_ND/Legacy/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
-full_Chiral_Hamiltonian_right_drive_dir = "results/2D_QGT_ND/Legacy/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
+full_Chiral_Hamiltonian_left_drive_dir = "results/2D_QGT_ND/LegacyWithN>1D/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
+full_Chiral_Hamiltonian_right_drive_dir = "results/2D_QGT_ND/LegacyWithN>1D/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
 
 plot_qgt_std_param2d_signed_invomega_joined(
     left_result_dir  = full_Chiral_Hamiltonian_left_drive_dir,

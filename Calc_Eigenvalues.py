@@ -10,6 +10,7 @@ from Library.plotting_lib_2d import *
 from Library.Hamiltonian.Hamiltonian import * 
 from Library.Hamiltonian.THF_Hamiltonian import *
 from Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected import *
+from Library.Hamiltonian.ChiralHamiltonian import *
 from Library.Hamiltonian.SquareLatticeHamiltonian import *
 from Library.Hamiltonian.gWaveAltermagnetHamiltonian import *
 from Library.Hamiltonian.AltermagnetHamiltonian import *
@@ -31,11 +32,12 @@ os.makedirs(temp_dir, exist_ok=True)
 
 # Hamiltonian_Obj = THF_Hamiltonian(A0=0)
 # Hamiltonian_Obj = TwoOrbitalUnspinfulHamiltonian(zeta=1.0, omega = 10.0, A0=0.1, mu=0, magnus_order = 1)
-Hamiltonian_Obj = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=0)
+# Hamiltonian_Obj = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=0)
 # Hamiltonian_Obj = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=(1-np.sqrt(2))/4)
 # bands = (0,1)
-# Hamiltonian_Obj = ChiralHamiltonian(n=5, V=30)
-# bands = (4,5)
+Hamiltonian_Obj = ChiralHamiltonian(n=5, V=30)
+k_max = 0.82
+bands = (4,5)
 # Hamiltonian_Obj = AltermagnetHamiltonian(t1=1.0, t2=0.5, td=2, lamb=2, J=1.0, Nz=4)
 # k_max = np.pi #This is for AltermagnetHamiltonian
 # bands = (0,1)
@@ -43,8 +45,8 @@ Hamiltonian_Obj = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2
 # Hamiltonian_Obj = GrapheneHamiltonian(A0=0)
 # Hamiltonian_Obj = RuO2Hamiltonian(lamb_z=0)
 # Hamiltonian_Obj = gWaveAltermagnetHamiltonian(t1=0.3, t2=0.3, t3=0.3, t4=0.3, mu=0, Jx=0.0, Jy=0.0, Jz=0.2, lamb=0.1, lamb_z=0.1)
-k_max = 2*np.pi
-bands = (2,3)
+# k_max = 2*np.pi
+# bands = (2,3)
 dim = Hamiltonian_Obj.dim
 
 def calculation_2d(Hamiltonian_Obj = Hamiltonian_Obj, force_new=True, include_end_points=True, kk=0, order="xyz"):

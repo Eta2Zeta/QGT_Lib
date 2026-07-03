@@ -14,7 +14,7 @@
     "t1": 355.16,
     "vF": 542.1
   },
-  "include_endpoints": false,
+  "include_endpoints": true,
   "ki_range": [
     -0.809139072847682,
     0.809139072847682
@@ -24,7 +24,7 @@
     0.809139072847682
   ],
   "kk": 0.0,
-  "kvals_mode": "centered",
   "mesh_spacing": 150,
+  "method_name": "numerical_phase_corrected",
   "order": "xyz"
 }
