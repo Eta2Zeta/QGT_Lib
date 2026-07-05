@@ -54,7 +54,7 @@ def _worker_qgt_point(arg, h_template, kx, ky, mesh_spacing, band, z_cutoff, k_p
      g_xz_r, g_xz_i,
      g_yz_r, g_yz_i) = QGT_grid_num(
         kx, ky, eigenvalues, eigenfunctions, quantum_geometric_tensor_3d_num_phase_corrected,
-        H, delta_k, band_index=band, z_cutoff=z_cutoff,
+        H, delta_k, band_index=band,
         progress_label=progress_label,
     )
     trace = g_xx + g_yy
@@ -299,56 +299,54 @@ def compute_qgt_nd_parallel(
 # }
 # k = 2.5
 
-H_template = ChiralHamiltonianChiralBasisProjected(
-    n=5,
-    vF=542.10,
-    t1=355.16,
-    V=30.0,
-    omega=1000.0,
-    A0=0.10,
-    polarization="right",
-    magnus_order=1,
-    analytic_magnus=True,
-    magnus_first_term_mode="direct_drive",
-)
-
-param_ranges = {
-    "omega": (30.0, 5000.0),
-}
-
-parameter_spacing = {
-    "omega": {"n": 42, "scale": "log"},
-}
-k = 0.8
-
-
-# H_template = ChiralHamiltonian(
+# H_template = ChiralHamiltonianChiralBasisProjected(
 #     n=5,
-#     a=1.0,
 #     vF=542.10,
 #     t1=355.16,
-#     V=0.0,
-#     valley='K',
-#     omega=2 * np.pi,
+#     V=30.0,
+#     omega=1000.0,
 #     A0=0.10,
-#     polarization='right',
+#     polarization="right",
 #     magnus_order=1,
-#     analytic_magnus=False,
+#     analytic_magnus=True,
+#     magnus_first_term_mode="direct_drive",
 # )
 
 # param_ranges = {
-#     "V": (-10.0, 50.0),
-#     "omega": (50.0, 5000.0),
+#     "omega": (30.0, 5000.0),
 # }
 
 # parameter_spacing = {
-#     "V": {"n": 4, "scale": "linear"},
-#     "omega": {"n": 3, "scale": "linear"},
+#     "omega": {"n": 42, "scale": "log"},
 # }
-# k = 0.90
+# k = 0.8
+
+
+H_template = ChiralHamiltonian(
+    n=5,
+    a=1.0,
+    vF=542.10,
+    t1=355.16,
+    V=30.0,
+    valley='K',
+    omega=2 * np.pi,
+    A0=0.10,
+    polarization='right',
+    magnus_order=1,
+    analytic_magnus=False,
+)
+
+param_ranges = {
+    "omega": (5.0, 5000.0),
+}
+
+parameter_spacing = {
+    "omega": {"n": 32, "scale": "log"},
+}
+k = 0.82
 kx_range = (-k, k)
 ky_range = (-k, k)
-mesh_spacing = 100
+mesh_spacing = 150
 
 
 def main():
@@ -359,7 +357,7 @@ def main():
         kx_range=kx_range,
         ky_range=ky_range,
         mesh_spacing=mesh_spacing,
-        band=1,
+        band=4,
         z_cutoff=1e2,
         num_points_per_segment=200,
         processes=None,

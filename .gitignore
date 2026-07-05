@@ -3,6 +3,9 @@
 *.html
 .DS_Store
 **/.DS_Store
+<<<<<<< Updated upstream
 __pycache__/
 **/__pycache__/
 *.py[cod]
+=======
+>>>>>>> Stashed changes

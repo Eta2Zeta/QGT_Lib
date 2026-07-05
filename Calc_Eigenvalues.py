@@ -36,8 +36,10 @@ os.makedirs(temp_dir, exist_ok=True)
 # Hamiltonian_Obj = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=(1-np.sqrt(2))/4)
 # bands = (0,1)
 Hamiltonian_Obj = ChiralHamiltonian(n=5, V=30)
-k_max = 0.82
-bands = (4,5)
+# Hamiltonian_Obj = ChiralHamiltonianChiralBasisProjected(n=5)
+k_max = 0.9
+# bands = (4,5)
+
 # Hamiltonian_Obj = AltermagnetHamiltonian(t1=1.0, t2=0.5, td=2, lamb=2, J=1.0, Nz=4)
 # k_max = np.pi #This is for AltermagnetHamiltonian
 # bands = (0,1)
@@ -180,7 +182,14 @@ def calculation_2d(Hamiltonian_Obj = Hamiltonian_Obj, force_new=True, include_en
     
     # --- New: Plot 2D Degeneracy Map ---
     print("Plotting 2D Degeneracy Map...")
-    plot_degeneracy_2d(ki, kj, eigenvalues, threshold=0.02, title=f"Band Degeneracy Map ({Hamiltonian_Obj.name})", results_dir=results_subdir, save_fig=True)
+    plot_degeneracy_2d(
+        ki, kj, eigenvalues,
+        threshold=0.02,
+        title=f"Band Degeneracy Map ({Hamiltonian_Obj.name})",
+        hamiltonian=Hamiltonian_Obj,
+        results_dir=results_subdir,
+        save_fig=True,
+    )
 
 def calculation_1d(Hamiltonian_Obj=Hamiltonian_Obj):
     #TODO: make the definition for the end points just be two points

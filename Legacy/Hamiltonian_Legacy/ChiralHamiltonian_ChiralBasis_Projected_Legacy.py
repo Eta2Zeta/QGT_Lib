@@ -1,5 +1,5 @@
 import numpy as np
-from .Hamiltonian import hamiltonian
+from ...Library.Hamiltonian.Hamiltonian import hamiltonian
 sigma_x = np.array([[0, 1],
                     [1, 0]], dtype=complex)
 sigma_y = np.array([[0, -1j],

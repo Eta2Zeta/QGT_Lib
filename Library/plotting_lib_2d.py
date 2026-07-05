@@ -957,7 +957,17 @@ def plot_eigen_and_all_berry_2d(
     plt.close()
 
 
-def plot_degeneracy_2d(kx, ky, eigenvalues, threshold=0.01, title="Degeneracy Map (2D)", sym_points=True, results_dir=None, save_fig=False):
+def plot_degeneracy_2d(
+    kx,
+    ky,
+    eigenvalues,
+    threshold=0.01,
+    title="Degeneracy Map (2D)",
+    sym_points=True,
+    hamiltonian=None,
+    results_dir=None,
+    save_fig=False,
+):
     """
     Plot a 2D map where colors indicate the number of band degeneracies at each k-point.
     
@@ -966,8 +976,9 @@ def plot_degeneracy_2d(kx, ky, eigenvalues, threshold=0.01, title="Degeneracy Ma
     - eigenvalues: 3D array of eigenvalues [nkx, nky, nbands].
     - threshold: Relative threshold (fraction of max gap) to consider bands degenerate.
     - title: Plot title.
-    - sym_points: If True, overlays default high-symmetry points ((0,0), (pi,0), (pi,pi), (0,pi)).
-                  If array-like, uses the provided points.
+    - sym_points: If True, overlays Hamiltonian.get_sym_path() when available.
+                  If False, no symmetry overlay is drawn.
+    - hamiltonian: Optional Hamiltonian object used to read get_sym_path().
     """
     nkx, nky, nbands = eigenvalues.shape
     degeneracy_map = np.zeros((nkx, nky), dtype=int)
@@ -991,6 +1002,7 @@ def plot_degeneracy_2d(kx, ky, eigenvalues, threshold=0.01, title="Degeneracy Ma
                 
     # Plot
     fig, ax = plt.subplots(figsize=(10, 8))
+    ax.set_facecolor("0.35")
 
     # Define colors for 0, 1, 2, 3+
     colors = ['blue', 'green', 'red', 'black']
@@ -1002,64 +1014,33 @@ def plot_degeneracy_2d(kx, ky, eigenvalues, threshold=0.01, title="Degeneracy Ma
     im = ax.pcolormesh(kx, ky, degeneracy_map, cmap=cmap, norm=norm, shading='auto')
     
     # Overlay Symmetry Points
-    if sym_points is not False:
-        if sym_points is True:
-            # Connect all points to form a perimeter and diagonals
-            # Gamma -> X -> M -> Y -> Gamma -> M
-            path = np.array([
-                [0, 0],
-                [np.pi, 0],
-                [np.pi, np.pi],
-                [0, np.pi],
-                [0, 0],
-                [np.pi, np.pi], # Cross-diagonal from (0,0) to (pi,pi)
-                [np.pi, 0],     # Jump back to X (without drawing line to Y)
-                [0, np.pi]      # Cross-diagonal from (pi,0) to (0,pi)
-            ])
-            
-            # Since the path jumps and crosses, the simplest robust pyplot approach to draw connecting lines between all is to plot the perimeter box and diagonals manually.
-            pass  # we will handle drawing differently below to prevent weird connecting segments
-            
-        else:
-            path = np.array(sym_points)
-            labels = [f"P{idx}" for idx in range(len(path))]
+    if sym_points:
+        if hamiltonian is not None and hasattr(hamiltonian, "get_sym_path"):
+            sym_dict, path_names = hamiltonian.get_sym_path()
+            path = np.array([sym_dict[name] for name in path_names], dtype=float)
             ax.plot(path[:, 0], path[:, 1], color='white', linewidth=2, linestyle='--', label='Symmetry Path')
-            ax.scatter(path[:, 0], path[:, 1], color='white', s=50, zorder=5)
-            
-            for (x, y), label in zip(path, labels):
-                if label: 
-                    ax.annotate(label, (x, y), textcoords="offset points", xytext=(5,5), ha='left', color='white', fontsize=12, fontweight='bold')
-            ax.legend(loc='upper right')
 
-        if sym_points is True:
-            # Custom drawing to ensure all 4 points connect to every other point
-            pts = {
-                "Gamma": (0, 0),
-                "X": (np.pi, 0),
-                "M": (np.pi, np.pi),
-                "Y": (0, np.pi)
-            }
-            labels_disp = {"Gamma": "(0,0)", "X": "($\pi$,0)", "M": "($\pi$,$\pi$)", "Y": "(0,$\pi$)"}
-            
-            # Draw all pairs
-            lines_to_draw = [
-                ("Gamma", "X"), ("X", "M"), ("M", "Y"), ("Y", "Gamma"), # Perimeter
-                ("Gamma", "M"), ("X", "Y")                              # Diagonals
-            ]
-            
-            for p1, p2 in lines_to_draw:
-                x_vals = [pts[p1][0], pts[p2][0]]
-                y_vals = [pts[p1][1], pts[p2][1]]
-                # Only add the label to the legend once
-                lbl = 'Symmetry Lines' if p1 == "Gamma" and p2 == "X" else "_nolegend_"
-                ax.plot(x_vals, y_vals, color='white', linewidth=2, linestyle='--', label=lbl)
-                
-            # Draw point markers and labels
-            for k, (x, y) in pts.items():
+            plotted_labels = set()
+            for name in path_names:
+                if name in plotted_labels:
+                    continue
+                x, y = np.asarray(sym_dict[name], dtype=float)
                 ax.scatter(x, y, color='white', s=50, zorder=5)
-                ax.annotate(labels_disp[k], (x, y), textcoords="offset points", xytext=(5,5), ha='left', color='white', fontsize=12, fontweight='bold')
-                
+                ax.annotate(
+                    name,
+                    (x, y),
+                    textcoords="offset points",
+                    xytext=(5, 5),
+                    ha='left',
+                    color='white',
+                    fontsize=12,
+                    fontweight='bold',
+                )
+                plotted_labels.add(name)
+
             ax.legend(loc='upper right')
+        else:
+            print("sym_points=True, but no Hamiltonian with get_sym_path() was provided. Skipping symmetry overlay.")
     
     ax.set_title(title)
     ax.set_xlabel('kx')
