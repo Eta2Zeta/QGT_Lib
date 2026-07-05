@@ -204,16 +204,273 @@ def plot_all_2d_berries_from_directory(target_dir):
 
     print("Done all-Berry plots.")
 
+
+def _load_2d_qgt_dataset(target_dir):
+    """
+    Load the standard 2D QGT result folder used by Calc_QGT_2D.py.
+    """
+    if os.path.exists(os.path.join(target_dir, "qgt_meta_info.pkl")):
+        meta_path = os.path.join(target_dir, "qgt_meta_info.pkl")
+    else:
+        meta_path = os.path.join(target_dir, "meta_info.pkl")
+
+    if not os.path.exists(meta_path):
+        raise FileNotFoundError(f"No meta info file found in {target_dir}")
+
+    with open(meta_path, "rb") as f:
+        meta_info = pickle.load(f)
+
+    kx = meta_info.get("kx", meta_info.get("ki", None))
+    ky = meta_info.get("ky", meta_info.get("kj", None))
+    if kx is None or ky is None:
+        raise KeyError("Neither 'kx'/'ky' nor 'ki'/'kj' found in metadata.")
+
+    data = {
+        "target_dir": target_dir,
+        "meta_info": meta_info,
+        "kx": np.asarray(kx),
+        "ky": np.asarray(ky),
+        "g_xx": np.load(os.path.join(target_dir, "g_xx.npy")),
+        "g_xy_real": np.load(os.path.join(target_dir, "g_xy_real.npy")),
+        "g_xy_imag": np.load(os.path.join(target_dir, "g_xy_imag.npy")),
+        "g_yy": np.load(os.path.join(target_dir, "g_yy.npy")),
+        "trace": np.load(os.path.join(target_dir, "trace.npy")),
+        "eigenvalues": None,
+        "sym_line": None,
+    }
+
+    eig_path = os.path.join(target_dir, "eigenvalues.npy")
+    if os.path.exists(eig_path):
+        data["eigenvalues"] = np.load(eig_path)
+
+    sym_line_path = os.path.join(target_dir, "eigenvalues_sym_line.npz")
+    if os.path.exists(sym_line_path):
+        with np.load(sym_line_path, allow_pickle=True) as sym_data:
+            data["sym_line"] = {
+                "eigenvalues": np.asarray(sym_data["eigenvalues"]),
+                "k_dist": np.asarray(sym_data["k_dist"]),
+                "node_indices": np.asarray(sym_data["node_indices"], dtype=int),
+                "path_labels": [str(label) for label in sym_data["path_labels"]],
+            }
+
+    return data
+
+
+def _qgt_quantity_array(dataset, quantity, band):
+    quantity_map = {
+        "g_xx": ("g_xx", r"$g_{xx}$"),
+        "g_yy": ("g_yy", r"$g_{yy}$"),
+        "g_xy_real": ("g_xy_real", r"$\mathrm{Re}\ g_{xy}$"),
+        "g_xy_imag": ("g_xy_imag", r"$\mathrm{Im}\ g_{xy}$"),
+        "trace": ("trace", r"$\mathrm{Tr}\ g$"),
+        "berry": ("g_xy_imag", r"$\Omega_{xy}$"),
+        "berry_curvature": ("g_xy_imag", r"$\Omega_{xy}$"),
+    }
+    if quantity not in quantity_map:
+        valid = ", ".join(quantity_map)
+        raise ValueError(f"Unknown quantity '{quantity}'. Use one of: {valid}")
+
+    key, label = quantity_map[quantity]
+    arr = np.asarray(dataset[key])
+    if arr.ndim == 3:
+        if not (0 <= band < arr.shape[0]):
+            raise IndexError(f"Band {band} is out of range for {key}; valid range is [0, {arr.shape[0] - 1}]")
+        arr = arr[band]
+    elif band != 0:
+        raise IndexError(f"{key} is not band-stacked, so only band=0 is valid.")
+
+    if quantity in ("berry", "berry_curvature"):
+        arr = -2.0 * arr
+
+    return np.asarray(arr), label
+
+
+def _plot_energy_panel(ax, dataset, *, bands_to_plot=None, title=""):
+    sym_line = dataset.get("sym_line")
+    if sym_line is None:
+        ax.set_title(title)
+        ax.set_ylabel("Energy")
+        ax.text(0.5, 0.5, "eigenvalues_sym_line.npz not found", ha="center", va="center", transform=ax.transAxes)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        return
+
+    _plot_sym_line_energies(ax, sym_line, bands_to_plot=bands_to_plot, title=title)
+
+
+def _plot_sym_line_energies(ax, sym_line, *, bands_to_plot=None, title=""):
+    eigenvalues = np.real(np.asarray(sym_line["eigenvalues"]))
+    k_dist = np.asarray(sym_line["k_dist"])
+    node_indices = list(np.asarray(sym_line["node_indices"], dtype=int))
+    path_labels = list(sym_line["path_labels"])
+
+    ax.set_title(title)
+    ax.set_ylabel("Energy")
+    ax.set_xlabel("Symmetry path")
+
+    if eigenvalues.ndim != 2:
+        ax.text(0.5, 0.5, f"Unsupported symmetry eigenvalue shape {eigenvalues.shape}", ha="center", va="center", transform=ax.transAxes)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        return
+
+    nbands = eigenvalues.shape[-1]
+    if bands_to_plot is None:
+        bands = range(nbands)
+    elif isinstance(bands_to_plot, int):
+        bands = [bands_to_plot]
+    else:
+        bands = list(bands_to_plot)
+
+    bad = [b for b in bands if not (0 <= b < nbands)]
+    if bad:
+        raise IndexError(f"Energy bands {bad} are out of range; valid range is [0, {nbands - 1}]")
+
+    for band in bands:
+        ax.plot(k_dist, eigenvalues[:, band], linewidth=1.2, label=f"band {band}")
+
+    valid_nodes = [idx for idx in node_indices if 0 <= idx < len(k_dist)]
+    valid_labels = [
+        label
+        for idx, label in zip(node_indices, path_labels)
+        if 0 <= idx < len(k_dist)
+    ]
+    for idx in valid_nodes:
+        ax.axvline(k_dist[idx], color="0.75", linewidth=0.8, linestyle="--")
+    ax.set_xticks([k_dist[idx] for idx in valid_nodes])
+    ax.set_xticklabels(valid_labels)
+    ax.grid(alpha=0.25)
+
+
+def _image_extent(kx, ky):
+    return [
+        float(np.nanmin(kx)),
+        float(np.nanmax(kx)),
+        float(np.nanmin(ky)),
+        float(np.nanmax(ky)),
+    ]
+
+
+def plot_qgt_2d_comparison_with_energies(
+    left_dir,
+    right_dir,
+    *,
+    quantity="trace",
+    band=0,
+    labels=("Dataset 1", "Dataset 2"),
+    energy_bands_to_plot=None,
+    qgt_zmax_percentile=99.5,
+    cmap="inferno",
+    output_path=None,
+    figsize=(13, 8),
+    dpi=220,
+):
+    """
+    Plot two 2D QGT datasets side by side, with an energy cut above each QGT map.
+
+    The top panels use eigenvalues_sym_line.npz from each dataset. If that file
+    is missing, the corresponding top panel is left empty with a message. The
+    bottom panels share one color scale for the requested QGT quantity and the
+    figure is always saved.
+    """
+    left = _load_2d_qgt_dataset(left_dir)
+    right = _load_2d_qgt_dataset(right_dir)
+
+    left_qgt, qgt_label = _qgt_quantity_array(left, quantity, band)
+    right_qgt, _ = _qgt_quantity_array(right, quantity, band)
+
+    finite = np.concatenate([
+        left_qgt[np.isfinite(left_qgt)].ravel(),
+        right_qgt[np.isfinite(right_qgt)].ravel(),
+    ])
+    if finite.size == 0:
+        raise ValueError(f"No finite values found for quantity '{quantity}'.")
+
+    qgt_vmin = float(np.nanmin(finite))
+    if qgt_zmax_percentile is None:
+        qgt_vmax = float(np.nanmax(finite))
+    else:
+        qgt_vmax = float(np.nanpercentile(finite, qgt_zmax_percentile))
+        if qgt_vmax <= qgt_vmin:
+            qgt_vmax = float(np.nanmax(finite))
+
+    fig, axes = plt.subplots(
+        2,
+        2,
+        figsize=figsize,
+        gridspec_kw={"height_ratios": [1.0, 2.7]},
+        constrained_layout=True,
+    )
+
+    _plot_energy_panel(
+        axes[0, 0],
+        left,
+        bands_to_plot=energy_bands_to_plot,
+        title=f"{labels[0]} energies",
+    )
+    _plot_energy_panel(
+        axes[0, 1],
+        right,
+        bands_to_plot=energy_bands_to_plot,
+        title=f"{labels[1]} energies",
+    )
+
+    images = []
+    for ax, dataset, qgt, label in [
+        (axes[1, 0], left, left_qgt, labels[0]),
+        (axes[1, 1], right, right_qgt, labels[1]),
+    ]:
+        im = ax.imshow(
+            qgt,
+            origin="lower",
+            extent=_image_extent(dataset["kx"], dataset["ky"]),
+            aspect="equal",
+            cmap=cmap,
+            vmin=qgt_vmin,
+            vmax=qgt_vmax,
+        )
+        images.append(im)
+        ax.set_title(f"{label}: {qgt_label}, band {band}")
+        ax.set_xlabel(r"$k_x$")
+        ax.set_ylabel(r"$k_y$")
+
+    cbar = fig.colorbar(images[-1], ax=axes[1, :], shrink=0.9, pad=0.02)
+    cbar.set_label(qgt_label)
+
+    if output_path is None:
+        safe_quantity = quantity.replace(" ", "_")
+        output_path = os.path.join(left_dir, f"qgt_2d_comparison_{safe_quantity}_band_{band}.png")
+    else:
+        output_dir = os.path.dirname(output_path)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+
+    fig.savefig(output_path, dpi=dpi, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved side-by-side QGT comparison plot to: {output_path}")
+    return output_path
+
+
 if __name__ == "__main__":
     import os
+
+    plot_qgt_2d_comparison_with_energies(
+        "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonian/dataset_1",
+        "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonianChiralBasisProjected/dataset_1",
+        quantity="trace",
+        band=0,
+        labels=("Full chiral Hamiltonian", "Chiral-basis projected"),
+        output_path="/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonian/qgt_2d_full_vs_chiral_basis_projected_trace_band_0.png",
+    )
+
     # base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/gWaveAltermagnetHamiltonian"
     # base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/THF_Hamiltonian"
-    base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/TwoOrbitalUnspinfulHamiltonian"
-
-    for subdir in os.listdir(base_dir):
-        target_dir = os.path.join(base_dir, subdir)
-        if os.path.isdir(target_dir) and os.path.exists(os.path.join(target_dir, "meta_info.pkl")):
-            print(f"\n--- Processing: {subdir} ---")
-            # plot_all_2d_berries_from_directory(target_dir)
-            # You can also uncomment the next line to run plot_qgt_from_directory
-            plot_qgt_from_directory(target_dir)
+    # base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/TwoOrbitalUnspinfulHamiltonian"
+    #
+    # for subdir in os.listdir(base_dir):
+    #     target_dir = os.path.join(base_dir, subdir)
+    #     if os.path.isdir(target_dir) and os.path.exists(os.path.join(target_dir, "meta_info.pkl")):
+    #         print(f"\n--- Processing: {subdir} ---")
+    #         # plot_all_2d_berries_from_directory(target_dir)
+    #         # You can also uncomment the next line to run plot_qgt_from_directory
+    #         plot_qgt_from_directory(target_dir)

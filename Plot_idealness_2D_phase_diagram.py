@@ -669,14 +669,3 @@ left_drive_strong = "results/QGT_ND/RhombohedralGrapheneHamiltonian/A0_0.10-V_30
 #     export_slice_path="results/1d_idealness_resutls/slice_data_export.npz",
 #     show=False
 # )
-
-large_k_left = "results/QGT_ND/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_20.000_5000.000_-SPACING_V_3_linear-omega_3_linear_-kx-2.50_2.50__ky-2.50_2.50__mesh300_data_set1"
-
-# plot_qgt_std_param2d_signed_invomega_joined(
-#     left_result_dir  = large_k_left,
-#     right_result_dir = None,
-#     y_param="V",            # the shared second parameter
-#     quantity="chern",      # "trace" | "berry" | "trace_minus_berry" | "chern"
-#     drop_overlap=True,      # typical when both include the same max ω
-#     show=True
-# )

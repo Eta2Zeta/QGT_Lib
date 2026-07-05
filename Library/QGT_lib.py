@@ -8,7 +8,7 @@ from .QGT_calc_functions_3comp import *
 
 def QGT_grid_num(
     ki, kj, eigenvalues, eigenfunctions, quantum_geometric_tensor_func,
-    hamiltonian, delta_k, band_index, z_cutoff=None,
+    hamiltonian, delta_k, band_index,
     progress_label=None, kk=0, order="xyz"
 ):
     """

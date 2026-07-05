@@ -44,12 +44,12 @@ def pick_or_create_result_dir_simple(
     1. Scan for directories matching pattern f"{base_name}N".
     2. Ideally sorted by N.
     3. If not force_new and required_params provided:
-       - Open 'parameters.json' in each candidate.
+       - Open 'meta.json' in each candidate.
        - If param dict matches required_params (using float tolerance), REUSE that dir.
        
     4. If no match found (or force_new), find first available N.
        - Create default empty dir.
-       - Caller is responsible for writing parameters.json immediately after.
+       - Caller is responsible for writing meta.json immediately after.
        
     Returns: (dir_path, used_existing)
     """
@@ -234,4 +234,3 @@ def write_meta_axis(meta_info: dict, prefix: str, axis: str, value: Any, suffix:
     mapped_char = get_mapped_axis(order, axis)
     key = f"{prefix}{mapped_char}{suffix}"
     meta_info[key] = value
-

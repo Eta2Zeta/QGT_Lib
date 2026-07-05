@@ -430,3 +430,12 @@ class ChiralHamiltonianChiralBasisProjected(hamiltonian):
         """
         k = np.hypot(kx, ky)
         return self._berry_curvature_full_radial(k, band=band)
+
+    def g_xy_imag(self, kx, ky, kz=0, band=+1):
+        """
+        Imaginary QGT component from the analytic Berry-curvature formula.
+
+        The library convention is Omega_xy = -2 Im(Q_xy), so
+        Im(Q_xy) = -Omega_xy / 2.
+        """
+        return -0.5 * self.berry_curvature_full(kx, ky, band=band)

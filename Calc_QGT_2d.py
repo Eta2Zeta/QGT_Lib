@@ -2,6 +2,7 @@ import sys
 import os
 import numpy as np
 import pickle
+import shutil
 from tqdm import tqdm  # Import tqdm for progress bar
 from multiprocessing import Pool, cpu_count
 from functools import partial
@@ -11,6 +12,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from Library.Hamiltonian_v1 import *
 from Library.Hamiltonian.Hamiltonian import * 
 from Library.eigenvalue_calc_lib import *
+from Library.eigenvalue_calc_lib_1d import eigenvalues_along_path
 from Library.QGT_lib import *
 from Library.topology import *
 from Library.utilities import *
@@ -18,6 +20,43 @@ from Library.plotting_lib_2d import *
 from Library.Hamiltonian.RuO2Hamiltonian import *
 from Library.Hamiltonian.gWaveAltermagnetHamiltonian import *
 from Library.data_management_utils_2d import setup_2D_QGT_results_directory
+
+
+def _save_sym_line_eigenvalues(Hamiltonian_Obj, results_subdir, *, num_points_per_segment=100):
+    """
+    Save band energies along the Hamiltonian's own 2D high-symmetry path.
+    """
+    output_path = os.path.join(results_subdir, "eigenvalues_sym_line.npz")
+    if os.path.exists(output_path):
+        return output_path
+
+    if not hasattr(Hamiltonian_Obj, "get_sym_path"):
+        print("Hamiltonian has no get_sym_path(); skipping symmetry-line eigenvalues.")
+        return None
+
+    try:
+        k_path, k_dist, node_indices, path_labels, path_points = generate_2d_sym_lines(
+            Hamiltonian_Obj,
+            num_points_per_segment=num_points_per_segment,
+        )
+    except (NotImplementedError, AttributeError, KeyError, ValueError) as exc:
+        print(f"Could not generate symmetry path; skipping symmetry-line eigenvalues: {exc}")
+        return None
+
+    k_path_3d = np.column_stack([k_path, np.zeros(len(k_path))])
+    eigenvalues_sym = eigenvalues_along_path(Hamiltonian_Obj, k_path_3d)
+
+    np.savez(
+        output_path,
+        eigenvalues=eigenvalues_sym,
+        k_path=k_path,
+        k_dist=k_dist,
+        node_indices=np.asarray(node_indices, dtype=int),
+        path_labels=np.asarray(path_labels, dtype=object),
+        path_points=path_points,
+    )
+    print(f"Saved symmetry-line eigenvalues to: {output_path}")
+    return output_path
 
 
 def calculate_2d(Force_new=True):
@@ -62,6 +101,7 @@ def calculate_2d(Force_new=True):
     # method_name = "analytic"
 
     Hamiltonian_name = getattr(Hamiltonian_Obj, "name", "Hamiltonian")
+    hamiltonian_params = Hamiltonian_Obj.get_parameters_dict(parameter="2D")
     
     # Construct metadata parameters dictionary with ALL info
     meta_params = {
@@ -72,10 +112,9 @@ def calculate_2d(Force_new=True):
         "mesh_spacing": mesh_spacing,
         "method_name": method_name,
         "include_endpoints": True,
-        # Objects to include in pickle but exclude from JSON
-        "Hamiltonian_Obj": Hamiltonian_Obj,
+        "hamiltonian_params": hamiltonian_params,
         "dki": dki,
-        "dkj": dkj, 
+        "dkj": dkj,
         "order": order
     }
     
@@ -128,6 +167,7 @@ def calculate_2d(Force_new=True):
         
         elif method_name == "array_analytic":
             print("Using Analytic QGT Calculation (Block Diagonalization)...")
+            # I believe this is calculating analytic QGT on the entire k grid using the funtion already built into the Hamiltonian Class. Should probably update this to just calcualtion at a single point for uniformity
             g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array = Hamiltonian_Obj.compute_qgt_analytic(
                 ki, kj, band_index=band
             )
@@ -183,32 +223,15 @@ def calculate_2d(Force_new=True):
             else:
                 np.save(os.path.join(temp_dir, f"{key}.npy"), array)
 
-        # Save QGT metadata (JSON)
-        meta_info_json = meta_target.copy()
-        
-        keys_to_remove = ["Hamiltonian_Obj", "ki", "kj"]
-        for key in keys_to_remove:
-            if key in meta_info_json:
-                del meta_info_json[key]
-                
-        with open(file_paths["meta_json"], "w") as f:
-            json.dump(meta_info_json, f, indent=2, sort_keys=True)
-
-        # Save QGT metadata (Pickle)
-        # qgt_meta_info IS proper meta_target (which includes everything)
-        qgt_meta_info = meta_target
-
-        with open(file_paths["meta_pkl"], "wb") as meta_file:
-            pickle.dump(qgt_meta_info, meta_file)
-        with open(os.path.join(temp_dir, "qgt_meta_info.pkl"), "wb") as meta_file:
-            pickle.dump(qgt_meta_info, meta_file)  # Save to temp directory
-
         if eigenvalues is not None:
             np.save(os.path.join(results_subdir, "eigenvalues.npy"), eigenvalues)
 
         print(f"Saved QGT results to '{results_subdir}' and copied to temp directory: {temp_dir}")
 
 
+
+    shutil.copy2(meta_info_file, file_paths["meta_pkl"])
+    _save_sym_line_eigenvalues(Hamiltonian_Obj, results_subdir)
 
 
     # b1, b2 = Hamiltonian_Obj.b1, Hamiltonian_Obj.b2
@@ -278,19 +301,6 @@ def calculate_2d(Force_new=True):
     )
 
 
-def _infer_nbands(eigenvalues: np.ndarray, eigenfunctions: np.ndarray) -> int:
-    """
-    Try to infer band count robustly.
-    Typical shapes:
-      eigenvalues: (Nx, Ny, Nb) or (Nk, Nb)
-      eigenfunctions: (Nx, Ny, Nb, dim) or (Nx, Ny, Nb, dim, ...) etc
-    """
-    if eigenvalues is not None and eigenvalues.ndim >= 1:
-        # Most common: last axis is band
-        return int(eigenvalues.shape[-1])
-    # fallback
-    return int(eigenfunctions.shape[2])
-
 def _qgt_one_band_worker(payload: dict):
     """
     Runs in a separate process.
@@ -344,7 +354,6 @@ def _qgt_one_band_worker(payload: dict):
             H,
             delta_k=delta_k,
             band_index=band,
-            z_cutoff=z_cutoff,
             kk=kk, 
             order=order
         )
@@ -412,6 +421,7 @@ def calculate_2d_all_bands(Force_new=True, method_name="numerical_phase_correcte
     # ---- results dir: you can either (A) one dir with stacked arrays, or (B) per-band dirs ----
 
     Hamiltonian_name = getattr(Hamiltonian_Obj, "name", "Hamiltonian")
+    hamiltonian_params = Hamiltonian_Obj.get_parameters_dict(parameter="2D")
     meta_params = {
         "hamiltonian_name": Hamiltonian_name,
         "kk": kk,
@@ -420,19 +430,17 @@ def calculate_2d_all_bands(Force_new=True, method_name="numerical_phase_correcte
         "mesh_spacing": mesh_spacing,
         "method_name": method_name,
         "include_endpoints": True,
-
+        "order": order,
+        "hamiltonian_params": hamiltonian_params,
+        "dki": dki,
+        "dkj": dkj,
+        
         # store that this run includes all bands
         "band_index": "ALL",
         "n_bands": int(n_bands),
-
-        # pickle-only objects
-        "Hamiltonian_Obj": Hamiltonian_Obj,
-        "dki": dki, 
-        "dkj": dkj,
-        "order": order
     }
 
-    file_paths, use_existing, results_subdir, meta_target = setup_2D_QGT_results_directory(
+    file_paths, use_existing, results_subdir, meta_target_json = setup_2D_QGT_results_directory(
         meta_params=meta_params,
         force_new=Force_new
     )
@@ -511,20 +519,13 @@ def calculate_2d_all_bands(Force_new=True, method_name="numerical_phase_correcte
             # also copy to temp for convenience
             np.save(os.path.join(temp_dir, f"{k}.npy"), arr)
 
-        # JSON meta (remove non-serializable)
-        meta_info_json = meta_target.copy()
-        for rm in ["Hamiltonian_Obj", "ki", "kj"]:
-            meta_info_json.pop(rm, None)
-        with open(file_paths["meta_json"], "w") as f:
-            json.dump(meta_info_json, f, indent=2, sort_keys=True)
-
-        with open(file_paths["meta_pkl"], "wb") as f:
-            pickle.dump(meta_target, f)
-
         if eigenvalues is not None:
             np.save(os.path.join(results_subdir, "eigenvalues.npy"), eigenvalues)
 
         print(f"Saved STACKED QGT results for all bands to '{results_subdir}' (and temp/)")
+
+    shutil.copy2(meta_info_file, file_paths["meta_pkl"])
+    _save_sym_line_eigenvalues(Hamiltonian_Obj, results_subdir)
 
     # ---- example plotting: choose a band to view ----
     for band_to_plot in range(n_bands): # pick which band you want to visualize
@@ -573,5 +574,5 @@ def calculate_2d_all_bands(Force_new=True, method_name="numerical_phase_correcte
 
 
 if __name__ == '__main__':
-    # calculate_2d_all_bands(Force_new=False, method_name="numerical")
-    calculate_2d(Force_new=False)
+    calculate_2d_all_bands(Force_new=False, method_name="numerical_phase_corrected")
+    # calculate_2d(Force_new=False)                        

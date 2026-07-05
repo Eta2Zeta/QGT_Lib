@@ -1,0 +1,32 @@
+{
+    "hamiltonian_name": "ChiralHamiltonian",
+    "kk": 0.0,
+    "ki_range": [
+        -0.8880794701986755,
+        0.8880794701986755
+    ],
+    "kj_range": [
+        -0.8880794701986755,
+        0.8880794701986755
+    ],
+    "mesh_spacing": 150,
+    "method_name": "numerical_phase_corrected",
+    "include_endpoints": true,
+    "band_index": "ALL",
+    "n_bands": 10,
+    "dki": 0.012,
+    "dkj": 0.012,
+    "order": "xyz",
+    "hamiltonian_params": {
+        "omega": 6.283185307179586,
+        "A0": 0,
+        "polarization": "left",
+        "magnus_order": 1,
+        "analytic_magnus": false,
+        "n": 5,
+        "vF": 542.1,
+        "a": 1.0,
+        "t1": 355.16,
+        "eta": 1.0
+    }
+}

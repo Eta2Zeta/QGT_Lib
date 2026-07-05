@@ -63,14 +63,7 @@ def setup_2D_QGT_results_directory(
     Hamiltonian_name = meta_params.get("hamiltonian_name", "Unknown_Hamiltonian")
     base_root = os.path.join(os.getcwd(), "results", "2D_QGT_results", Hamiltonian_name)
     
-    # Extract Hamiltonian parameters
-    hamiltonian = meta_params.get("Hamiltonian_Obj", None)
-    if hamiltonian is not None and hasattr(hamiltonian, "get_parameters_dict"):
-        ham_params = hamiltonian.get_parameters_dict(parameter="2D")
-    else:
-        ham_params = {}
-
-    meta_params["hamiltonian_params"] = ham_params
+    json_meta = {k: v for k, v in meta_params.items() if not k.endswith("_Obj")}
 
     required_files = [
         "g_xx.npy", 
@@ -90,14 +83,13 @@ def setup_2D_QGT_results_directory(
     dir_path, used = pick_or_create_result_dir_simple(
         base_root=base_root,
         base_name="dataset_",
-        required_params=meta_params,
+        required_params=json_meta,
         force_new=force_new,
         required_files=required_files
     )
     
     if not used:
-        json_meta = {k: v for k, v in meta_params.items() if not k.endswith("_Obj")}
-        dump_metadata(json_meta, os.path.join(dir_path, "parameters.json"))
+        dump_metadata(json_meta, os.path.join(dir_path, "meta.json"))
 
     file_paths = {
         "g_xx": os.path.join(dir_path, "g_xx.npy"),

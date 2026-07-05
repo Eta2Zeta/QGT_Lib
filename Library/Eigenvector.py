@@ -1,29 +1,5 @@
 import numpy as np
 from itertools import permutations
-class Eigenvector:
-    def __init__(self, dimension):
-        self.dimension = dimension
-        self.previous_eigenvector = None
-        self.previous_kx = None
-        self.previous_ky = None
-        self.previous_kz = None
-        self.phase_factor = None
-
-    def set_dimension(self, dim):
-        self.dimension = dim
-
-    def set_eigenvectors(self, new_eigenvector):
-        if self.previous_eigenvector is not None:
-            dot_product = np.vdot(self.previous_eigenvector, new_eigenvector)
-            phase_diff = np.angle(dot_product)
-            phase_factor = np.exp(-1j * phase_diff)
-            new_eigenvector = new_eigenvector * phase_factor
-
-
-        self.previous_eigenvector = new_eigenvector
-        return new_eigenvector
-
-
 def _find_degenerate_blocks(evals, gap_tol):
     """
     evals: 1D array/list of eigenvalues already in the *current ordering*.
