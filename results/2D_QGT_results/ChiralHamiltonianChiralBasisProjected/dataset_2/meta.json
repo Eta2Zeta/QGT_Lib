@@ -1,0 +1,32 @@
+{
+    "hamiltonian_name": "ChiralHamiltonianChiralBasisProjected",
+    "kk": 0.0,
+    "ki_range": [
+        -0.8880794701986755,
+        0.8880794701986755
+    ],
+    "kj_range": [
+        -0.8880794701986755,
+        0.8880794701986755
+    ],
+    "mesh_spacing": 150,
+    "method_name": "analytic",
+    "include_endpoints": true,
+    "order": "xyz",
+    "hamiltonian_params": {
+        "omega": 6.283185307179586,
+        "A0": 0,
+        "polarization": "left",
+        "magnus_order": 1,
+        "analytic_magnus": false,
+        "vF": 542.1,
+        "t1": 355.16,
+        "V": 30.0,
+        "n": 5,
+        "magnus_first_term_mode": "direct_drive"
+    },
+    "dki": 0.012,
+    "dkj": 0.012,
+    "band_index": "ALL",
+    "n_bands": 2
+}

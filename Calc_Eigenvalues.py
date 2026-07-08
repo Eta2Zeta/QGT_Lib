@@ -35,9 +35,9 @@ os.makedirs(temp_dir, exist_ok=True)
 # Hamiltonian_Obj = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=0)
 # Hamiltonian_Obj = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=(1-np.sqrt(2))/4)
 # bands = (0,1)
-Hamiltonian_Obj = ChiralHamiltonian(n=5, V=30)
+# Hamiltonian_Obj = ChiralHamiltonian(n=5, V=30)
 # Hamiltonian_Obj = ChiralHamiltonianChiralBasisProjected(n=5)
-k_max = 0.9
+# k_max = 0.9
 # bands = (4,5)
 
 # Hamiltonian_Obj = AltermagnetHamiltonian(t1=1.0, t2=0.5, td=2, lamb=2, J=1.0, Nz=4)
@@ -46,9 +46,9 @@ k_max = 0.9
 # Hamiltonian_Obj = HaldaneHamiltonian(psi = -np.pi/2, M=0)
 # Hamiltonian_Obj = GrapheneHamiltonian(A0=0)
 # Hamiltonian_Obj = RuO2Hamiltonian(lamb_z=0)
-# Hamiltonian_Obj = gWaveAltermagnetHamiltonian(t1=0.3, t2=0.3, t3=0.3, t4=0.3, mu=0, Jx=0.0, Jy=0.0, Jz=0.2, lamb=0.1, lamb_z=0.1)
-# k_max = 2*np.pi
-# bands = (2,3)
+Hamiltonian_Obj = gWaveAltermagnetHamiltonian(t1=0.3, t2=0.3, t3=0.3, t4=0.3, mu=0, Jx=0.0, Jy=0.0, Jz=0.2, lamb=0.1, lamb_z=0.1)
+k_max = 2*np.pi
+bands = (2,3)
 dim = Hamiltonian_Obj.dim
 
 def calculation_2d(Hamiltonian_Obj = Hamiltonian_Obj, force_new=True, include_end_points=True, kk=0, order="xyz"):
@@ -187,6 +187,7 @@ def calculation_2d(Hamiltonian_Obj = Hamiltonian_Obj, force_new=True, include_en
         threshold=0.02,
         title=f"Band Degeneracy Map ({Hamiltonian_Obj.name})",
         hamiltonian=Hamiltonian_Obj,
+        kk=kk,
         results_dir=results_subdir,
         save_fig=True,
     )
@@ -426,7 +427,7 @@ def calculation_sym_points(Hamiltonian_Obj=Hamiltonian_Obj, force_new=True, use_
         eigenvalues = np.load(file_paths["eigenvalues"])
     else:
         print("Calculating eigenvalues along path...")
-        eigenvalues = eigenvalues_along_path(Hamiltonian_Obj, k_path_3d, use_analytical=use_analytical)
+        eigenvalues, _ = eigenvalues_along_path(Hamiltonian_Obj, k_path_3d, use_analytical=use_analytical)
 
         np.save(file_paths["eigenvalues"], eigenvalues)
         with open(file_paths["meta_json"], "w") as f:
@@ -489,7 +490,7 @@ def calculation_1d_at_angles(
         num_bands = eigenvalues_flat.shape[1]
     else:
         print("Calculating eigenvalues along all angled paths...")
-        eigenvalues_flat = eigenvalues_along_path(Hamiltonian_Obj, k_path_3d, use_analytical=use_analytical)
+        eigenvalues_flat, _ = eigenvalues_along_path(Hamiltonian_Obj, k_path_3d, use_analytical=use_analytical)
         num_bands = eigenvalues_flat.shape[1]
         
         np.save(file_paths["eigenvalues"], eigenvalues_flat)

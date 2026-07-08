@@ -210,7 +210,7 @@ class RuO2Hamiltonian(hamiltonian):
             
         return H
 
-    def g_xz_imag(self, kx, ky, kz=0.0, *, energy=None):
+    def g_xz_imag(self, kx, ky, kz=0.0, *, band=None, energy=None):
         """
         Imag part of QGT component g_{xz} from the paper's analytic Berry curvature:
 

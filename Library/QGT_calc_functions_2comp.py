@@ -124,9 +124,8 @@ def quantum_geometric_tensor_analytic(Hamiltonian, kx, ky, kz=0.0, band=-1, ener
     trace = Hamiltonian.trace(kx, ky, kz) if hasattr(Hamiltonian, 'trace') else None
 
     # --- Imaginary part (Berry curvature contribution) ---
-    g_xy_imag = Hamiltonian.g_xy_imag(kx, ky, kz) if hasattr(Hamiltonian, 'g_xy_imag') else None
-    g_xz_imag = Hamiltonian.g_xz_imag(kx, ky, kz, energy=energy) if hasattr(Hamiltonian, 'g_xz_imag') else None
-    g_yz_imag = Hamiltonian.g_yz_imag(kx, ky, kz, energy=energy) if hasattr(Hamiltonian, 'g_yz_imag') else None
+    g_xy_imag = Hamiltonian.g_xy_imag(kx, ky, kz, band=band) if hasattr(Hamiltonian, 'g_xy_imag') else None
+    g_xz_imag = Hamiltonian.g_xz_imag(kx, ky, kz, band=band, energy=energy) if hasattr(Hamiltonian, 'g_xz_imag') else None
+    g_yz_imag = Hamiltonian.g_yz_imag(kx, ky, kz, band=band, energy=energy) if hasattr(Hamiltonian, 'g_yz_imag') else None
 
     return g_xx, g_yy, g_zz, g_xy_real, g_xy_imag, g_xz_real, g_xz_imag, g_yz_real, g_yz_imag
-
