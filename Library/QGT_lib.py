@@ -157,6 +157,7 @@ def QGT_grid_analytic(
     kk=0.0,
     z_cutoff=None,
     eigenvalues=None,
+    band_index=None,
     order="xyz"
 ):
     """
@@ -195,7 +196,7 @@ def QGT_grid_analytic(
                 kx, ky, kz = map_k_by_order(ki[i, j], kj[i, j], kk, order)
 
                 g_xx, g_yy, g_zz, g_xy_real, g_xy_imag, g_xz_real, g_xz_imag, g_yz_real, g_yz_imag = quantum_geometric_tensor_func(
-                    hamiltonian, kx, ky, kz=kz, energy=energy
+                    hamiltonian, kx, ky, kz=kz, band=band_index, energy=energy
                 )
 
                 g_xx_array[i, j] = g_xx if g_xx is not None else 0.0

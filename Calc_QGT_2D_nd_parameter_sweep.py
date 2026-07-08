@@ -68,7 +68,7 @@ def _worker_qgt_point(arg, h_template, kx, ky, mesh_spacing, band, z_cutoff, k_p
         chern = integral / (2 * np.pi)
 
     # Calculate eigenvalues along symmetry path
-    eigenvalues_sym = eigenvalues_along_path(H, k_path)
+    eigenvalues_sym, _ = eigenvalues_along_path(H, k_path)
 
     return (
         idx,

@@ -44,7 +44,7 @@ def _save_sym_line_eigenvalues(Hamiltonian_Obj, results_subdir, *, num_points_pe
         return None
 
     k_path_3d = np.column_stack([k_path, np.zeros(len(k_path))])
-    eigenvalues_sym = eigenvalues_along_path(Hamiltonian_Obj, k_path_3d)
+    eigenvalues_sym, _ = eigenvalues_along_path(Hamiltonian_Obj, k_path_3d)
 
     np.savez(
         output_path,
@@ -59,7 +59,170 @@ def _save_sym_line_eigenvalues(Hamiltonian_Obj, results_subdir, *, num_points_pe
     return output_path
 
 
-def calculate_2d(Force_new=True):
+def _normalize_bands_to_compute(bands_to_compute, dim):
+    if bands_to_compute is None:
+        return list(range(dim))
+    if isinstance(bands_to_compute, int):
+        bands = [bands_to_compute]
+    else:
+        bands = list(bands_to_compute)
+    bad = [band for band in bands if not (0 <= band < dim)]
+    if bad:
+        raise IndexError(f"bands_to_compute contains invalid bands {bad}; valid range is [0, {dim - 1}]")
+    return bands
+
+
+def _sym_path_qgt_output_path(results_subdir, method_name, bands):
+    band_label = "bands_" + "_".join(str(band) for band in bands)
+    return os.path.join(results_subdir, f"qgt_sym_path_{method_name}_{band_label}.npz")
+
+
+def _qgt_function_for_method(method_name):
+    if method_name == "numerical":
+        return quantum_geometric_tensor_3d_num
+    if method_name == "numerical_phase_corrected":
+        return quantum_geometric_tensor_3d_num_phase_corrected
+    if method_name == "analytic":
+        return quantum_geometric_tensor_analytic
+    raise ValueError(f"Symmetry-path QGT does not support method_name={method_name!r}.")
+
+
+def _calculate_qgt_on_sym_path(
+    Hamiltonian_Obj,
+    method_name,
+    bands_to_compute,
+    *,
+    delta_k=1e-5,
+    kk=0,
+    order="xyz",
+    z_cutoff=None,
+    num_points_per_segment=100,
+):
+    k_path, k_dist, node_indices, path_labels, path_points = generate_2d_sym_lines(
+        Hamiltonian_Obj,
+        num_points_per_segment=num_points_per_segment,
+    )
+    eigenvalues_path, eigenfunctions_path = eigenvalues_along_path(Hamiltonian_Obj, k_path)
+
+    ki_path = k_path[:, 0].reshape(-1, 1)
+    kj_path = k_path[:, 1].reshape(-1, 1)
+    eigenvalues_grid = eigenvalues_path.reshape(-1, 1, Hamiltonian_Obj.dim)
+    eigenfunctions_grid = eigenfunctions_path.reshape(-1, 1, Hamiltonian_Obj.dim, Hamiltonian_Obj.dim)
+    qgt_func = _qgt_function_for_method(method_name)
+
+    components = {
+        "g_xx": [],
+        "g_yy": [],
+        "g_zz": [],
+        "g_xy_real": [],
+        "g_xy_imag": [],
+        "g_xz_real": [],
+        "g_xz_imag": [],
+        "g_yz_real": [],
+        "g_yz_imag": [],
+        "trace": [],
+    }
+
+    for band in bands_to_compute:
+        if method_name in ("numerical", "numerical_phase_corrected"):
+            (g_xx, g_yy, g_zz,
+             g_xy_real, g_xy_imag,
+             g_xz_real, g_xz_imag,
+             g_yz_real, g_yz_imag) = QGT_grid_num(
+                ki_path,
+                kj_path,
+                eigenvalues_grid,
+                eigenfunctions_grid,
+                qgt_func,
+                Hamiltonian_Obj,
+                delta_k=delta_k,
+                band_index=band,
+                progress_label=f"sym path band {band}",
+                kk=kk,
+                order=order,
+            )
+        elif method_name == "analytic":
+            eigenvalues_band = eigenvalues_grid[..., band]
+            (g_xx, g_yy, g_zz,
+             g_xy_real, g_xy_imag,
+             g_xz_real, g_xz_imag,
+             g_yz_real, g_yz_imag) = QGT_grid_analytic(
+                ki_path,
+                kj_path,
+                qgt_func,
+                Hamiltonian_Obj,
+                kk=kk,
+                z_cutoff=z_cutoff,
+                eigenvalues=eigenvalues_band,
+                band_index=band,
+                order=order,
+            )
+
+        components["g_xx"].append(g_xx[:, 0])
+        components["g_yy"].append(g_yy[:, 0])
+        components["g_zz"].append(g_zz[:, 0])
+        components["g_xy_real"].append(g_xy_real[:, 0])
+        components["g_xy_imag"].append(g_xy_imag[:, 0])
+        components["g_xz_real"].append(g_xz_real[:, 0])
+        components["g_xz_imag"].append(g_xz_imag[:, 0])
+        components["g_yz_real"].append(g_yz_real[:, 0])
+        components["g_yz_imag"].append(g_yz_imag[:, 0])
+        components["trace"].append(g_xx[:, 0] + g_yy[:, 0] + g_zz[:, 0])
+
+    return {
+        key: np.stack(value, axis=0)
+        for key, value in components.items()
+    } | {
+        "bands": np.asarray(bands_to_compute, dtype=int),
+        "k_path": k_path,
+        "k_dist": k_dist,
+        "node_indices": np.asarray(node_indices, dtype=int),
+        "path_labels": np.asarray(path_labels, dtype=object),
+        "path_points": path_points,
+        "eigenvalues": eigenvalues_path,
+    }
+
+
+def _save_qgt_sym_path(
+    Hamiltonian_Obj,
+    results_subdir,
+    method_name,
+    *,
+    bands_to_compute=None,
+    delta_k=1e-5,
+    kk=0,
+    order="xyz",
+    z_cutoff=None,
+    num_points_per_segment=100,
+    force_new=False,
+):
+    bands = _normalize_bands_to_compute(bands_to_compute, Hamiltonian_Obj.dim)
+    output_path = _sym_path_qgt_output_path(results_subdir, method_name, bands)
+    if os.path.exists(output_path) and not force_new:
+        print(f"Using existing symmetry-path QGT data: {output_path}")
+        return output_path
+
+    data = _calculate_qgt_on_sym_path(
+        Hamiltonian_Obj,
+        method_name,
+        bands,
+        delta_k=delta_k,
+        kk=kk,
+        order=order,
+        z_cutoff=z_cutoff,
+        num_points_per_segment=num_points_per_segment,
+    )
+    np.savez(output_path, **data)
+    print(f"Saved symmetry-path QGT data to: {output_path}")
+    return output_path
+
+
+def calculate_2d(
+    Force_new=True,
+    include_sym_path_qgt=False,
+    sym_path_bands=None,
+    sym_path_points_per_segment=100,
+):
     # Define parameters
     band =5 # Which band to calculate your QMT on, starting from 0
     z_cutoff = .3 #where to cutoff the plot for the z axis when singularties occur
@@ -182,7 +345,8 @@ def calculate_2d(Force_new=True):
             g_xy_real_array, g_xy_imag_array, g_xz_real_array, \
             g_xz_imag_array, g_yz_real_array, g_yz_imag_array = QGT_grid_analytic(
                 ki, kj, quantum_geometric_tensor_analytic, 
-                Hamiltonian_Obj, kk=kk, z_cutoff=z_cutoff, eigenvalues=eigenvalues_band, order=order
+                Hamiltonian_Obj, kk=kk, z_cutoff=z_cutoff, eigenvalues=eigenvalues_band,
+                band_index=band, order=order
             )
             trace_array = g_xx_array + g_yy_array + g_zz_array
 
@@ -232,6 +396,20 @@ def calculate_2d(Force_new=True):
 
     shutil.copy2(meta_info_file, file_paths["meta_pkl"])
     _save_sym_line_eigenvalues(Hamiltonian_Obj, results_subdir)
+    if include_sym_path_qgt:
+        bands_for_sym_path = [band] if sym_path_bands is None else sym_path_bands
+        _save_qgt_sym_path(
+            Hamiltonian_Obj,
+            results_subdir,
+            method_name,
+            bands_to_compute=bands_for_sym_path,
+            delta_k=1e-5,
+            kk=kk,
+            order=order,
+            z_cutoff=z_cutoff,
+            num_points_per_segment=sym_path_points_per_segment,
+            force_new=Force_new,
+        )
 
 
     # b1, b2 = Hamiltonian_Obj.b1, Hamiltonian_Obj.b2
@@ -362,7 +540,8 @@ def _qgt_one_band_worker(payload: dict):
         eigenvalues_band = eigenvalues[..., band]
         g_xx, g_yy, g_zz, g_xy_r, g_xy_i, g_xz_r, g_xz_i, g_yz_r, g_yz_i = QGT_grid_analytic(
             ki, kj, func_target, 
-            H, kk=kk, z_cutoff=z_cutoff, eigenvalues=eigenvalues_band, order=order
+            H, kk=kk, z_cutoff=z_cutoff, eigenvalues=eigenvalues_band,
+            band_index=band, order=order
         )
         trace = g_xx + g_yy + g_zz
 
@@ -381,7 +560,13 @@ def _qgt_one_band_worker(payload: dict):
         "trace": np.array(trace),
     }
 
-def calculate_2d_all_bands(Force_new=True, method_name="numerical_phase_corrected"):
+def calculate_2d_all_bands(
+    Force_new=True,
+    method_name="numerical_phase_corrected",
+    include_sym_path_qgt=False,
+    sym_path_bands=None,
+    sym_path_points_per_segment=100,
+):
     # ---- your existing setup/load block ----
     z_cutoff = 1000
     z_percentile = 95
@@ -526,6 +711,19 @@ def calculate_2d_all_bands(Force_new=True, method_name="numerical_phase_correcte
 
     shutil.copy2(meta_info_file, file_paths["meta_pkl"])
     _save_sym_line_eigenvalues(Hamiltonian_Obj, results_subdir)
+    if include_sym_path_qgt:
+        _save_qgt_sym_path(
+            Hamiltonian_Obj,
+            results_subdir,
+            method_name,
+            bands_to_compute=sym_path_bands,
+            delta_k=delta_k,
+            kk=kk,
+            order=order,
+            z_cutoff=z_cutoff,
+            num_points_per_segment=sym_path_points_per_segment,
+            force_new=Force_new,
+        )
 
     # ---- example plotting: choose a band to view ----
     for band_to_plot in range(n_bands): # pick which band you want to visualize
@@ -574,5 +772,5 @@ def calculate_2d_all_bands(Force_new=True, method_name="numerical_phase_correcte
 
 
 if __name__ == '__main__':
-    calculate_2d_all_bands(Force_new=False, method_name="numerical_phase_corrected")
+    calculate_2d_all_bands(Force_new=False, method_name="numerical_phase_corrected", include_sym_path_qgt=True)
     # calculate_2d(Force_new=False)                        

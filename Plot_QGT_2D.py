@@ -1,6 +1,7 @@
 
 import sys
 import os
+import glob
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
@@ -237,6 +238,7 @@ def _load_2d_qgt_dataset(target_dir):
         "trace": np.load(os.path.join(target_dir, "trace.npy")),
         "eigenvalues": None,
         "sym_line": None,
+        "qgt_sym_paths": [],
     }
 
     eig_path = os.path.join(target_dir, "eigenvalues.npy")
@@ -251,12 +253,36 @@ def _load_2d_qgt_dataset(target_dir):
                 "k_dist": np.asarray(sym_data["k_dist"]),
                 "node_indices": np.asarray(sym_data["node_indices"], dtype=int),
                 "path_labels": [str(label) for label in sym_data["path_labels"]],
+                "k_path": np.asarray(sym_data["k_path"]) if "k_path" in sym_data else None,
+                "path_points": np.asarray(sym_data["path_points"]) if "path_points" in sym_data else None,
             }
+
+    for qgt_sym_path in sorted(glob.glob(os.path.join(target_dir, "qgt_sym_path_*.npz"))):
+        with np.load(qgt_sym_path, allow_pickle=True) as sym_data:
+            data["qgt_sym_paths"].append({
+                "source_path": qgt_sym_path,
+                "bands": np.asarray(sym_data["bands"], dtype=int),
+                "k_path": np.asarray(sym_data["k_path"]),
+                "k_dist": np.asarray(sym_data["k_dist"]),
+                "node_indices": np.asarray(sym_data["node_indices"], dtype=int),
+                "path_labels": [str(label) for label in sym_data["path_labels"]],
+                "path_points": np.asarray(sym_data["path_points"]),
+                "g_xx": np.asarray(sym_data["g_xx"]),
+                "g_yy": np.asarray(sym_data["g_yy"]),
+                "g_zz": np.asarray(sym_data["g_zz"]),
+                "g_xy_real": np.asarray(sym_data["g_xy_real"]),
+                "g_xy_imag": np.asarray(sym_data["g_xy_imag"]),
+                "g_xz_real": np.asarray(sym_data["g_xz_real"]),
+                "g_xz_imag": np.asarray(sym_data["g_xz_imag"]),
+                "g_yz_real": np.asarray(sym_data["g_yz_real"]),
+                "g_yz_imag": np.asarray(sym_data["g_yz_imag"]),
+                "trace": np.asarray(sym_data["trace"]),
+            })
 
     return data
 
 
-def _qgt_quantity_array(dataset, quantity, band):
+def _qgt_quantity_spec(quantity):
     quantity_map = {
         "g_xx": ("g_xx", r"$g_{xx}$"),
         "g_yy": ("g_yy", r"$g_{yy}$"),
@@ -269,8 +295,11 @@ def _qgt_quantity_array(dataset, quantity, band):
     if quantity not in quantity_map:
         valid = ", ".join(quantity_map)
         raise ValueError(f"Unknown quantity '{quantity}'. Use one of: {valid}")
+    return quantity_map[quantity]
 
-    key, label = quantity_map[quantity]
+
+def _qgt_quantity_array(dataset, quantity, band):
+    key, label = _qgt_quantity_spec(quantity)
     arr = np.asarray(dataset[key])
     if arr.ndim == 3:
         if not (0 <= band < arr.shape[0]):
@@ -283,6 +312,20 @@ def _qgt_quantity_array(dataset, quantity, band):
         arr = -2.0 * arr
 
     return np.asarray(arr), label
+
+
+def _qgt_sym_quantity_array(dataset, quantity, band):
+    key, label = _qgt_quantity_spec(quantity)
+    for sym_qgt in dataset.get("qgt_sym_paths", []):
+        bands = list(np.asarray(sym_qgt["bands"], dtype=int))
+        if band not in bands:
+            continue
+        band_pos = bands.index(band)
+        arr = np.asarray(sym_qgt[key])[band_pos]
+        if quantity in ("berry", "berry_curvature"):
+            arr = -2.0 * arr
+        return np.asarray(arr), label, sym_qgt
+    return None, label, None
 
 
 def _plot_energy_panel(ax, dataset, *, bands_to_plot=None, title=""):
@@ -342,6 +385,98 @@ def _plot_sym_line_energies(ax, sym_line, *, bands_to_plot=None, title=""):
     ax.grid(alpha=0.25)
 
 
+def _plot_qgt_sym_path_panel(ax, dataset, quantity, band, *, title="", ylim=None):
+    qgt_line, qgt_label, sym_qgt = _qgt_sym_quantity_array(dataset, quantity, band)
+    ax.set_title(title)
+    ax.set_ylabel(qgt_label)
+    ax.set_xlabel("Symmetry path")
+
+    if qgt_line is None:
+        ax.text(0.5, 0.5, "qgt_sym_path_*.npz not found for this band", ha="center", va="center", transform=ax.transAxes)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        return
+
+    k_dist = np.asarray(sym_qgt["k_dist"])
+    node_indices = list(np.asarray(sym_qgt["node_indices"], dtype=int))
+    path_labels = list(sym_qgt["path_labels"])
+    ax.plot(k_dist, qgt_line, linewidth=1.4)
+
+    valid_nodes = [idx for idx in node_indices if 0 <= idx < len(k_dist)]
+    valid_labels = [
+        label
+        for idx, label in zip(node_indices, path_labels)
+        if 0 <= idx < len(k_dist)
+    ]
+    for idx in valid_nodes:
+        ax.axvline(k_dist[idx], color="0.75", linewidth=0.8, linestyle="--")
+    ax.set_xticks([k_dist[idx] for idx in valid_nodes])
+    ax.set_xticklabels(valid_labels)
+    if ylim is not None:
+        ax.set_ylim(*ylim)
+    ax.grid(alpha=0.25)
+
+
+def _shared_sym_qgt_ylim(left, right, quantity, left_band, right_band):
+    left_line, _, _ = _qgt_sym_quantity_array(left, quantity, left_band)
+    right_line, _, _ = _qgt_sym_quantity_array(right, quantity, right_band)
+    finite_parts = []
+    for line in (left_line, right_line):
+        if line is not None:
+            finite = np.asarray(line)[np.isfinite(line)]
+            if finite.size:
+                finite_parts.append(finite)
+    if not finite_parts:
+        return None
+
+    finite_all = np.concatenate(finite_parts)
+    ymin = float(np.nanmin(finite_all))
+    ymax = float(np.nanmax(finite_all))
+    if ymin == ymax:
+        pad = 1.0 if ymin == 0.0 else abs(ymin) * 0.05
+        return ymin - pad, ymax + pad
+    pad = 0.04 * (ymax - ymin)
+    return ymin - pad, ymax + pad
+
+
+def _sym_path_for_overlay(dataset):
+    if dataset.get("qgt_sym_paths"):
+        sym_qgt = dataset["qgt_sym_paths"][0]
+        return sym_qgt.get("k_path"), sym_qgt.get("path_points"), sym_qgt.get("path_labels")
+    sym_line = dataset.get("sym_line")
+    if sym_line is not None:
+        return sym_line.get("k_path"), sym_line.get("path_points"), sym_line.get("path_labels")
+    return None, None, None
+
+
+def _overlay_sym_path_on_qgt(ax, dataset):
+    k_path, path_points, path_labels = _sym_path_for_overlay(dataset)
+    if k_path is None:
+        return
+
+    k_path = np.asarray(k_path)
+    if k_path.ndim != 2 or k_path.shape[1] < 2:
+        return
+
+    ax.plot(k_path[:, 0], k_path[:, 1], color="white", linewidth=1.5, linestyle="--", alpha=0.95)
+
+    if path_points is not None:
+        path_points = np.asarray(path_points)
+        if path_points.ndim == 2 and path_points.shape[1] >= 2:
+            ax.scatter(path_points[:, 0], path_points[:, 1], color="white", edgecolor="black", linewidth=0.4, s=22, zorder=5)
+            if path_labels is not None:
+                for point, label in zip(path_points, path_labels):
+                    ax.annotate(
+                        label,
+                        (point[0], point[1]),
+                        textcoords="offset points",
+                        xytext=(4, 4),
+                        color="white",
+                        fontsize=8,
+                        fontweight="bold",
+                    )
+
+
 def _image_extent(kx, ky):
     return [
         float(np.nanmin(kx)),
@@ -357,27 +492,40 @@ def plot_qgt_2d_comparison_with_energies(
     *,
     quantity="trace",
     band=0,
+    left_band=None,
+    right_band=None,
     labels=("Dataset 1", "Dataset 2"),
     energy_bands_to_plot=None,
+    share_sym_qgt_range=True,
     qgt_zmax_percentile=99.5,
     cmap="inferno",
+    background_color="0.35",
     output_path=None,
-    figsize=(13, 8),
+    figsize=(13, 10),
     dpi=220,
 ):
     """
-    Plot two 2D QGT datasets side by side, with an energy cut above each QGT map.
+    Plot two 2D QGT datasets side by side, with symmetry-path energy and QGT cuts above each QGT map.
 
     The top panels use eigenvalues_sym_line.npz from each dataset. If that file
     is missing, the corresponding top panel is left empty with a message. The
-    bottom panels share one color scale for the requested QGT quantity and the
-    figure is always saved.
+    Middle panels use qgt_sym_path_*.npz from each dataset. Bottom panels share
+    one color scale for the requested QGT quantity and the figure is always saved.
     """
     left = _load_2d_qgt_dataset(left_dir)
     right = _load_2d_qgt_dataset(right_dir)
+    left_band = band if left_band is None else left_band
+    right_band = band if right_band is None else right_band
 
-    left_qgt, qgt_label = _qgt_quantity_array(left, quantity, band)
-    right_qgt, _ = _qgt_quantity_array(right, quantity, band)
+    left_qgt, qgt_label = _qgt_quantity_array(left, quantity, left_band)
+    right_qgt, _ = _qgt_quantity_array(right, quantity, right_band)
+    qgt_cmap = plt.get_cmap(cmap).copy()
+    qgt_cmap.set_bad(color=background_color)
+    sym_qgt_ylim = (
+        _shared_sym_qgt_ylim(left, right, quantity, left_band, right_band)
+        if share_sym_qgt_range
+        else None
+    )
 
     finite = np.concatenate([
         left_qgt[np.isfinite(left_qgt)].ravel(),
@@ -395,10 +543,10 @@ def plot_qgt_2d_comparison_with_energies(
             qgt_vmax = float(np.nanmax(finite))
 
     fig, axes = plt.subplots(
-        2,
+        3,
         2,
         figsize=figsize,
-        gridspec_kw={"height_ratios": [1.0, 2.7]},
+        gridspec_kw={"height_ratios": [1.0, 1.0, 2.7]},
         constrained_layout=True,
     )
 
@@ -415,31 +563,53 @@ def plot_qgt_2d_comparison_with_energies(
         title=f"{labels[1]} energies",
     )
 
+    _plot_qgt_sym_path_panel(
+        axes[1, 0],
+        left,
+        quantity,
+        left_band,
+        title=f"{labels[0]} {qgt_label} along symmetry path",
+        ylim=sym_qgt_ylim,
+    )
+    _plot_qgt_sym_path_panel(
+        axes[1, 1],
+        right,
+        quantity,
+        right_band,
+        title=f"{labels[1]} {qgt_label} along symmetry path",
+        ylim=sym_qgt_ylim,
+    )
+
     images = []
-    for ax, dataset, qgt, label in [
-        (axes[1, 0], left, left_qgt, labels[0]),
-        (axes[1, 1], right, right_qgt, labels[1]),
+    for ax, dataset, qgt, label, qgt_band in [
+        (axes[2, 0], left, left_qgt, labels[0], left_band),
+        (axes[2, 1], right, right_qgt, labels[1], right_band),
     ]:
+        ax.set_facecolor(background_color)
         im = ax.imshow(
-            qgt,
+            np.ma.masked_invalid(qgt),
             origin="lower",
             extent=_image_extent(dataset["kx"], dataset["ky"]),
             aspect="equal",
-            cmap=cmap,
+            cmap=qgt_cmap,
             vmin=qgt_vmin,
             vmax=qgt_vmax,
         )
         images.append(im)
-        ax.set_title(f"{label}: {qgt_label}, band {band}")
+        _overlay_sym_path_on_qgt(ax, dataset)
+        ax.set_title(f"{label}: {qgt_label}, band {qgt_band}")
         ax.set_xlabel(r"$k_x$")
         ax.set_ylabel(r"$k_y$")
 
-    cbar = fig.colorbar(images[-1], ax=axes[1, :], shrink=0.9, pad=0.02)
+    cbar = fig.colorbar(images[-1], ax=axes[2, :], shrink=0.9, pad=0.02)
     cbar.set_label(qgt_label)
 
     if output_path is None:
         safe_quantity = quantity.replace(" ", "_")
-        output_path = os.path.join(left_dir, f"qgt_2d_comparison_{safe_quantity}_band_{band}.png")
+        output_path = os.path.join(
+            left_dir,
+            f"qgt_2d_comparison_{safe_quantity}_left_band_{left_band}_right_band_{right_band}.png",
+        )
     else:
         output_dir = os.path.dirname(output_path)
         if output_dir:
@@ -455,12 +625,13 @@ if __name__ == "__main__":
     import os
 
     plot_qgt_2d_comparison_with_energies(
+        "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonianChiralBasisProjected/dataset_2",
         "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonian/dataset_1",
-        "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonianChiralBasisProjected/dataset_1",
-        quantity="trace",
-        band=0,
+        quantity="berry",
+        left_band=0,
+        right_band=4,
         labels=("Full chiral Hamiltonian", "Chiral-basis projected"),
-        output_path="/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonian/qgt_2d_full_vs_chiral_basis_projected_trace_band_0.png",
+        output_path="/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonian/qgt_2d_full_vs_chiral_basis_projected_trace_left_band_0_right_band_0.png",
     )
 
     # base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/gWaveAltermagnetHamiltonian"

@@ -114,6 +114,14 @@ class hamiltonian:
             "Override get_sym_path() to provide one."
         )
 
+    def analytic_band_from_index(self, band_index):
+        """
+        Translate a numeric band index into the Hamiltonian's analytic band label.
+        Subclasses can override this when their analytic formulas use a different
+        convention from array band indices.
+        """
+        return band_index
+
     def compute_driven(self, t, kx, ky, kz=0):
         """
         Compute the time-dependent Hamiltonian matrix for a given time t and (kx, ky, kz),
@@ -615,4 +623,3 @@ class RashbaHamiltonian(hamiltonian):
         ], dtype=complex)
         
         return H_k
-

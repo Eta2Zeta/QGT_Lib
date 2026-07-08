@@ -55,6 +55,64 @@ class gWaveAltermagnetHamiltonian(hamiltonian):
         self.Jz = Jz
         self.lamb = lamb
         self.lamb_z = lamb_z
+
+    def get_sym_path(self, path="ALHABHPLUADUPDCPBCAPKDGMKGEKUMDECK"):
+        """
+        High-symmetry path for the hexagonal g-wave altermagnet Brillouin zone.
+
+        The path is supplied as a string of single-character point labels. Useful
+        historical choices:
+
+            Standard hexagonal path:
+                "GMKGALHA"          # G -> M -> K -> G -> A -> L -> H -> A
+
+            Old requested path:
+                "LHALMHKMGKAGL"     # L -> H -> A -> L -> M -> H -> K -> M -> G -> K -> A -> G -> L
+
+            Old requested path:
+                "LAHLUHPUDPKUMGKMADG"
+
+            Newest requested path, used by default:
+                "ALHABHPLUADUPDCPBCAPKDGMKGEKUMDECK"
+
+        Returns
+        -------
+        sym_points : dict
+            Mapping of label -> np.ndarray of shape (3,).
+        path_labels : list of str
+            Ordered labels defining the path.
+        """
+        kM_y = 2.0 * np.pi / np.sqrt(3.0)
+        kK_x = 2.0 * np.pi / 3.0
+        kz_A = np.pi
+
+        kB_x = np.pi
+        kB_y = np.pi / np.sqrt(3.0)
+
+        sym_points = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "M": np.array([0.0, kM_y, 0.0]),
+            "K": np.array([kK_x, kM_y, 0.0]),
+            "A": np.array([0.0, 0.0, kz_A]),
+            "L": np.array([0.0, kM_y, kz_A]),
+            "H": np.array([kK_x, kM_y, kz_A]),
+            "U": np.array([0.0, kM_y, kz_A / 2.0]),
+            "D": np.array([0.0, 0.0, kz_A / 2.0]),
+            "P": np.array([kK_x, kM_y, kz_A / 2.0]),
+            "B": np.array([kB_x, kB_y, kz_A]),
+            "C": np.array([kB_x, kB_y, kz_A / 2.0]),
+            "E": np.array([kB_x, kB_y, 0.0]),
+        }
+
+        path_labels = list(path)
+        unknown_labels = [label for label in path_labels if label not in sym_points]
+        if unknown_labels:
+            valid_labels = "".join(sorted(sym_points))
+            raise ValueError(
+                f"Unknown g-wave symmetry labels {unknown_labels}. Valid labels are: {valid_labels}."
+            )
+
+        return sym_points, path_labels
         
         
     def compute_static(self, kx, ky, kz=0):
@@ -275,7 +333,7 @@ class gWaveAltermagnetHamiltonian(hamiltonian):
         
     def get_spin_operator(self, component='z'):
         """
-        Returns the spin operator matrix tau_0 \otimes sigma_i for the requested component ('x', 'y', or 'z').
+        Returns the spin operator matrix tau_0 x sigma_i for the requested component ('x', 'y', or 'z').
         Returns a 4x4 complex matrix.
         """
         if component == 'x':
@@ -286,4 +344,3 @@ class gWaveAltermagnetHamiltonian(hamiltonian):
             return np.kron(sigma_0, sigma_z)
         else:
             raise ValueError(f"Unknown spin component: {component}")
-

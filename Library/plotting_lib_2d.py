@@ -965,6 +965,8 @@ def plot_degeneracy_2d(
     title="Degeneracy Map (2D)",
     sym_points=True,
     hamiltonian=None,
+    kk=0.0,
+    sym_kz_threshold=0.02,
     results_dir=None,
     save_fig=False,
 ):
@@ -979,6 +981,10 @@ def plot_degeneracy_2d(
     - sym_points: If True, overlays Hamiltonian.get_sym_path() when available.
                   If False, no symmetry overlay is drawn.
     - hamiltonian: Optional Hamiltonian object used to read get_sym_path().
+    - kk: Fixed kz value of the plotted 2D slice.
+    - sym_kz_threshold: Fraction in [0, 1] of max(kx range, ky range). For 3D
+                        symmetry points, only points with |kz - kk| within
+                        this tolerance are projected onto the 2D map.
     """
     nkx, nky, nbands = eigenvalues.shape
     degeneracy_map = np.zeros((nkx, nky), dtype=int)
@@ -1017,14 +1023,47 @@ def plot_degeneracy_2d(
     if sym_points:
         if hamiltonian is not None and hasattr(hamiltonian, "get_sym_path"):
             sym_dict, path_names = hamiltonian.get_sym_path()
-            path = np.array([sym_dict[name] for name in path_names], dtype=float)
-            ax.plot(path[:, 0], path[:, 1], color='white', linewidth=2, linestyle='--', label='Symmetry Path')
+
+            if not (0 <= sym_kz_threshold <= 1):
+                raise ValueError("sym_kz_threshold must be between 0 and 1.")
+
+            kx_range = float(np.nanmax(kx) - np.nanmin(kx))
+            ky_range = float(np.nanmax(ky) - np.nanmin(ky))
+            kz_tol = sym_kz_threshold * max(kx_range, ky_range)
+
+            def point_visible_xy(name):
+                point = np.asarray(sym_dict[name], dtype=float)
+                if point.size < 2:
+                    raise ValueError(f"Symmetry point {name!r} must have at least kx and ky coordinates.")
+                if point.size >= 3 and abs(point[2] - kk) > kz_tol:
+                    return None
+                return point[:2]
+
+            plotted_path = False
+            for start_name, end_name in zip(path_names[:-1], path_names[1:]):
+                start_xy = point_visible_xy(start_name)
+                end_xy = point_visible_xy(end_name)
+                if start_xy is None or end_xy is None:
+                    continue
+                label = 'Symmetry Path' if not plotted_path else None
+                ax.plot(
+                    [start_xy[0], end_xy[0]],
+                    [start_xy[1], end_xy[1]],
+                    color='white',
+                    linewidth=2,
+                    linestyle='--',
+                    label=label,
+                )
+                plotted_path = True
 
             plotted_labels = set()
             for name in path_names:
                 if name in plotted_labels:
                     continue
-                x, y = np.asarray(sym_dict[name], dtype=float)
+                xy = point_visible_xy(name)
+                if xy is None:
+                    continue
+                x, y = xy
                 ax.scatter(x, y, color='white', s=50, zorder=5)
                 ax.annotate(
                     name,
@@ -1038,7 +1077,8 @@ def plot_degeneracy_2d(
                 )
                 plotted_labels.add(name)
 
-            ax.legend(loc='upper right')
+            if plotted_path or plotted_labels:
+                ax.legend(loc='upper right')
         else:
             print("sym_points=True, but no Hamiltonian with get_sym_path() was provided. Skipping symmetry overlay.")
     

@@ -48,6 +48,15 @@ class ChiralHamiltonianChiralBasisProjected(hamiltonian):
         path = ["G", "K", "M", "G"]
         return sym_points, path
 
+    def analytic_band_from_index(self, band_index):
+        if band_index == 0:
+            return -1
+        if band_index == 1:
+            return +1
+        raise ValueError(
+            f"{self.__class__.__name__} analytic QGT only supports band indices 0 and 1; got {band_index}."
+        )
+
     def _validate_magnus_first_term_mode(self, mode):
         if mode not in self._MAGNUS_FIRST_TERM_METHODS:
             valid_modes = ", ".join(sorted(self._MAGNUS_FIRST_TERM_METHODS))
@@ -422,13 +431,23 @@ class ChiralHamiltonianChiralBasisProjected(hamiltonian):
         term3 = dcosb_dk * dlnN
 
         Omega = s * (term1 + term2 + term3)
-        return np.where(np.abs(k) < eps, 0.0, Omega)
+        small = np.abs(k) < 1e-8
+        a = self.vF / self.t1
+
+        # band here is already ±1 inside _berry_curvature_full_radial
+        V0 = self.V_k(0.0)
+        cosb0 = np.sign(V0)
+
+        Omega0 = (-band) * cosb0 * 2.0 * a**2
+
+        return np.where(small, Omega0, Omega)
 
     def berry_curvature_full(self, kx, ky, band=+1):
         """
         Wrapper: Ω_full(kx, ky) = Ω_full(|k|).
         """
         k = np.hypot(kx, ky)
+        band = self.analytic_band_from_index(band)
         return self._berry_curvature_full_radial(k, band=band)
 
     def g_xy_imag(self, kx, ky, kz=0, band=+1):

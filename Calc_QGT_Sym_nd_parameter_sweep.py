@@ -55,6 +55,7 @@ def compute_sym_nd_parallel(
     force_new_dir=False,
     float_dtype=np.float64,
 ):
+    # TODO: This space group based sym path seems to be outdated, everything should be done in the Hamiltonian, maybe update it later
     """
     Computes eigenvalues along 3D high-symmetry lines for every point in an
     N-D parameter grid (in parallel).

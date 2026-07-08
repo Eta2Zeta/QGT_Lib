@@ -5,7 +5,6 @@ import time
 from itertools import permutations
 from .indexing_lib import *
 from .Hamiltonian.Hamiltonian import hamiltonian
-from .Hamiltonian_helper import get_Hamiltonian
 from .Eigenvector import *
 from .diagnalization import eigenvalues_and_vectors_eigenvalue_ordering, get_eigenvalues_and_eigenvectors
 from .dimension_lib import map_k_by_order
@@ -65,9 +64,10 @@ def line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, band_index=No
 
 def eigenvalues_along_path(Hamiltonian_Obj, k_path, use_analytical=False):
     """
-    Compute eigenvalues along an arbitrary k-path by diagonalizing at each point.
+    Compute eigenvalues and eigenvectors along an arbitrary k-path.
 
-    Can optionally use an analytic expression if the Hamiltonian provides one.
+    Can optionally use an analytic eigenvalue expression if the Hamiltonian
+    provides one. In that case, eigenvectors are returned as None.
 
     Parameters
     ----------
@@ -79,11 +79,13 @@ def eigenvalues_along_path(Hamiltonian_Obj, k_path, use_analytical=False):
     use_analytical : bool
         If True and Hamiltonian_Obj has a get_analytical_eigenvalues method, use it
         instead of numerical diagonalization.
-
     Returns
     -------
     eigenvalues : ndarray, shape (N, dim)
         Eigenvalues sorted in ascending order at each k-point.
+    eigenvectors : ndarray, shape (N, dim, dim) or None
+        Eigenvectors ordered continuously along the path. None when
+        use_analytical=True and an analytical eigenvalue expression is used.
     """
     k_path = np.asarray(k_path)
     num_points = len(k_path)
@@ -95,13 +97,15 @@ def eigenvalues_along_path(Hamiltonian_Obj, k_path, use_analytical=False):
         kx = k_path[:, 0]
         ky = k_path[:, 1]
         kz = k_path[:, 2] if k_path.shape[1] == 3 else np.zeros(num_points)
-        return Hamiltonian_Obj.get_analytical_eigenvalues(kx, ky, kz)
+        return Hamiltonian_Obj.get_analytical_eigenvalues(kx, ky, kz), None
 
     if use_analytical:
         print("Analytical expression not found for this Hamiltonian. Falling back to numerical calculation...")
 
     # --- Numerical diagonalization ---
-    eigenvalues = np.zeros((num_points, dim))
+    eigenvalues = np.full((num_points, dim), np.nan, dtype=float)
+    eigenvectors = np.full((num_points, dim, dim), np.nan, dtype=complex)
+    eigenvector_tracker = Eigenvectors(dim)
 
     kz_col = k_path[:, 2] if k_path.shape[1] == 3 else np.zeros(num_points)
 
@@ -109,9 +113,16 @@ def eigenvalues_along_path(Hamiltonian_Obj, k_path, use_analytical=False):
         kx = k_path[idx, 0]
         ky = k_path[idx, 1]
         kz = kz_col[idx]
-        H, _ = get_Hamiltonian(Hamiltonian_Obj, kx, ky, kz)
-        evals = np.linalg.eigvalsh(H)
-        eigenvalues[idx] = np.sort(evals)
 
-    return eigenvalues
+        evals, evecs = eigenvalues_and_vectors_eigenvalue_ordering(
+            Hamiltonian_Obj,
+            kx,
+            ky,
+            kz=kz,
+            eigenvector=eigenvector_tracker,
+            calculate_perturbation=False,
+        )
+        eigenvalues[idx] = np.real(evals)
+        eigenvectors[idx] = evecs
 
+    return eigenvalues, eigenvectors
