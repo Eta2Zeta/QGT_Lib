@@ -14,6 +14,7 @@ from Library.QGT_lib import *
 from Library.topology import *
 from Library.utilities import *
 from Library.data_management_utils_1d import setup_QGT_results_directory_1D_single_param
+from Library.output_utils import print_calculation_complete
 
 def sweep_single_param_1d(
     hamiltonian,
@@ -119,7 +120,7 @@ def sweep_single_param_1d(
     with open(file_paths["meta_info"], "wb") as f:
         pickle.dump(meta, f)
 
-    print(f"✅ Saved 1D QGT sweep for '{param_name}' to: {out_dir}")
+    print_calculation_complete(f"1D QGT sweep ({param_name})", out_dir, artifact="Results")
 
 
 if __name__ == '__main__':

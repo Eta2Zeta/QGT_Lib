@@ -23,7 +23,7 @@ from Library.plotting_lib_2d import *
 
 
 # Define parameters
-band = 1 # Which band to calculate your QMT on, starting from 0
+band = 1 # Which band to calculate your QGT on, starting from 0
 z_cutoff = 1e1 #where to cutoff the plot for the z axis when singularties occur
 
 
@@ -120,9 +120,9 @@ def calculate_2d():
 
     # print("Chern number is: ", chern_number)
 
-    plot_QGT_components_3d(kx, ky, g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array)
+    plot_qgt_component_surfaces(kx, ky, g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array)
 
-    # plot_g_components_2d(g_xx_array, g_yy_array, trace_array, k_max=k_max)
+    # plot_qgt_component_heatmaps(g_xx_array, g_yy_array, trace_array, k_max=k_max)
 
     plot_trace_w_eigenvalue(kx, ky, g_xx_array, g_yy_array, eigenvalues, trace_array, eigenvalue_band=band)
 

@@ -1,0 +1,37 @@
+{
+    "hamiltonian_name": "THF_Hamiltonian",
+    "kk": 0.0,
+    "ki_range": [
+        -6.199964309733499,
+        6.199964309733501
+    ],
+    "kj_range": [
+        -6.199964309733499,
+        6.199964309733501
+    ],
+    "mesh_spacing": 150,
+    "method_name": "numerical_phase_corrected",
+    "include_endpoints": true,
+    "order": "xyz",
+    "hamiltonian_params": {
+        "omega": 3.141592653589793,
+        "A0": 0,
+        "polarization": "left",
+        "magnus_order": 1,
+        "analytic_magnus": false,
+        "eta": 1,
+        "a_M1": 1.0,
+        "lambda_factor": 0.3375,
+        "lambda_": 0.3375,
+        "gamma": -24.75,
+        "M": 3.697,
+        "V": 1.0,
+        "v_star": -4303.0,
+        "v_star_prime": 1623.0,
+        "v_star_double_prime": -33.2
+    },
+    "dki": 0.08377580409572781,
+    "dkj": 0.08377580409572781,
+    "band_index": "ALL",
+    "n_bands": 6
+}

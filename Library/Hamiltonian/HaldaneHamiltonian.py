@@ -1,5 +1,5 @@
 import numpy as np
-from .Hamiltonian_v2 import hamiltonian
+from .Hamiltonian import hamiltonian, sigma_x, sigma_y, sigma_z
 
 class HaldaneHamiltonian(hamiltonian):
     """

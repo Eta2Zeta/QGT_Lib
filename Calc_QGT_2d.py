@@ -20,6 +20,7 @@ from Library.plotting_lib_2d import *
 from Library.Hamiltonian.RuO2Hamiltonian import *
 from Library.Hamiltonian.gWaveAltermagnetHamiltonian import *
 from Library.data_management_utils_2d import setup_2D_QGT_results_directory
+from Library.output_utils import print_calculation_complete
 
 
 def _save_sym_line_eigenvalues(Hamiltonian_Obj, results_subdir, *, num_points_per_segment=100):
@@ -224,7 +225,7 @@ def calculate_2d(
     sym_path_points_per_segment=100,
 ):
     # Define parameters
-    band =5 # Which band to calculate your QMT on, starting from 0
+    band =5 # Which band to calculate your QGT on, starting from 0
     z_cutoff = .3 #where to cutoff the plot for the z axis when singularties occur
     z_percentile = 99 # percentile to cut off the plot
 
@@ -390,10 +391,6 @@ def calculate_2d(
         if eigenvalues is not None:
             np.save(os.path.join(results_subdir, "eigenvalues.npy"), eigenvalues)
 
-        print(f"Saved QGT results to '{results_subdir}' and copied to temp directory: {temp_dir}")
-
-
-
     shutil.copy2(meta_info_file, file_paths["meta_pkl"])
     _save_sym_line_eigenvalues(Hamiltonian_Obj, results_subdir)
     if include_sym_path_qgt:
@@ -422,9 +419,9 @@ def calculate_2d(
     # print("Chern number is: ", chern_number)
 
 
-    # plot_QGT_components_3d(ki, kj, g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, stride_size=1)
+    # plot_qgt_component_surfaces(ki, kj, g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array, stride_size=1)
 
-    # plot_g_components_2d(g_xx_array, g_yy_array, trace_array, k_max=k_max)
+    # plot_qgt_component_heatmaps(g_xx_array, g_yy_array, trace_array, k_max=k_max)
 
     # plot_trace_w_eigenvalue(ki, kj, g_xx_array, g_yy_array, eigenvalues, trace_array, eigenvalue_band=band)
 
@@ -436,7 +433,7 @@ def calculate_2d(
 
 
 
-    plot_eigen_and_all_berry_2d(
+    plot_qgt_eigenvalue_berry_component_heatmaps(
         ki, kj, eigenvalues, 
         g_xy_imag_array, g_xz_imag_array, g_yz_imag_array,
         eigenvalue_band=band,
@@ -446,37 +443,39 @@ def calculate_2d(
         save_fig=True
     )
 
-    # 1. 3D Components
-    print(f"Plotting QGT Components (3D) for band {band}...")
-    plot_QGT_components_3d(
+    # 1. QGT component surfaces
+    print(f"Plotting QGT component surfaces for band {band}...")
+    plot_qgt_component_surfaces(
         ki, kj, g_xx_array, g_xy_real_array, g_xy_imag_array, g_yy_array,
         stride_size=2,
         results_dir=results_subdir,
         save_fig=True,
-        filename=f"QGT_components_3d_band_{band}.html",
+        filename=f"qgt_component_surfaces_band_{band}.html",
         show=False
     )
 
     # 2. Combined Plots
-    print(f"Plotting QMT/Eig/Berry/Trace (3D) for band {band}...")
-    plot_qmt_eig_berry_trace_3d(
+    print(f"Plotting QGT eigenvalue/Berry/trace surfaces for band {band}...")
+    plot_qgt_eigenvalue_berry_trace_surfaces(
         ki, kj, eigenvalues, g_xy_imag_array, trace_array,
         eigenvalue_band=band,
-        title=f"3D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {band})",
+        title=f"Surface Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {band})",
         results_dir=results_subdir,
         save_fig=True,
-        filename=f"qmt_eig_berry_trace_3d_band_{band}.html",
+        filename=f"qgt_eigenvalue_berry_trace_surfaces_band_{band}.html",
         show=False
     )
 
-    print(f"Plotting QMT/Eig/Berry/Trace (2D Heatmaps) for band {band}...")
-    plot_qmt_eig_berry_trace_2d(
+    print(f"Plotting QGT eigenvalue/Berry/trace heatmaps for band {band}...")
+    plot_qgt_eigenvalue_berry_trace_heatmaps(
         ki, kj, eigenvalues, g_xy_imag_array, trace_array,
         eigenvalue_band=band,
         title=f"2D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {band})",
         results_dir=results_subdir,
         save_fig=True
     )
+
+    print_calculation_complete("2D QGT", results_subdir, artifact="Results", copied_to=temp_dir)
 
 
 def _qgt_one_band_worker(payload: dict):
@@ -631,7 +630,6 @@ def calculate_2d_all_bands(
     )
 
     # ---- if existing stacked results, load them and skip compute ----
-    # (you will need to ensure setup_2D_QGT_results_directory defines these filenames)
     stacked_keys = ["g_xx","g_yy","g_zz","g_xy_real","g_xy_imag","g_xz_real","g_xz_imag","g_yz_real","g_yz_imag","trace"]
 
     if use_existing and all(k in file_paths and os.path.exists(file_paths[k]) for k in stacked_keys):
@@ -707,8 +705,6 @@ def calculate_2d_all_bands(
         if eigenvalues is not None:
             np.save(os.path.join(results_subdir, "eigenvalues.npy"), eigenvalues)
 
-        print(f"Saved STACKED QGT results for all bands to '{results_subdir}' (and temp/)")
-
     shutil.copy2(meta_info_file, file_paths["meta_pkl"])
     _save_sym_line_eigenvalues(Hamiltonian_Obj, results_subdir)
     if include_sym_path_qgt:
@@ -727,7 +723,7 @@ def calculate_2d_all_bands(
 
     # ---- example plotting: choose a band to view ----
     for band_to_plot in range(n_bands): # pick which band you want to visualize
-        plot_eigen_and_all_berry_2d(
+        plot_qgt_eigenvalue_berry_component_heatmaps(
             ki, kj, eigenvalues, 
             g_xy_imag_all[band_to_plot], g_xz_imag_all[band_to_plot], g_yz_imag_all[band_to_plot],
             eigenvalue_band=band_to_plot,
@@ -737,37 +733,39 @@ def calculate_2d_all_bands(
             save_fig=True
         )
 
-        # 1. 3D Components
-        print(f"Plotting QGT Components (3D) for band {band_to_plot}...")
-        plot_QGT_components_3d(
+        # 1. QGT component surfaces
+        print(f"Plotting QGT component surfaces for band {band_to_plot}...")
+        plot_qgt_component_surfaces(
             ki, kj, g_xx_all[band_to_plot], g_xy_real_all[band_to_plot], g_xy_imag_all[band_to_plot], g_yy_all[band_to_plot],
             stride_size=2,
             results_dir=results_subdir,
             save_fig=True,
-            filename=f"QGT_components_3d_band_{band_to_plot}.html",
+            filename=f"qgt_component_surfaces_band_{band_to_plot}.html",
             show=False
         )
 
         # 2. Combined Plots
-        print(f"Plotting QMT/Eig/Berry/Trace (3D) for band {band_to_plot}...")
-        plot_qmt_eig_berry_trace_3d(
+        print(f"Plotting QGT eigenvalue/Berry/trace surfaces for band {band_to_plot}...")
+        plot_qgt_eigenvalue_berry_trace_surfaces(
             ki, kj, eigenvalues, g_xy_imag_all[band_to_plot], trace_all[band_to_plot],
             eigenvalue_band=band_to_plot,
-            title=f"3D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {band_to_plot})",
+            title=f"Surface Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {band_to_plot})",
             results_dir=results_subdir,
             save_fig=True,
-            filename=f"qmt_eig_berry_trace_3d_band_{band_to_plot}.html",
+            filename=f"qgt_eigenvalue_berry_trace_surfaces_band_{band_to_plot}.html",
             show=False
         )
 
-        print(f"Plotting QMT/Eig/Berry/Trace (2D Heatmaps) for band {band_to_plot}...")
-        plot_qmt_eig_berry_trace_2d(
+        print(f"Plotting QGT eigenvalue/Berry/trace heatmaps for band {band_to_plot}...")
+        plot_qgt_eigenvalue_berry_trace_heatmaps(
             ki, kj, eigenvalues, g_xy_imag_all[band_to_plot], trace_all[band_to_plot],
             eigenvalue_band=band_to_plot,
             title=f"2D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {band_to_plot})",
             results_dir=results_subdir,
             save_fig=True
         )
+
+    print_calculation_complete("2D QGT all bands", results_subdir, artifact="Results", copied_to=temp_dir)
 
 
 

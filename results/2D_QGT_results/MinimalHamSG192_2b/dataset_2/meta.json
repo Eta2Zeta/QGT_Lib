@@ -1,0 +1,37 @@
+{
+    "hamiltonian_name": "MinimalHamSG192_2b",
+    "kk": 0.031415926535897934,
+    "ki_range": [
+        -1.5499910774333747,
+        1.5499910774333752
+    ],
+    "kj_range": [
+        -1.5499910774333747,
+        1.5499910774333752
+    ],
+    "mesh_spacing": 150,
+    "method_name": "numerical_phase_corrected",
+    "include_endpoints": true,
+    "order": "xyz",
+    "hamiltonian_params": {
+        "omega": 0.0,
+        "A0": 0.0,
+        "polarization": "left",
+        "magnus_order": 1,
+        "analytic_magnus": false,
+        "mu": 0.0,
+        "Jx": 0.0,
+        "Jy": 0.0,
+        "Jz": 0.2,
+        "t1": 0.8,
+        "t2": 0.2,
+        "t3": 0.3,
+        "t4": 0.3,
+        "lamb": 0.1,
+        "lamb_z": 0.1
+    },
+    "dki": 0.020943951023931952,
+    "dkj": 0.020943951023931952,
+    "band_index": "ALL",
+    "n_bands": 4
+}

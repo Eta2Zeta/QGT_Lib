@@ -8,11 +8,11 @@ import matplotlib.pyplot as plt
 
 # Import plotting functions
 from Library.plotting_lib_2d import (
-    plot_QGT_components_3d,
-    plot_qmt_eig_berry_trace_3d,
-    plot_qmt_eig_berry_trace_2d,
-    plot_g_components_2d,
-    plot_eigen_and_all_berry_2d
+    plot_qgt_component_surfaces,
+    plot_qgt_eigenvalue_berry_trace_surfaces,
+    plot_qgt_eigenvalue_berry_trace_heatmaps,
+    plot_qgt_component_heatmaps,
+    plot_qgt_eigenvalue_berry_component_heatmaps,
 )
 
 def plot_qgt_from_directory(target_dir):
@@ -95,32 +95,32 @@ def plot_qgt_from_directory(target_dir):
 
         print(f"--- Generating Plots for Band {b} ---")
 
-        # 1. 3D Components
-        print(f"Plotting QGT Components (3D) for band {b}...")
-        plot_QGT_components_3d(
+        # 1. QGT component surfaces
+        print(f"Plotting QGT component surfaces for band {b}...")
+        plot_qgt_component_surfaces(
             kx, ky, b_g_xx, b_g_xy_real, b_g_xy_imag, b_g_yy,
             stride_size=2,
             results_dir=target_dir,
             save_fig=True,
-            filename=f"QGT_components_3d_band_{b}.html",
+            filename=f"qgt_component_surfaces_band_{b}.html",
             show=False
         )
 
         # 2. Combined Plots
-        print(f"Plotting QMT/Eig/Berry/Trace (3D) for band {b}...")
-        plot_qmt_eig_berry_trace_3d(
+        print(f"Plotting QGT eigenvalue/Berry/trace surfaces for band {b}...")
+        plot_qgt_eigenvalue_berry_trace_surfaces(
             kx, ky, eigenvalues, b_g_xy_imag, b_trace,
             eigenvalue_band=b,
 
-            title=f"3D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {b})",
+            title=f"Surface Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {b})",
             results_dir=target_dir,
             save_fig=True,
-            filename=f"qmt_eig_berry_trace_3d_band_{b}.html",
+            filename=f"qgt_eigenvalue_berry_trace_surfaces_band_{b}.html",
             show=False
         )
 
-        print(f"Plotting QMT/Eig/Berry/Trace (2D Heatmaps) for band {b}...")
-        plot_qmt_eig_berry_trace_2d(
+        print(f"Plotting QGT eigenvalue/Berry/trace heatmaps for band {b}...")
+        plot_qgt_eigenvalue_berry_trace_heatmaps(
             kx, ky, eigenvalues, b_g_xy_imag, b_trace,
             eigenvalue_band=b,
             title=f"2D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {b})",
@@ -182,7 +182,7 @@ def plot_all_2d_berries_from_directory(target_dir):
         num_bands = g_xy_imag.shape[0]
         for b in range(num_bands):
             print(f"Plotting all-Berry 2D for band {b}...")
-            plot_eigen_and_all_berry_2d(
+            plot_qgt_eigenvalue_berry_component_heatmaps(
                 kx, ky, eigenvalues, 
                 g_xy_imag[b], g_xz_imag[b], g_yz_imag[b],
                 eigenvalue_band=b,
@@ -193,7 +193,7 @@ def plot_all_2d_berries_from_directory(target_dir):
             )
     else:
         print("Plotting all-Berry 2D for single band...")
-        plot_eigen_and_all_berry_2d(
+        plot_qgt_eigenvalue_berry_component_heatmaps(
             kx, ky, eigenvalues, 
             g_xy_imag, g_xz_imag, g_yz_imag,
             eigenvalue_band=band,
