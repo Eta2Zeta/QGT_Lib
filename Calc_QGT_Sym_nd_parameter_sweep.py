@@ -14,6 +14,7 @@ from Library.Hamiltonian.gWaveAltermagnetHamiltonian import gWaveAltermagnetHami
 from Library.utilities import generate_3d_sym_lines
 from Library.Hamiltonian_helper import get_Hamiltonian
 from Library.data_management_utils_nd import build_parameter_points
+from Library.output_utils import print_calculation_complete
 
 
 # ---------- per-point worker ----------
@@ -132,7 +133,7 @@ def compute_sym_nd_parallel(
             f, indent=2,
         )
 
-    print(f"✅ Saved N-D Sym bundle to {bundle_path}")
+    print_calculation_complete("N-D Symmetry-Path Eigenvalues", bundle_path, artifact="Bundle")
     return root, bundle_path
 
 
@@ -182,7 +183,6 @@ def main():
         force_new_dir=False,
         float_dtype=np.float32,
     )
-    print(f"Results saved in {bundle_path}")
 
 
 if __name__ == "__main__":

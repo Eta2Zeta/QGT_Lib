@@ -3,8 +3,11 @@ import os
 import numpy as np
 import pickle
 import json
+import shutil
 
-from Library.data_management_utils_2D import setup_Spin_Density_results_directory
+from Library.data_management_utils_2d import setup_Spin_Density_results_directory
+from Library.output_utils import print_calculation_complete
+from Plot_Spin_Density import plot_all_spin_components
 
 def calculate_spin_density_all_bands(Force_new=True):
     # Retrieve pre-computed vectors from the temp directory
@@ -33,6 +36,7 @@ def calculate_spin_density_all_bands(Force_new=True):
         mesh_spacing = meta_info.get("mesh_spacing", 0.0)
         ki_range = meta_info.get("ki_range", None)
         kj_range = meta_info.get("kj_range", None)
+        include_endpoints = meta_info.get("include_endpoints", True)
         order = meta_info.get("order", 2)
 
     n_bands = Hamiltonian_Obj.dim
@@ -66,22 +70,23 @@ def calculate_spin_density_all_bands(Force_new=True):
 
     # Organize Metadata
     Hamiltonian_name = getattr(Hamiltonian_Obj, "name", "Hamiltonian")
+    hamiltonian_params = Hamiltonian_Obj.get_parameters_dict(parameter="2D")
     meta_params = {
         "hamiltonian_name": Hamiltonian_name,
         "kk": kk,
         "ki_range": ki_range,
         "kj_range": kj_range,
         "mesh_spacing": mesh_spacing,
-        "include_endpoints": True,
+        "include_endpoints": bool(include_endpoints),
         "n_bands": int(n_bands),
-        "Hamiltonian_Obj": Hamiltonian_Obj,
+        "hamiltonian_params": hamiltonian_params,
         "dki": dki, 
         "dkj": dkj,
         "order": order
     }
 
     # Use the spin-specific results folder constructor from plotting_lib limits
-    file_paths, use_existing, results_subdir, meta_target = setup_Spin_Density_results_directory(
+    file_paths, use_existing, results_subdir, meta_target_json = setup_Spin_Density_results_directory(
         meta_params=meta_params,
         force_new=Force_new
     )
@@ -94,18 +99,15 @@ def calculate_spin_density_all_bands(Force_new=True):
     np.save(file_paths["spin_y"], spin_y_all)
     np.save(file_paths["spin_z"], spin_z_all)
 
-    # Dump to JSON (stripping complex items natively to prevent formatting limits)
-    meta_info_json = meta_target.copy()
-    for rm in ["Hamiltonian_Obj", "ki", "kj"]:
-        meta_info_json.pop(rm, None)
     with open(file_paths["meta_json"], "w") as f:
-        json.dump(meta_info_json, f, indent=2, sort_keys=True)
+        json.dump(meta_target_json, f, indent=2, sort_keys=True)
 
-    # Overload and completely store the PKL explicitly
-    with open(file_paths["meta_pkl"], "wb") as f:
-        pickle.dump(meta_target, f)
+    # Keep the runtime pickle separate and untouched: it contains Hamiltonian_Obj, ki, kj, etc.
+    shutil.copy2(meta_info_file, file_paths["meta_pkl"])
 
-    print(f"\nSpin Expectations computation complete. Array data successfully archived at:\n > {results_subdir}")
+    plot_all_spin_components(results_subdir)
+
+    print_calculation_complete("Spin Expectations", results_subdir)
 
 if __name__ == '__main__':
     calculate_spin_density_all_bands(Force_new=True)

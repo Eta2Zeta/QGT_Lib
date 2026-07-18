@@ -124,15 +124,10 @@ def setup_Spin_Density_results_directory(
     """
     Hamiltonian_name = meta_params.get("hamiltonian_name", "Unknown_Hamiltonian")
     base_root = os.path.join(os.getcwd(), "results", "Spin_Density_results", Hamiltonian_name)
-    
-    # Extract Hamiltonian parameters
-    hamiltonian = meta_params.get("Hamiltonian_Obj", None)
-    if hamiltonian is not None and hasattr(hamiltonian, "get_parameters_dict"):
-        ham_params = hamiltonian.get_parameters_dict(parameter="2D")
-    else:
-        ham_params = {}
 
-    meta_params["hamiltonian_params"] = ham_params
+    json_meta = {k: v for k, v in meta_params.items() if not k.endswith("_Obj")}
+    if "hamiltonian_params" not in json_meta:
+        raise KeyError("Spin Density metadata must include 'hamiltonian_params'.")
 
     required_files = [
         "spin_x.npy", 
@@ -145,16 +140,13 @@ def setup_Spin_Density_results_directory(
     dir_path, used = pick_or_create_result_dir_simple(
         base_root=base_root,
         base_name="dataset_",
-        required_params=meta_params,
+        required_params=json_meta,
         force_new=force_new,
         required_files=required_files
     )
     
     if not used:
-        # Strip object references when dumping JSON
-        json_meta = {k: v for k, v in meta_params.items() if not k.endswith("_Obj")}
-        with open(os.path.join(dir_path, "parameters.json"), "w") as f:
-            json.dump(json_meta, f, indent=4)
+        dump_metadata(json_meta, os.path.join(dir_path, "meta.json"))
 
     file_paths = {
         "spin_x": os.path.join(dir_path, "spin_x.npy"),
@@ -166,7 +158,7 @@ def setup_Spin_Density_results_directory(
 
     print(("Using existing Spin Density results directory: " if used else "Created new Spin Density results directory: ") + dir_path)
     
-    full_meta = meta_params.copy()
+    full_meta = json_meta.copy()
     full_meta["hamiltonian_name"] = Hamiltonian_name
     
     return file_paths, used, dir_path, full_meta

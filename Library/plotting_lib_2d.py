@@ -9,7 +9,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
 
-def extract_and_plot_eigenvalues_along_line(kx_grid, ky_grid, eigenvalues, start_k, end_k, num_points=100, bands_to_plot=None, results_dir=None, save_fig=False):
+def plot_eigenvalues_line_cut(kx_grid, ky_grid, eigenvalues, start_k, end_k, num_points=100, bands_to_plot=None, results_dir=None, save_fig=False):
     """
     Extracts eigenvalues along a linear path in 2D k-space and plots them.
 
@@ -108,7 +108,7 @@ def extract_and_plot_eigenvalues_along_line(kx_grid, ky_grid, eigenvalues, start
 
 
 
-def plot_eigenvalues_surface_colorbar(
+def plot_eigenvalue_surfaces(
     kx,
     ky,
     eigenvalues,
@@ -120,7 +120,7 @@ def plot_eigenvalues_surface_colorbar(
     bands_to_plot=None,       # NEW: int | iterable[int] | None (None => all bands)
     results_dir=None,
     save_fig=False,
-    filename="eigenvalues_surface_2d.html",
+    filename="eigenvalue_surfaces.html",
     show=True
 ):
     """
@@ -139,8 +139,56 @@ def plot_eigenvalues_surface_colorbar(
     - save_fig          : Whether to save the HTML file locally in the `results_dir`.
     - filename          : Output filename.
     - show              : Whether to show the plot if not saving.
+
+    If ``results_dir/meta.json`` exists, its run metadata and Hamiltonian
+    parameters are displayed in a box beside the interactive plot.
     """
+    import html
+    import json
+    import os
+
     import plotly.graph_objects as go
+
+    def format_meta_value(value):
+        if isinstance(value, bool):
+            return str(value)
+        if isinstance(value, float):
+            return f"{value:.6g}"
+        if isinstance(value, (list, tuple)):
+            return "[" + ", ".join(format_meta_value(item) for item in value) + "]"
+        if value is None:
+            return "None"
+        return str(value)
+
+    def metadata_box_text(metadata):
+        lines = ["<b>Run Metadata</b>"]
+        hamiltonian_params = metadata.get("hamiltonian_params", {})
+
+        for key, value in metadata.items():
+            if key == "hamiltonian_params":
+                continue
+            key_text = html.escape(str(key))
+            value_text = html.escape(format_meta_value(value))
+            lines.append(f"{key_text} = {value_text}")
+
+        if hamiltonian_params:
+            lines.extend(["", "<b>Hamiltonian Parameters</b>"])
+            for key, value in hamiltonian_params.items():
+                key_text = html.escape(str(key))
+                value_text = html.escape(format_meta_value(value))
+                lines.append(f"{key_text} = {value_text}")
+
+        return "<br>".join(lines)
+
+    meta_text = None
+    if results_dir:
+        meta_path = os.path.join(results_dir, "meta.json")
+        if os.path.isfile(meta_path):
+            try:
+                with open(meta_path, "r", encoding="utf-8") as meta_file:
+                    meta_text = metadata_box_text(json.load(meta_file))
+            except (OSError, json.JSONDecodeError, TypeError) as exc:
+                print(f"Warning: Could not display metadata from {meta_path}: {exc}")
     
     # Infer number of bands if not provided
     if dim is None:
@@ -205,18 +253,47 @@ def plot_eigenvalues_surface_colorbar(
         fig.add_trace(surface)
 
     fig.update_layout(
-        title='Eigenvalues (2D Surface)',
+        title='Eigenvalue Surfaces',
         scene=dict(
             xaxis_title='kx',
             yaxis_title='ky',
             zaxis_title='Eigenvalue',
             zaxis_range=[-z_limit, z_limit] if (norm and z_limit is not None) else None
         ),
-        margin=dict(r=20, b=10, l=10, t=40)
+        legend=dict(
+            title=dict(text='Bands'),
+            x=0.01,
+            y=0.99,
+            xanchor='left',
+            yanchor='top',
+            bgcolor='rgba(255, 255, 255, 0.85)',
+            bordercolor='black',
+            borderwidth=1,
+            itemclick='toggle',
+            itemdoubleclick='toggleothers',
+        ),
+        margin=dict(r=340 if meta_text else 20, b=10, l=10, t=40)
     )
 
+    if meta_text:
+        fig.add_annotation(
+            text=meta_text,
+            align='left',
+            showarrow=False,
+            xref='paper',
+            yref='paper',
+            x=1.02,
+            y=1.0,
+            xanchor='left',
+            yanchor='top',
+            bordercolor='black',
+            borderwidth=1,
+            borderpad=10,
+            bgcolor='white',
+            font=dict(size=11),
+        )
+
     if save_fig and results_dir:
-        import os
         filepath = os.path.join(results_dir, filename)
         fig.write_html(filepath, include_plotlyjs='cdn')
         print(f"Surface plot saved to {filepath}")
@@ -228,7 +305,7 @@ def plot_eigenvalues_surface_colorbar(
         fig.show()
 
 
-def plot_individual_eigenvalues(kx, ky, eigenvalues, dim=6, z_limit=300, stride_size=3, color_maps='default'):
+def plot_individual_eigenvalue_surfaces(kx, ky, eigenvalues, dim=6, z_limit=300, stride_size=3, color_maps='default'):
     """
     Plot individual eigenvalues for each band as separate 3D surface plots in a grid layout.
 
@@ -292,7 +369,7 @@ def plot_individual_eigenvalues(kx, ky, eigenvalues, dim=6, z_limit=300, stride_
 
 
 
-def plot_eigenfunction_components(kx, ky, eigenfunctions, band_index=None, components_to_plot=None, stride_size=3):
+def plot_eigenfunction_component_scatter(kx, ky, eigenfunctions, band_index=None, components_to_plot=None, stride_size=3):
     """
     Plot specified eigenfunction components for a specific band or all bands as separate 3D scatter plots.
 
@@ -358,9 +435,9 @@ def plot_eigenfunction_components(kx, ky, eigenfunctions, band_index=None, compo
 
 
 
-def plot_QGT_components_3d(
+def plot_qgt_component_surfaces(
     kx, ky, g_xx_array, g_xy_array, g_xy_array_imag, g_yy_array,
-    stride_size=3, results_dir=None, save_fig=False, filename="QGT_components_3d.html", show=False
+    stride_size=3, results_dir=None, save_fig=False, filename="qgt_component_surfaces.html", show=False
 ):
     """
     Plot g_xx, g_xy, g_yx, and g_yy arrays as 3D surface plots in a single figure (Plotly).
@@ -418,7 +495,7 @@ def plot_QGT_components_3d(
     fig.update_scenes(zaxis_title='g_xy (imag)', zaxis_range=[g_xy_imag_min, g_xy_imag_max], row=1, col=3)
     fig.update_scenes(zaxis_title='g_yy', row=1, col=4)
 
-    fig.update_layout(title_text='QGT Components (3D)', height=500, width=1600, margin=dict(r=10, b=10, l=10, t=60))
+    fig.update_layout(title_text='QGT Component Surfaces', height=500, width=1600, margin=dict(r=10, b=10, l=10, t=60))
 
     if save_fig and results_dir:
         filepath = os.path.join(results_dir, filename)
@@ -428,8 +505,7 @@ def plot_QGT_components_3d(
     if show:
         fig.show()
 
-# If looking for plot_QMT_wtrace_3d, use plot_trace_w_eigenvalue instead.
-def plot_g_components_2d(g_xx_array, g_yy_array, trace_array, k_max=10):
+def plot_qgt_component_heatmaps(g_xx_array, g_yy_array, trace_array, k_max=10):
     """
     Plot g_xx, g_yy, and trace arrays as 2D heatmaps in a single figure.
 
@@ -469,7 +545,7 @@ def plot_g_components_2d(g_xx_array, g_yy_array, trace_array, k_max=10):
     plt.close()
 
 
-def plot_qmt_eig_berry_trace_3d(
+def plot_qgt_eigenvalue_berry_trace_surfaces(
     kx, ky,
     eigenvalues,              # shape: (Nk, Nk, Nb)
     g_xy_imag,                # shape: (Nk, Nk); Im(Q_xy)
@@ -479,10 +555,10 @@ def plot_qmt_eig_berry_trace_3d(
     convert_berry_from_imQ=True,  # If True, Ω = -2 * Im(Q_xy) by the standard convention Q_xy = g_xy - i Ω/2
     zlim_berry=None,
     zlim_trace=None,
-    title="QGT: Eigenvalue, Berry Curvature, and Trace (3D)",
+    title="QGT: Eigenvalue, Berry Curvature, and Trace Surfaces",
     results_dir=None,
     save_fig=False,
-    filename="qmt_eig_berry_trace_3d.html",
+    filename="qgt_eigenvalue_berry_trace_surfaces.html",
     show=False
 ):
     """
@@ -514,9 +590,9 @@ def plot_qmt_eig_berry_trace_3d(
         
     Z_trace = replace_zeros_with_nan(trace_array)
 
-    zlim_eig   = get_limits_asym(Z_eig, None, zlim_percentile=None)
-    zlim_berry_tuple = get_plot_limits(Z_berry, zlim_berry)
-    zlim_trace_tuple = get_limits_asym(Z_trace, zlim_trace)
+    zlim_eig = get_asymmetric_plot_limits(Z_eig, None, zlim_percentile=None)
+    zlim_berry_tuple = get_symmetric_plot_limits(Z_berry, zlim_berry)
+    zlim_trace_tuple = get_asymmetric_plot_limits(Z_trace, zlim_trace)
 
     fig = make_subplots(
         rows=1, cols=3,
@@ -559,12 +635,12 @@ def plot_qmt_eig_berry_trace_3d(
     if save_fig and results_dir:
         filepath = os.path.join(results_dir, filename)
         fig.write_html(filepath, include_plotlyjs='cdn')
-        print(f"Saved QMT 3D components (HTML) to: {filepath}")
+        print(f"Saved QGT surface plots (HTML) to: {filepath}")
         
     if show:
         fig.show()
 
-def plot_g_components_line(k_line, g_xx, g_yy, trace, angle_deg):
+def plot_qgt_components_line(k_line, g_xx, g_yy, trace, angle_deg):
     # Plot QGT components
     plt.figure(figsize=(12, 6))
     plt.plot(k_line, g_xx, label='$g_{xx}$', color='blue')
@@ -578,7 +654,7 @@ def plot_g_components_line(k_line, g_xx, g_yy, trace, angle_deg):
     plt.grid(True)
     plt.show()
     
-def get_plot_limits(Z, limit=None, zlim_percentile=None):
+def get_symmetric_plot_limits(Z, limit=None, zlim_percentile=None):
     """
     Calculate symmetric z-limits for plotting, optionally constrained by
     an absolute limit or a percentile of the data. No margin is added.
@@ -619,7 +695,7 @@ def get_plot_limits(Z, limit=None, zlim_percentile=None):
     return (-abs_use, abs_use)
 
 
-def get_limits_asym(Z, limit=None, zlim_percentile=99):
+def get_asymmetric_plot_limits(Z, limit=None, zlim_percentile=99):
     """
     Calculate asymmetric z-limits for plotting metric or eigenvalue data.
     The maximum limit is determined by the data's percentile (e.g. 99th),
@@ -662,7 +738,7 @@ def get_limits_asym(Z, limit=None, zlim_percentile=99):
     return (actual_min, actual_max)
 
 
-def plot_qmt_eig_berry_trace_2d(
+def plot_qgt_eigenvalue_berry_trace_heatmaps(
     kx, ky,
     eigenvalues,              # shape: (Nk, Nk, Nb)
     g_xy_imag,                # shape: (Nk, Nk); Im(Q_xy)
@@ -672,7 +748,7 @@ def plot_qmt_eig_berry_trace_2d(
     cmaps=('viridis', 'coolwarm', 'plasma'),
     zlim_berry=None,
     zlim_trace=None,
-    title="QGT: Eigenvalue, Berry Curvature, and Trace (2D Heatmaps)",
+    title="QGT: Eigenvalue, Berry Curvature, and Trace Heatmaps",
     components="xy",
     results_dir=None,
     save_fig=False,
@@ -710,9 +786,9 @@ def plot_qmt_eig_berry_trace_2d(
         berry_label = f"Im(Q_xy) ({components})"
     Z_trace = replace_zeros_with_nan(trace_array)
 
-    zlim_eig   = get_limits_asym(Z_eig, None, zlim_percentile=None)
-    zlim_berry_tuple = get_plot_limits(Z_berry, zlim_berry)
-    zlim_trace_tuple = get_limits_asym(Z_trace, zlim_trace)
+    zlim_eig = get_asymmetric_plot_limits(Z_eig, None, zlim_percentile=None)
+    zlim_berry_tuple = get_symmetric_plot_limits(Z_berry, zlim_berry)
+    zlim_trace_tuple = get_asymmetric_plot_limits(Z_trace, zlim_trace)
 
     # Figure & axes (1 row, 3 cols)
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
@@ -794,17 +870,17 @@ def plot_qmt_eig_berry_trace_2d(
     
     if save_fig and results_dir:
         import os
-        filename = f"qgt_2d_band_{eigenvalue_band}_{components}.png"
+        filename = f"qgt_eigenvalue_berry_trace_heatmaps_band_{eigenvalue_band}_{components}.png"
         filepath = os.path.join(results_dir, filename)
         plt.savefig(filepath, dpi=300, bbox_inches='tight')
-        print(f"Saved 2D QGT plot to: {filepath}")
+        print(f"Saved QGT heatmaps to: {filepath}")
     else:
         plt.show()
         
     plt.close()
 
 
-def plot_eigen_and_all_berry_2d(
+def plot_qgt_eigenvalue_berry_component_heatmaps(
     kx, ky,
     eigenvalues,              # shape: (Nk, Nk, Nb)
     g_xy_imag,                # shape: (Nk, Nk); Im(Q_xy)
@@ -815,7 +891,7 @@ def plot_eigen_and_all_berry_2d(
     cmaps=('viridis', 'coolwarm', 'coolwarm', 'coolwarm'),
     zlim_berry=None,
     zlim_percentile=None,
-    title="Eigenvalue and Berry Curvature Components (2D Heatmaps)",
+    title="QGT Eigenvalue and Berry Curvature Component Heatmaps",
     results_dir=None,
     save_fig=False,
     space_group=194
@@ -823,9 +899,9 @@ def plot_eigen_and_all_berry_2d(
     """
     Make a 1x4 row of 2D heatmaps for:
       - Eigenvalue band 'eigenvalue_band'
-      - Berry curvature Ω_xy
-      - Berry curvature Ω_xz
-      - Berry curvature Ω_yz
+      - Berry curvature Ω_x = Ω_yz
+      - Berry curvature Ω_y = Ω_zx
+      - Berry curvature Ω_z = Ω_xy
 
     Args:
       kx, ky            : 2D grids (meshgrid)
@@ -834,7 +910,7 @@ def plot_eigen_and_all_berry_2d(
       g_xz_imag         : 2D array Im(Q_xz)
       g_yz_imag         : 2D array Im(Q_yz)
       eigenvalue_band   : which band to plot from eigenvalues
-      convert_berry_from_imQ : if True, uses Ω = -2 * Im(Q_ij)
+      convert_berry_from_imQ : if True, uses Ω_ij = -2 * Im(Q_ij)
       cmaps             : tuple of 4 colormaps
       zlim_berry        : max absolute limit for berry panels; None -> auto limit
       zlim_percentile   : limit automatically calculated as a percentile of the abs data
@@ -847,24 +923,24 @@ def plot_eigen_and_all_berry_2d(
         Z_eig = None
 
     if convert_berry_from_imQ:
-        Z_berry_xy = replace_zeros_with_nan(-2.0 * g_xy_imag)
-        Z_berry_xz = replace_zeros_with_nan(-2.0 * g_xz_imag)
-        Z_berry_yz = replace_zeros_with_nan(-2.0 * g_yz_imag)
-        berry_label_xy = "Berry Curvature Ω (xy)"
-        berry_label_xz = "Berry Curvature Ω (xz)"
-        berry_label_yz = "Berry Curvature Ω (yz)"
+        Z_berry_x = replace_zeros_with_nan(-2.0 * g_yz_imag)
+        Z_berry_y = replace_zeros_with_nan(2.0 * g_xz_imag)
+        Z_berry_z = replace_zeros_with_nan(-2.0 * g_xy_imag)
+        berry_label_x = "Berry Curvature Ω_x = Ω_yz"
+        berry_label_y = "Berry Curvature Ω_y = Ω_zx"
+        berry_label_z = "Berry Curvature Ω_z = Ω_xy"
     else:
-        Z_berry_xy = replace_zeros_with_nan(g_xy_imag)
-        Z_berry_xz = replace_zeros_with_nan(g_xz_imag)
-        Z_berry_yz = replace_zeros_with_nan(g_yz_imag)
-        berry_label_xy = "Im(Q_xy)"
-        berry_label_xz = "Im(Q_xz)"
-        berry_label_yz = "Im(Q_yz)"
+        Z_berry_x = replace_zeros_with_nan(g_yz_imag)
+        Z_berry_y = replace_zeros_with_nan(-g_xz_imag)
+        Z_berry_z = replace_zeros_with_nan(g_xy_imag)
+        berry_label_x = "Im(Q_yz)"
+        berry_label_y = "Im(Q_zx) = -Im(Q_xz)"
+        berry_label_z = "Im(Q_xy)"
 
-    zlim_eig   = get_limits_asym(Z_eig, None, zlim_percentile=None)
-    zlim_berry_xy_tuple = get_plot_limits(Z_berry_xy, zlim_berry, zlim_percentile)
-    zlim_berry_xz_tuple = get_plot_limits(Z_berry_xz, zlim_berry, zlim_percentile)
-    zlim_berry_yz_tuple = get_plot_limits(Z_berry_yz, zlim_berry, zlim_percentile)
+    zlim_eig = get_asymmetric_plot_limits(Z_eig, None, zlim_percentile=None)
+    zlim_berry_x_tuple = get_symmetric_plot_limits(Z_berry_x, zlim_berry, zlim_percentile)
+    zlim_berry_y_tuple = get_symmetric_plot_limits(Z_berry_y, zlim_berry, zlim_percentile)
+    zlim_berry_z_tuple = get_symmetric_plot_limits(Z_berry_z, zlim_berry, zlim_percentile)
 
     # Figure & axes (1 row, 4 cols)
     fig, axes = plt.subplots(1, 4, figsize=(24, 5))
@@ -873,9 +949,9 @@ def plot_eigen_and_all_berry_2d(
 
     panels = [
         dict(Z=Z_eig,      cmap=cmaps[0], title=f"Eigenvalue Band {eigenvalue_band+1}" if Z_eig is not None else "Eigenvalue (No Data)", zlim=zlim_eig),
-        dict(Z=Z_berry_xy, cmap=cmaps[1], title=berry_label_xy, zlim=zlim_berry_xy_tuple),
-        dict(Z=Z_berry_xz, cmap=cmaps[2], title=berry_label_xz, zlim=zlim_berry_xz_tuple),
-        dict(Z=Z_berry_yz, cmap=cmaps[3], title=berry_label_yz, zlim=zlim_berry_yz_tuple),
+        dict(Z=Z_berry_x,  cmap=cmaps[1], title=berry_label_x, zlim=zlim_berry_x_tuple),
+        dict(Z=Z_berry_y,  cmap=cmaps[2], title=berry_label_y, zlim=zlim_berry_y_tuple),
+        dict(Z=Z_berry_z,  cmap=cmaps[3], title=berry_label_z, zlim=zlim_berry_z_tuple),
     ]
 
     for ax, cfg in zip(axes, panels):
@@ -947,22 +1023,22 @@ def plot_eigen_and_all_berry_2d(
     
     if save_fig and results_dir:
         import os
-        filename = f"qgt_2d_all_berry_band_{eigenvalue_band}.png"
+        filename = f"qgt_eigenvalue_berry_component_heatmaps_band_{eigenvalue_band}.png"
         filepath = os.path.join(results_dir, filename)
         plt.savefig(filepath, dpi=300, bbox_inches='tight')
-        print(f"Saved 2D all-Berry plot to: {filepath}")
+        print(f"Saved QGT Berry-component heatmaps to: {filepath}")
     else:
         plt.show()
         
     plt.close()
 
 
-def plot_degeneracy_2d(
+def plot_degeneracy_heatmap(
     kx,
     ky,
     eigenvalues,
     threshold=0.01,
-    title="Degeneracy Map (2D)",
+    title="Degeneracy Heatmap",
     sym_points=True,
     hamiltonian=None,
     kk=0.0,
@@ -989,7 +1065,7 @@ def plot_degeneracy_2d(
     nkx, nky, nbands = eigenvalues.shape
     degeneracy_map = np.zeros((nkx, nky), dtype=int)
     
-    print("Calculating 2D degeneracy map...")
+    print("Calculating degeneracy heatmap...")
     
     # Iterate over grid
     for i in range(nkx):
@@ -1094,10 +1170,27 @@ def plot_degeneracy_2d(
     plt.tight_layout()
     if save_fig and results_dir:
         import os
-        filename = f"degeneracy_2d.png"
+        filename = "degeneracy_heatmap.png"
         filepath = os.path.join(results_dir, filename)
         plt.savefig(filepath, dpi=300, bbox_inches='tight')
-        print(f"Saved Degeneracy map to: {filepath}")
+        print(f"Saved degeneracy heatmap to: {filepath}")
     else:
         plt.show()
     plt.close()
+
+
+# Backward-compatible aliases for scripts outside this repository. New code
+# should use the canonical content-and-visualization names defined above.
+extract_and_plot_eigenvalues_along_line = plot_eigenvalues_line_cut
+plot_eigenvalues_surface_colorbar = plot_eigenvalue_surfaces
+plot_individual_eigenvalues = plot_individual_eigenvalue_surfaces
+plot_eigenfunction_components = plot_eigenfunction_component_scatter
+plot_QGT_components_3d = plot_qgt_component_surfaces
+plot_g_components_2d = plot_qgt_component_heatmaps
+plot_qmt_eig_berry_trace_3d = plot_qgt_eigenvalue_berry_trace_surfaces
+plot_g_components_line = plot_qgt_components_line
+get_plot_limits = get_symmetric_plot_limits
+get_limits_asym = get_asymmetric_plot_limits
+plot_qmt_eig_berry_trace_2d = plot_qgt_eigenvalue_berry_trace_heatmaps
+plot_eigen_and_all_berry_2d = plot_qgt_eigenvalue_berry_component_heatmaps
+plot_degeneracy_2d = plot_degeneracy_heatmap

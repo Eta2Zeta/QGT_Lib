@@ -23,6 +23,7 @@ from Library.data_management_utils_nd import (
 from Library.utilities import generate_2d_sym_lines
 from Library.Hamiltonian_helper import get_Hamiltonian
 from Library.eigenvalue_calc_lib_1d import eigenvalues_along_path
+from Library.output_utils import print_calculation_complete
 
 
 # ---------- per-point worker ----------
@@ -249,7 +250,7 @@ def compute_qgt_nd_parallel(
     with open(meta_path, "wb") as f:
         pickle.dump(meta, f)
 
-    print(f"✅ Saved N-D QGT bundle to {bundle_path}")
+    print_calculation_complete("N-D QGT", bundle_path, artifact="Bundle")
     return root, bundle_path
 
 
@@ -364,7 +365,6 @@ def main():
         force_new_dir=False,
         float_dtype=np.float32,
     )
-    print(f"Results saved in {bundle_path}")
 
 
 if __name__ == "__main__":

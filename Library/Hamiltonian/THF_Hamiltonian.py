@@ -7,7 +7,13 @@ class THF_Hamiltonian_Legacy(hamiltonian):
     Hamiltonian for the THF model. This is not optimized for the Magnus expansion yet and it is 
     with the frequency term included as G = A0^2/omega. 
     """
-    def __init__(self, nu_star=-50, nu_star_prime=13.0, gamma=-25.0, M=5, G=0.001, omega = np.pi, A0 = 0):
+    def __init__(self, nu_star=-50, 
+                 nu_star_prime=13.0, 
+                 gamma=-25.0, 
+                 M=5, 
+                 G=0.001, 
+                 omega = np.pi, 
+                 A0 = 0):
         super().__init__(dim=6, omega=omega, A0=A0)  # THF model has a 6x6 matrix
         self.nu_star = nu_star
         self.nu_star_prime = nu_star_prime
@@ -51,14 +57,16 @@ class THF_Hamiltonian(hamiltonian):
     """
     Six-band THF Hamiltonian with Gaussian c-f form factor.
 
-    Energies are returned in meV. The BM velocities are supplied in eV Angstrom
-    and converted to meV Angstrom internally so they are consistent with gamma
-    and M.
+    The defaults reproduce the single-particle parameters quoted below
+    Eqs. (A31)-(A33) of ``Flat_band_quantum_geometry.pdf`` for twist angle
+    1.05 degrees and w0/w1 = 0.8, using the corrected M sigma_x convention.
+    Momenta must be supplied in inverse Angstrom, lengths are stored in
+    Angstrom, and energies are returned in meV. The BM velocities are supplied
+    in eV Angstrom and converted to meV Angstrom.
     """
     def __init__(
         self,
         eta=1,
-        a_M1=1.0,
         lambda_factor=0.3375,
         gamma=-24.75,
         M=3.697,
@@ -70,6 +78,9 @@ class THF_Hamiltonian(hamiltonian):
         polarization='left',
         magnus_order=1,
         analytic_magnus=False,
+        V=0.0,
+        theta_deg=1.05,
+        K_plus=1.703,
     ):
         super().__init__(
             dim=6,
@@ -83,12 +94,21 @@ class THF_Hamiltonian(hamiltonian):
             raise ValueError("eta must be +1 or -1")
 
         self.eta = int(eta)
-        self.a_M1 = float(a_M1)
+        self.theta_deg = float(theta_deg)
+        self.K_plus = float(K_plus)
+        self.k_theta = 2.0 * self.K_plus * np.sin(
+            0.5 * np.deg2rad(self.theta_deg)
+        )
+
+        # Eq. (A2): |a_M1| = 4*pi/(3*k_theta).
+        self.a_M1 = 4.0 * np.pi / (3.0 * self.k_theta)
+
         self.lambda_factor = float(lambda_factor)
         self.lambda_ = self.lambda_factor * self.a_M1
 
         self.gamma = float(gamma)
         self.M = float(M)
+        self.V = float(V)
 
         # Convert eV Angstrom to meV Angstrom.
         self.v_star = 1000.0 * float(v_star)
@@ -111,7 +131,7 @@ class THF_Hamiltonian(hamiltonian):
         vp_g = gk * vp
         vpp_g = gk * vpp
 
-        return np.array([
+        H_k = np.array([
             [0,          0,          v * kp,     0,          gamma_g,    vp_g * km],
             [0,          0,          0,          v * km,     vp_g * kp,  gamma_g],
             [v * km,     0,          0,          self.M,     0,          vpp_g * kp],
@@ -120,18 +140,26 @@ class THF_Hamiltonian(hamiltonian):
             [vp_g * kp,  gamma_g,    vpp_g * km, 0,          0,          0],
         ], dtype=complex)
 
-    def get_sym_path(self, const_fact=3):
+        potential_test = self.V * np.diag([-1, 1, 1, -1, 1, -1])
+        return H_k + potential_test
+
+    def get_sym_path(self):
         """
-        High-symmetry path for the hexagonal (THF) Brillouin zone.
+        Physical high-symmetry path for the hexagonal moire Brillouin zone.
+
+        The K point is q2 from Eq. (A1), and M is the midpoint of the
+        adjacent edge connecting q2 and -q1. Coordinates are in inverse
+        Angstrom.
+
         K -> Gamma -> M -> K
         """
-        kK_x = const_fact * np.sqrt(3) * np.pi / 2
-        kK_y = const_fact * 0.5 * np.pi
+        q1 = self.k_theta * np.array([0.0, -1.0])
+        q2 = self.k_theta * np.array([np.sqrt(3.0) / 2.0, 0.5])
 
         sym_points = {
             "G": np.array([0.0, 0.0]),
-            "K": np.array([kK_x, kK_y]),
-            "M": np.array([kK_x, 0.0]),
+            "K": q2,
+            "M": 0.5 * (q2 - q1),
         }
         path = ["K", "G", "M", "K"]
         return sym_points, path

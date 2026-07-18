@@ -7,22 +7,16 @@ import json
 
 # from Library import * 
 from Library.plotting_lib_2d import *
-from Library.Hamiltonian.Hamiltonian import * 
-from Library.Hamiltonian.THF_Hamiltonian import *
-from Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected import *
-from Library.Hamiltonian.ChiralHamiltonian import *
-from Library.Hamiltonian.SquareLatticeHamiltonian import *
-from Library.Hamiltonian.gWaveAltermagnetHamiltonian import *
-from Library.Hamiltonian.AltermagnetHamiltonian import *
-from Library.Hamiltonian.RuO2Hamiltonian import *
+from Library.Hamiltonian import *
 from Library.plotting_lib_3d import plot_degeneracy_3d, plot_degeneracy_on_path_3d, plot_arbitrary_slice_no_interp, plot_volumetric_cloud
 from Library.plotting_lib_2d import *
-from Library.plotting_lib_2d import plot_degeneracy_2d
+from Library.plotting_lib_2d import plot_degeneracy_heatmap
 from Library.plotting_lib_1d import *
 from Library.eigenvalue_calc_lib import *
 from Library.eigenvalue_calc_lib_1d import eigenvalues_along_path
 from Library.utilities import centered_kvals, generate_1d_lines_at_angles
 from Library.data_management_utils_2d import setup_2D_Eigen_results_directory
+from Library.output_utils import print_calculation_complete
 
 
 
@@ -30,7 +24,7 @@ from Library.data_management_utils_2d import setup_2D_Eigen_results_directory
 temp_dir = os.path.join(os.getcwd(), "temp")
 os.makedirs(temp_dir, exist_ok=True)
 
-# Hamiltonian_Obj = THF_Hamiltonian(A0=0)
+Hamiltonian_Obj = THF_Hamiltonian(A0=0)
 # Hamiltonian_Obj = TwoOrbitalUnspinfulHamiltonian(zeta=1.0, omega = 10.0, A0=0.1, mu=0, magnus_order = 1)
 # Hamiltonian_Obj = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=0)
 # Hamiltonian_Obj = SquareLatticeHamiltonian(A0=0, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=(1-np.sqrt(2))/4)
@@ -46,8 +40,12 @@ os.makedirs(temp_dir, exist_ok=True)
 # Hamiltonian_Obj = HaldaneHamiltonian(psi = -np.pi/2, M=0)
 # Hamiltonian_Obj = GrapheneHamiltonian(A0=0)
 # Hamiltonian_Obj = RuO2Hamiltonian(lamb_z=0)
-Hamiltonian_Obj = gWaveAltermagnetHamiltonian(t1=0.3, t2=0.3, t3=0.3, t4=0.3, mu=0, Jx=0.0, Jy=0.0, Jz=0.2, lamb=0.1, lamb_z=0.1)
-k_max = 2*np.pi
+# Hamiltonian_Obj = gWaveAltermagnetHamiltonian(t1=0.3, t2=0.3, t3=0.3, t4=0.3, mu=0, Jx=0.0, Jy=0.0, Jz=0.2, lamb=0.1, lamb_z=0.1)
+# Hamiltonian_Obj = MinimalHamSG127_2a2b()
+# Hamiltonian_Obj = MinimalHamSG192_2b()
+# Continuum models can provide their physical Brillouin-zone momentum scale.
+# Lattice models without k_theta retain the existing reciprocal-lattice-unit default.
+k_max = getattr(Hamiltonian_Obj, "k_theta", 2 * np.pi)
 bands = (2,3)
 dim = Hamiltonian_Obj.dim
 
@@ -68,8 +66,8 @@ def calculation_2d(Hamiltonian_Obj = Hamiltonian_Obj, force_new=True, include_en
         kj_range = (kj[0], kj[-1])
     
     ki, kj = np.meshgrid(ki, kj)
-    dki = 2*k_max/mesh_spacing
-    dkj = 2*k_max/mesh_spacing
+    dki = float(ki[0, 1] - ki[0, 0])
+    dkj = float(kj[1, 0] - kj[0, 0])
     z_limit = 1000
 
 
@@ -164,25 +162,18 @@ def calculation_2d(Hamiltonian_Obj = Hamiltonian_Obj, force_new=True, include_en
         with open(file_paths["meta_pkl"], "wb") as meta_file:
             pickle.dump(meta_info_pkl, meta_file)
             
-        print(f"Saved all results to '{results_subdir}'.")
-
         with open(os.path.join(temp_dir, "meta_info.pkl"), "wb") as meta_file:
             pickle.dump(meta_info_pkl, meta_file)  # Save to temp directory as well
         
         shutil.copy(file_paths["meta_json"], os.path.join(temp_dir, "meta.json"))
 
-        print(f"Saved all results to '{results_subdir}' and copied to temp directory: {temp_dir}")
-
-
-
-
     eigenvalues = capping_eigenvalues(eigenvalues=eigenvalues, z_limit=z_limit)
 
-    plot_eigenvalues_surface_colorbar(ki, kj, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='default', norm=None, bands_to_plot=None, results_dir=results_subdir, save_fig=True)
+    plot_eigenvalue_surfaces(ki, kj, eigenvalues, dim=dim, z_limit=z_limit, stride_size=2, color_maps='default', norm=None, bands_to_plot=None, results_dir=results_subdir, save_fig=True)
     
     # --- New: Plot 2D Degeneracy Map ---
     print("Plotting 2D Degeneracy Map...")
-    plot_degeneracy_2d(
+    plot_degeneracy_heatmap(
         ki, kj, eigenvalues,
         threshold=0.02,
         title=f"Band Degeneracy Map ({Hamiltonian_Obj.name})",
@@ -191,6 +182,8 @@ def calculation_2d(Hamiltonian_Obj = Hamiltonian_Obj, force_new=True, include_en
         results_dir=results_subdir,
         save_fig=True,
     )
+
+    print_calculation_complete("2D Eigenvalues", results_subdir, artifact="Results", copied_to=temp_dir)
 
 def calculation_1d(Hamiltonian_Obj=Hamiltonian_Obj):
     #TODO: make the definition for the end points just be two points
@@ -245,9 +238,9 @@ def calculation_1d(Hamiltonian_Obj=Hamiltonian_Obj):
         # Save metadata using pickle
         with open(file_paths["meta_info"], "wb") as meta_file:
             pickle.dump(meta_info, meta_file)
-        print(f"Saved all results to '{results_subdir}'.")
 
     plot_eigenvalues_line(k_line, eigenvalues, dim = None, bands_to_plot=(0,))
+    print_calculation_complete("1D Eigenvalues", results_subdir, artifact="Results")
 
 
 def calculation_3d(Hamiltonian_Obj=Hamiltonian_Obj, force_new=True, include_end_points=True):
@@ -328,9 +321,6 @@ def calculation_3d(Hamiltonian_Obj=Hamiltonian_Obj, force_new=True, include_end_
 
         
 
-        print("Calculation complete and saved.")
-
-
     print(f"Copying 3D results to temp directory: {temp_dir}")
     shutil.copy(file_paths["meta_json"], os.path.join(temp_dir, "meta.json"))
     shutil.copy(file_paths["meta_pkl"],  os.path.join(temp_dir, "meta_info.pkl"))
@@ -361,6 +351,8 @@ def calculation_3d(Hamiltonian_Obj=Hamiltonian_Obj, force_new=True, include_end_
     plot_degeneracy_3d(kx_vals, ky_vals, kz_vals, eigenvalues_3d, threshold=0.05,
                        title=f"3D Band Degeneracy Map ({Hamiltonian_Obj.name})",
                        results_dir=results_dir, save_fig=True)
+
+    print_calculation_complete("3D Eigenvalues", results_dir, artifact="Results", copied_to=temp_dir)
 
 
 def calculation_sym_points(Hamiltonian_Obj=Hamiltonian_Obj, force_new=True, use_analytical=False,
@@ -434,7 +426,6 @@ def calculation_sym_points(Hamiltonian_Obj=Hamiltonian_Obj, force_new=True, use_
             json.dump(meta_target, f, indent=2)
         with open(file_paths["meta_pkl"], "wb") as f:
             pickle.dump(meta_target, f)
-        print("Calculation complete and saved.")
 
     # --- Plot ---
     plot_band_structure_sym(
@@ -457,6 +448,8 @@ def calculation_sym_points(Hamiltonian_Obj=Hamiltonian_Obj, force_new=True, use_
         results_dir=results_dir,
         save_fig=True
     )
+
+    print_calculation_complete("Symmetry-Path Eigenvalues", results_dir, artifact="Results")
 
 def calculation_1d_at_angles(
     Hamiltonian_Obj=Hamiltonian_Obj,
@@ -498,7 +491,6 @@ def calculation_1d_at_angles(
             json.dump(meta_target, f, indent=2)
         with open(file_paths["meta_pkl"], "wb") as f:
             pickle.dump(meta_target, f)
-        print("Calculation complete and saved.")
         
     # Reshape eigenvalues back to (num_angles, num_points_per_line, num_bands)
     eigenvalues = eigenvalues_flat.reshape((num_angles, num_points_per_line, num_bands))
@@ -514,6 +506,7 @@ def calculation_1d_at_angles(
         save_fig=True,
         show=True
     )
+    print_calculation_complete("1D Angled Eigenvalues", results_dir, artifact="Results")
 
 
 # calculation_1d()

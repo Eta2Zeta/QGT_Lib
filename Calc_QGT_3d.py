@@ -18,6 +18,7 @@ from Library.plotting_lib_2d import *
 from Library.Hamiltonian.RuO2Hamiltonian import *
 from Library.Hamiltonian.gWaveAltermagnetHamiltonian import *
 from Library.data_management_utils_3d import setup_3D_QGT_results_directory
+from Library.output_utils import print_calculation_complete
 
 
 
@@ -124,7 +125,7 @@ def calculate_3d():
             pickle.dump(qgt_meta_pkl, f)
 
         
-    print(f"3D QGT calculation complete. Results saved to {qgt_results_dir}")
+    print_calculation_complete("3D QGT", qgt_results_dir, artifact="Results")
 
 def _qgt3d_one_band_worker(payload: dict):
     """
@@ -324,7 +325,7 @@ def calculate_3d_all_bands_parallel(force_new=True, method = "numerical"):
     with open(qgt_file_paths["meta_pkl"], "wb") as f:
         pickle.dump(meta_pkl, f)
 
-    print(f"Saved STACKED 3D QGT results for all bands to {qgt_results_dir}")
+    print_calculation_complete("3D QGT all bands", qgt_results_dir, artifact="Results")
     return stacked, qgt_results_dir
 
 if __name__ == '__main__':
