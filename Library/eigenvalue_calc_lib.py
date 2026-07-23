@@ -224,17 +224,37 @@ def analytic_eigenvalues_2d(hamiltonian, kx, ky, mesh_spacing, dim):
 
 # & Calculations in a normal grid
 def grid_eigenvalues_eigenfunctions(Hamiltonian, ki, kj, mesh_spacing, dim, kk=0, order="xyz"):
-    # Initialize arrays
-    eigenfunctions  = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
-    eigenvalues     = np.zeros((mesh_spacing, mesh_spacing, dim), dtype=float)
-    H_array         = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
-    H_prime_array   = np.zeros((mesh_spacing, mesh_spacing, dim, dim), dtype=complex)
+    """Diagonalize a 2D grid expressed in any supported coordinate order.
+
+    ``ki`` and ``kj`` store the two varying input coordinates. They are mapped
+    to physical Cartesian momenta by :func:`map_k_by_order` before the
+    Hamiltonian is evaluated. Consequently, orders such as ``xpz`` may use
+    ``ki=r`` and ``kj=phi`` while the Hamiltonian still receives ``kx, ky, kz``.
+    """
+    ki = np.asarray(ki)
+    kj = np.asarray(kj)
+    if ki.ndim != 2 or kj.ndim != 2 or ki.shape != kj.shape:
+        raise ValueError("ki and kj must be 2D arrays with identical shapes")
+
+    expected_spacing = int(mesh_spacing)
+    if ki.shape != (expected_spacing, expected_spacing):
+        raise ValueError(
+            "ki and kj shapes must match "
+            f"(mesh_spacing, mesh_spacing); received {ki.shape} for "
+            f"mesh_spacing={expected_spacing}"
+        )
+
+    grid_shape = ki.shape
+    eigenfunctions = np.zeros(grid_shape + (dim, dim), dtype=complex)
+    eigenvalues = np.zeros(grid_shape + (dim,), dtype=float)
+    H_array = np.zeros(grid_shape + (dim, dim), dtype=complex)
+    H_prime_array = np.zeros(grid_shape + (dim, dim), dtype=complex)
 
     eigenvector = Eigenvectors(dim)
 
-    total_points = mesh_spacing * mesh_spacing
+    total_points = int(np.prod(grid_shape))
     for idx in tqdm(range(total_points), desc="Diagonalizing Hamiltonians"):
-        i, j = divmod(idx, mesh_spacing)
+        i, j = np.unravel_index(idx, grid_shape)
 
         # Map coordinates according to order
         kx, ky, kz = map_k_by_order(ki[i, j], kj[i, j], kk, order)
@@ -254,7 +274,7 @@ def grid_eigenvalues_eigenfunctions(Hamiltonian, ki, kj, mesh_spacing, dim, kk=0
 
         # Store results
         eigenfunctions[i, j] = vecs
-        eigenvalues[i, j]    = vals
+        eigenvalues[i, j]    = np.real(vals)
         H_array[i, j]        = H
         H_prime_array[i, j]  = H_prime
 

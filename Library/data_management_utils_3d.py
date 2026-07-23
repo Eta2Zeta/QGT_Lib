@@ -7,7 +7,8 @@ from Library.data_management_utils_common import pick_or_create_result_dir_simpl
 
 def setup_3D_Eigen_results_directory(
     hamiltonian, kx_range, ky_range, kz_range,
-    mesh_shape, include_endpoints=True, force_new=False
+    mesh_shape, include_endpoints=True, force_new=False,
+    kvals_mode="endpoints",
 ):
     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
     base_root = os.path.join(os.getcwd(), "results", "3D_Eigen_results", Hamiltonian_name)
@@ -29,26 +30,33 @@ def setup_3D_Eigen_results_directory(
         "ny": int(ny),
         "nz": int(nz),
         "include_endpoints": bool(include_endpoints),
+        "kvals_mode": str(kvals_mode),
     }
+
+    required_files = [
+        "eigenvalues_3d.npy",
+        "eigenvectors_3d.npy",
+        "meta.json",
+        "meta_info.pkl",
+    ]
 
     dir_path, used = pick_or_create_result_dir_simple(
         base_root=base_root,
         base_name="dataset_",
         required_params=meta_target,
-        force_new=force_new
+        force_new=force_new,
+        required_files=required_files,
     )
-    
-    if not used:
-        dump_metadata(meta_target, os.path.join(dir_path, "parameters.json"))
 
     file_paths = {k: os.path.join(dir_path, fname) for k, fname in {
         "eigenvalues": "eigenvalues_3d.npy",
         "eigenfunctions": "eigenvectors_3d.npy",
-        "meta_info": "meta_info.pkl",
+        "meta_json": "meta.json",
+        "meta_pkl": "meta_info.pkl",
     }.items()}
 
     print(("Using existing 3D Eigen results directory: " if used else "Created new 3D Eigen results directory: ") + dir_path)
-    return file_paths, used, dir_path
+    return file_paths, used, dir_path, meta_target
 
 def setup_3D_QGT_results_directory(
     hamiltonian,
@@ -147,4 +155,3 @@ def setup_3D_QGT_results_directory(
 
     print(("Using existing 3D QGT results directory: " if used else "Created new 3D QGT results directory: ") + dir_path)
     return file_paths, used, dir_path, meta_target
-

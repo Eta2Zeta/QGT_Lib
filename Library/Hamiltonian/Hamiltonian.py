@@ -241,7 +241,7 @@ class hamiltonian:
 
         # FFT along time axis. Convention of np/scipy FFT matches
         # sum_{m=0}^{M-1} H(t_m) * exp(-i 2π m k / M).
-        F = fft(Ht, axis=0, workers=-1, overwrite_x=True)
+        F = fft(Ht, axis=0, workers=1, overwrite_x=True)
 
         # Our coefficient is (1/M) Σ H(t_m) e^{-i n ω t_m};
         # with t_m = m*T/M and ωT=2π, index = n mod M.
@@ -311,9 +311,10 @@ class hamiltonian:
         Compute the first term of the Magnus expansion:
         (1/omega) * [H1, H-1], rounded to 1e-16 precision.
         """
-        # Compute H1 and H-1 Fourier components
-        H1 = self.numerical_fourier_component(1, kx, ky, kz)
-        Hm1 = self.numerical_fourier_component(-1, kx, ky, kz)
+        # One FFT contains both positive and negative Fourier harmonics.
+        harmonics = self.fourier_components_fft([1, -1], kx, ky, kz)
+        H1 = harmonics[1]
+        Hm1 = harmonics[-1]
 
         # Compute the commutator [H1, H-1]
         comm = commutator_static(H1, Hm1)
@@ -332,9 +333,10 @@ class hamiltonian:
         Compute the second Magnus term:
         (1/omega) * (1/2) * [H2, H-2]
         """
-        # Compute H2 and H-2 Fourier components
-        H2 = self.numerical_fourier_component(2, kx, ky, kz)
-        Hm2 = self.numerical_fourier_component(-2, kx, ky, kz)
+        # One FFT contains both positive and negative Fourier harmonics.
+        harmonics = self.fourier_components_fft([2, -2], kx, ky, kz)
+        H2 = harmonics[2]
+        Hm2 = harmonics[-2]
 
         # Compute the commutator [H2, H-2]
         comm = commutator_static(H2, Hm2)
