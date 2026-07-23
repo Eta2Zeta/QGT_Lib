@@ -13,6 +13,7 @@ from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
 from Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected import ChiralHamiltonianChiralBasisProjected
 from Library.Hamiltonian.SquareLatticeHamiltonian import SquareLatticeHamiltonian
 from Library.Hamiltonian.gWaveAltermagnetHamiltonian import gWaveAltermagnetHamiltonian
+from Library.Hamiltonian.THF_Hamiltonian import THF_Hamiltonian
 from Library.eigenvalue_calc_lib import *
 from Library.QGT_lib import *
 from Library.topology import *
@@ -27,7 +28,7 @@ from Library.output_utils import print_calculation_complete
 
 
 # ---------- per-point worker ----------
-def _worker_qgt_point(arg, h_template, kx, ky, mesh_spacing, band, z_cutoff, k_path):
+def _worker_qgt_point(arg, h_template, kx, ky, mesh_spacing, band, k_path):
     """
     arg: (param_values_dict, idx_tuple) OR (param_values_dict, idx_tuple, progress_label)
     """
@@ -89,7 +90,6 @@ def compute_qgt_nd_parallel(
     ky_range,
     mesh_spacing,
     band=0,
-    z_cutoff=1e2,
     num_points_per_segment=100,
     processes=None,
     force_new_dir=False,
@@ -178,7 +178,7 @@ def compute_qgt_nd_parallel(
         _worker_qgt_point,
         h_template=H_template,
         kx=kx, ky=ky, mesh_spacing=mesh_spacing,
-        band=band, z_cutoff=z_cutoff,
+        band=band,
         k_path=k_path,
     )
 
@@ -245,7 +245,6 @@ def compute_qgt_nd_parallel(
         "ky_range": tuple(ky_range),
         "mesh_spacing": int(mesh_spacing),
         "band": int(band),
-        "z_cutoff": float(z_cutoff),
     }
     with open(meta_path, "wb") as f:
         pickle.dump(meta, f)
@@ -323,34 +322,105 @@ def compute_qgt_nd_parallel(
 # k = 0.8
 
 
-H_template = ChiralHamiltonian(
-    n=5,
-    a=1.0,
-    vF=542.10,
-    t1=355.16,
-    V=30.0,
-    valley='K',
-    omega=2 * np.pi,
-    A0=0.10,
-    polarization='right',
+# H_template = ChiralHamiltonian(
+#     n=5,
+#     a=1.0,
+#     vF=542.10,
+#     t1=355.16,
+#     V=30.0,
+#     valley='K',
+#     omega=2 * np.pi,
+#     A0=0.10,
+#     polarization='right',
+#     magnus_order=1,
+#     analytic_magnus=False,
+# )
+#
+# param_ranges = {
+#     "omega": (5.0, 5000.0),
+# }
+#
+# parameter_spacing = {
+#     "omega": {"n": 32, "scale": "log"},
+# }
+# k = 0.82
+# kx_range = (-k, k)
+# ky_range = (-k, k)
+# mesh_spacing = 150
+
+
+def thf_flat_band_matching_omega(hamiltonian, potential_strength):
+    """Return omega for which the Gamma-point drive splitting equals |V|.
+
+    For the central flat-band basis pair (components 3 and 4), the first
+    circular-drive Magnus term has magnitude
+
+        A0^2 * (v_star^2 - g(A0)^2 * v_star_double_prime^2) / omega.
+
+    Right polarization has the same sign pattern as the positive-V term;
+    left polarization reverses it. The returned value matches magnitudes.
+    """
+    potential_strength = abs(float(potential_strength))
+    if potential_strength == 0:
+        raise ValueError("potential_strength must be nonzero")
+    if hamiltonian.A0 == 0:
+        raise ValueError("The matching frequency is undefined when A0=0")
+
+    drive_form_factor = hamiltonian.gaussian_form_factor(hamiltonian.A0, 0.0)
+    flat_band_coefficient = (
+        hamiltonian.v_star**2
+        - (drive_form_factor * hamiltonian.v_star_double_prime) ** 2
+    )
+    if flat_band_coefficient <= 0:
+        raise ValueError("The flat-band drive coefficient must be positive")
+    return hamiltonian.A0**2 * flat_band_coefficient / potential_strength
+
+
+THF_A0 = 0.10
+THF_V_MAX = 10.0  # meV; deliberately smaller than |gamma| = 24.75 meV
+
+H_template = THF_Hamiltonian(
+    A0=THF_A0,
+    V=0.0,
+    omega=1.0,  # Replaced below by the analytically matched sweep endpoint.
+    polarization="right",
     magnus_order=1,
     analytic_magnus=False,
 )
 
+if not THF_V_MAX < abs(H_template.gamma):
+    raise ValueError("THF_V_MAX must be smaller than |gamma|")
+
+# THF_OMEGA_MIN = thf_flat_band_matching_omega(H_template, THF_V_MAX)
+THF_OMEGA_MIN = 5000
+THF_OMEGA_MAX = 100000
+H_template.omega = THF_OMEGA_MIN
+
 param_ranges = {
-    "omega": (5.0, 5000.0),
+    "V": (0.0, THF_V_MAX),
+    "omega": (THF_OMEGA_MIN, THF_OMEGA_MAX),
 }
 
 parameter_spacing = {
-    "omega": {"n": 32, "scale": "log"},
+    "V": {"n": 5, "scale": "linear"},
+    "omega": {"n": 16, "scale": "log"},
 }
-k = 0.82
-kx_range = (-k, k)
-ky_range = (-k, k)
+
+kx_range = (-H_template.k_theta, H_template.k_theta)
+ky_range = (-H_template.k_theta, H_template.k_theta)
 mesh_spacing = 150
+flat_band_index = 2
+num_points_per_segment = 100
+sweep_processes = 10
 
 
 def main():
+    print(
+        "THF sweep scales: "
+        f"V_max={THF_V_MAX:.6g} meV, "
+        f"omega_min={THF_OMEGA_MIN:.6g} meV, "
+        f"omega_max={THF_OMEGA_MAX:.6g} meV"
+    )
     root, bundle_path = compute_qgt_nd_parallel(
         hamiltonian_template=H_template,
         param_ranges=param_ranges,
@@ -358,10 +428,9 @@ def main():
         kx_range=kx_range,
         ky_range=ky_range,
         mesh_spacing=mesh_spacing,
-        band=4,
-        z_cutoff=1e2,
-        num_points_per_segment=200,
-        processes=None,
+        band=flat_band_index,
+        num_points_per_segment=num_points_per_segment,
+        processes=sweep_processes,
         force_new_dir=False,
         float_dtype=np.float32,
     )

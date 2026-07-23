@@ -615,10 +615,11 @@ buildControls();
 
 
 if __name__ == "__main__":
-    # Example:
+    dataset_dir = "results/2D_QGT_ND/THF_Hamiltonian/dataset2"
+
     dynamic_nd_field_with_bands_html(
-        "results/2D_QGT_ND/ChiralHamiltonian/dataset2",
+        dataset_dir,
         quantity="trace",
-        bands_to_plot=[3, 4, 5, 6],
+        bands_to_plot=[0, 1, 2, 3, 4, 5],
+        output_html=os.path.join(dataset_dir, "qgt_trace_nd_sweep.html"),
     )
-    pass

@@ -1,3 +1,7 @@
+import html
+import json
+import os
+
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -7,6 +11,53 @@ from .plotting_lib_1d import plot_eigenvalues_line
 from matplotlib.colors import TwoSlopeNorm
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from matplotlib.colors import ListedColormap, BoundaryNorm
+
+
+def _format_html_meta_value(value):
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, float):
+        return f"{value:.6g}"
+    if isinstance(value, (list, tuple)):
+        return "[" + ", ".join(_format_html_meta_value(item) for item in value) + "]"
+    if value is None:
+        return "None"
+    return str(value)
+
+
+def _load_html_metadata_text(results_dir):
+    if not results_dir:
+        return None
+
+    meta_path = os.path.join(results_dir, "meta.json")
+    if not os.path.isfile(meta_path):
+        return None
+
+    try:
+        with open(meta_path, "r", encoding="utf-8") as meta_file:
+            metadata = json.load(meta_file)
+    except (OSError, json.JSONDecodeError, TypeError) as exc:
+        print(f"Warning: Could not display metadata from {meta_path}: {exc}")
+        return None
+
+    lines = ["<b>Run Metadata</b>"]
+    hamiltonian_params = metadata.get("hamiltonian_params", {})
+    for key, value in metadata.items():
+        if key == "hamiltonian_params":
+            continue
+        lines.append(
+            f"{html.escape(str(key))} = "
+            f"{html.escape(_format_html_meta_value(value))}"
+        )
+
+    if hamiltonian_params:
+        lines.extend(["", "<b>Hamiltonian Parameters</b>"])
+        for key, value in hamiltonian_params.items():
+            lines.append(
+                f"{html.escape(str(key))} = "
+                f"{html.escape(_format_html_meta_value(value))}"
+            )
+    return "<br>".join(lines)
 
 
 def plot_eigenvalues_line_cut(kx_grid, ky_grid, eigenvalues, start_k, end_k, num_points=100, bands_to_plot=None, results_dir=None, save_fig=False):
@@ -103,6 +154,235 @@ def plot_eigenvalues_line_cut(kx_grid, ky_grid, eigenvalues, start_k, end_k, num
     plt.close()
 
 
+def plot_eigenvalue_line_slider(
+    ki,
+    kj,
+    eigenvalues,
+    *,
+    axis_order="ij",
+    first_axis_label="ki",
+    second_axis_label="kj",
+    bands_to_plot=None,
+    title=None,
+    results_dir=None,
+    save_fig=False,
+    filename=None,
+    show=True,
+):
+    """Plot 1D band slices of a 2D eigenvalue grid with a slice slider.
+
+    ``axis_order='ij'`` plots the first sampled coordinate on the horizontal
+    axis and uses the second coordinate as the slider. ``axis_order='ji'``
+    reverses those roles. Band traces remain individually toggleable through
+    the Plotly legend.
+    """
+    import plotly.graph_objects as go
+
+    ki = np.asarray(ki)
+    kj = np.asarray(kj)
+    eigenvalues = np.asarray(eigenvalues)
+    axis_order = str(axis_order).lower()
+
+    if axis_order not in {"ij", "ji"}:
+        raise ValueError("axis_order must be either 'ij' or 'ji'")
+    if ki.ndim != 2 or kj.ndim != 2 or ki.shape != kj.shape:
+        raise ValueError("ki and kj must be 2D meshgrid arrays with equal shapes")
+    if eigenvalues.ndim != 3 or eigenvalues.shape[:2] != ki.shape:
+        raise ValueError(
+            "eigenvalues must have shape ki.shape + (num_bands,); "
+            f"received {eigenvalues.shape} for grid shape {ki.shape}"
+        )
+
+    first_values = ki[0, :]
+    second_values = kj[:, 0]
+    if not np.allclose(ki, first_values[np.newaxis, :], equal_nan=True):
+        raise ValueError("ki must be a separable meshgrid for an ij/ji line slider")
+    if not np.allclose(kj, second_values[:, np.newaxis], equal_nan=True):
+        raise ValueError("kj must be a separable meshgrid for an ij/ji line slider")
+
+    num_bands = eigenvalues.shape[2]
+    if bands_to_plot is None:
+        bands = list(range(num_bands))
+    elif isinstance(bands_to_plot, int):
+        bands = [bands_to_plot]
+    else:
+        bands = list(bands_to_plot)
+    invalid_bands = [band for band in bands if not 0 <= band < num_bands]
+    if invalid_bands:
+        raise IndexError(
+            f"Invalid bands {invalid_bands}; valid band indices are 0 to {num_bands - 1}."
+        )
+    if not bands:
+        raise ValueError("bands_to_plot must contain at least one band")
+
+    if axis_order == "ij":
+        x_values = first_values
+        slider_values = second_values
+        x_label = first_axis_label
+        slider_label = second_axis_label
+
+        def eigenvalue_slice(slider_index, band):
+            return eigenvalues[slider_index, :, band]
+    else:
+        x_values = second_values
+        slider_values = first_values
+        x_label = second_axis_label
+        slider_label = first_axis_label
+
+        def eigenvalue_slice(slider_index, band):
+            return eigenvalues[:, slider_index, band]
+
+    fig = go.Figure()
+    for band in bands:
+        fig.add_trace(
+            go.Scatter(
+                x=x_values,
+                y=eigenvalue_slice(0, band),
+                mode="lines",
+                name=f"Band {band}",
+                legendgroup=f"band_{band}",
+                showlegend=True,
+                hovertemplate=(
+                    f"{x_label}: %{{x:.6g}}<br>"
+                    "Energy: %{y:.6g}<extra>%{fullData.name}</extra>"
+                ),
+            )
+        )
+
+    frames = []
+    for slider_index in range(len(slider_values)):
+        frame_data = [
+            go.Scatter(
+                x=x_values,
+                y=eigenvalue_slice(slider_index, band),
+            )
+            for band in bands
+        ]
+        frames.append(
+            go.Frame(
+                data=frame_data,
+                traces=list(range(len(bands))),
+                name=str(slider_index),
+            )
+        )
+    fig.frames = frames
+
+    slider_steps = [
+        {
+            "method": "animate",
+            "args": [
+                [str(slider_index)],
+                {
+                    "mode": "immediate",
+                    "frame": {"duration": 0, "redraw": True},
+                    "transition": {"duration": 0},
+                },
+            ],
+            "label": f"{value:.6g}",
+        }
+        for slider_index, value in enumerate(slider_values)
+    ]
+
+    meta_text = _load_html_metadata_text(results_dir)
+    if title is None:
+        title = f"Eigenvalue line slices ({axis_order})"
+    fig.update_layout(
+        title=title,
+        xaxis={"title": x_label},
+        yaxis={"title": "Energy", "autorange": True},
+        hovermode="x unified",
+        sliders=[
+            {
+                "active": 0,
+                "currentvalue": {"prefix": f"Fixed {slider_label}: "},
+                "pad": {"t": 55},
+                "steps": slider_steps,
+            }
+        ],
+        updatemenus=[
+            {
+                "type": "buttons",
+                "direction": "left",
+                "showactive": False,
+                "x": 0.0,
+                "y": -0.18,
+                "buttons": [
+                    {
+                        "label": "Play",
+                        "method": "animate",
+                        "args": [
+                            None,
+                            {
+                                "fromcurrent": True,
+                                "frame": {"duration": 100, "redraw": True},
+                                "transition": {"duration": 0},
+                            },
+                        ],
+                    },
+                    {
+                        "label": "Pause",
+                        "method": "animate",
+                        "args": [
+                            [None],
+                            {
+                                "mode": "immediate",
+                                "frame": {"duration": 0, "redraw": False},
+                                "transition": {"duration": 0},
+                            },
+                        ],
+                    },
+                ],
+            }
+        ],
+        legend={
+            "title": {"text": "Bands"},
+            "x": 0.01,
+            "y": 0.99,
+            "xanchor": "left",
+            "yanchor": "top",
+            "bgcolor": "rgba(255, 255, 255, 0.85)",
+            "bordercolor": "black",
+            "borderwidth": 1,
+            "itemclick": "toggle",
+            "itemdoubleclick": "toggleothers",
+        },
+        showlegend=True,
+        margin={"r": 340 if meta_text else 40, "b": 120, "l": 70, "t": 60},
+    )
+
+    if meta_text:
+        fig.add_annotation(
+            text=meta_text,
+            align="left",
+            showarrow=False,
+            xref="paper",
+            yref="paper",
+            x=1.02,
+            y=1.0,
+            xanchor="left",
+            yanchor="top",
+            bordercolor="black",
+            borderwidth=1,
+            borderpad=10,
+            bgcolor="white",
+            font={"size": 11},
+        )
+
+    if filename is None:
+        filename = f"eigenvalue_line_slider_{axis_order}.html"
+    if save_fig and results_dir:
+        filepath = os.path.join(results_dir, filename)
+        fig.write_html(filepath, include_plotlyjs="cdn")
+        print(f"Eigenvalue line-slider plot saved to {filepath}")
+    elif save_fig:
+        fig.write_html(filename, include_plotlyjs="cdn")
+        print(f"Eigenvalue line-slider plot saved to {filename}")
+
+    if show and not save_fig:
+        fig.show()
+    return fig
+
+
 
 
 
@@ -121,7 +401,9 @@ def plot_eigenvalue_surfaces(
     results_dir=None,
     save_fig=False,
     filename="eigenvalue_surfaces.html",
-    show=True
+    show=True,
+    x_label="kx",
+    y_label="ky",
 ):
     """
     Plot selected eigenvalue bands as 3D interactive HTML surfaces with toggleable bands.
@@ -139,56 +421,13 @@ def plot_eigenvalue_surfaces(
     - save_fig          : Whether to save the HTML file locally in the `results_dir`.
     - filename          : Output filename.
     - show              : Whether to show the plot if not saving.
+    - x_label, y_label  : Labels for the two sampled coordinates.
 
     If ``results_dir/meta.json`` exists, its run metadata and Hamiltonian
     parameters are displayed in a box beside the interactive plot.
     """
-    import html
-    import json
-    import os
-
     import plotly.graph_objects as go
-
-    def format_meta_value(value):
-        if isinstance(value, bool):
-            return str(value)
-        if isinstance(value, float):
-            return f"{value:.6g}"
-        if isinstance(value, (list, tuple)):
-            return "[" + ", ".join(format_meta_value(item) for item in value) + "]"
-        if value is None:
-            return "None"
-        return str(value)
-
-    def metadata_box_text(metadata):
-        lines = ["<b>Run Metadata</b>"]
-        hamiltonian_params = metadata.get("hamiltonian_params", {})
-
-        for key, value in metadata.items():
-            if key == "hamiltonian_params":
-                continue
-            key_text = html.escape(str(key))
-            value_text = html.escape(format_meta_value(value))
-            lines.append(f"{key_text} = {value_text}")
-
-        if hamiltonian_params:
-            lines.extend(["", "<b>Hamiltonian Parameters</b>"])
-            for key, value in hamiltonian_params.items():
-                key_text = html.escape(str(key))
-                value_text = html.escape(format_meta_value(value))
-                lines.append(f"{key_text} = {value_text}")
-
-        return "<br>".join(lines)
-
-    meta_text = None
-    if results_dir:
-        meta_path = os.path.join(results_dir, "meta.json")
-        if os.path.isfile(meta_path):
-            try:
-                with open(meta_path, "r", encoding="utf-8") as meta_file:
-                    meta_text = metadata_box_text(json.load(meta_file))
-            except (OSError, json.JSONDecodeError, TypeError) as exc:
-                print(f"Warning: Could not display metadata from {meta_path}: {exc}")
+    meta_text = _load_html_metadata_text(results_dir)
     
     # Infer number of bands if not provided
     if dim is None:
@@ -255,8 +494,8 @@ def plot_eigenvalue_surfaces(
     fig.update_layout(
         title='Eigenvalue Surfaces',
         scene=dict(
-            xaxis_title='kx',
-            yaxis_title='ky',
+            xaxis_title=x_label,
+            yaxis_title=y_label,
             zaxis_title='Eigenvalue',
             zaxis_range=[-z_limit, z_limit] if (norm and z_limit is not None) else None
         ),
@@ -1045,6 +1284,8 @@ def plot_degeneracy_heatmap(
     sym_kz_threshold=0.02,
     results_dir=None,
     save_fig=False,
+    x_label="kx",
+    y_label="ky",
 ):
     """
     Plot a 2D map where colors indicate the number of band degeneracies at each k-point.
@@ -1061,6 +1302,7 @@ def plot_degeneracy_heatmap(
     - sym_kz_threshold: Fraction in [0, 1] of max(kx range, ky range). For 3D
                         symmetry points, only points with |kz - kk| within
                         this tolerance are projected onto the 2D map.
+    - x_label, y_label: Labels for the two sampled coordinates.
     """
     nkx, nky, nbands = eigenvalues.shape
     degeneracy_map = np.zeros((nkx, nky), dtype=int)
@@ -1159,8 +1401,8 @@ def plot_degeneracy_heatmap(
             print("sym_points=True, but no Hamiltonian with get_sym_path() was provided. Skipping symmetry overlay.")
     
     ax.set_title(title)
-    ax.set_xlabel('kx')
-    ax.set_ylabel('ky')
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
     
     # Colorbar with discrete ticks
     cbar = fig.colorbar(im, ax=ax, ticks=[0, 1, 2, 3])

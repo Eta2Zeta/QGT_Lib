@@ -99,6 +99,11 @@ class THF_Hamiltonian(hamiltonian):
         self.k_theta = 2.0 * self.K_plus * np.sin(
             0.5 * np.deg2rad(self.theta_deg)
         )
+        self.q1 = self.k_theta * np.array([0.0, -1.0])
+        self.q2 = self.k_theta * np.array([np.sqrt(3.0) / 2.0, 0.5])
+        self.q3 = self.k_theta * np.array([-np.sqrt(3.0) / 2.0, 0.5])
+        self.b1 = self.q2 - self.q1
+        self.b2 = self.q3 - self.q1
 
         # Eq. (A2): |a_M1| = 4*pi/(3*k_theta).
         self.a_M1 = 4.0 * np.pi / (3.0 * self.k_theta)
@@ -153,13 +158,10 @@ class THF_Hamiltonian(hamiltonian):
 
         K -> Gamma -> M -> K
         """
-        q1 = self.k_theta * np.array([0.0, -1.0])
-        q2 = self.k_theta * np.array([np.sqrt(3.0) / 2.0, 0.5])
-
         sym_points = {
             "G": np.array([0.0, 0.0]),
-            "K": q2,
-            "M": 0.5 * (q2 - q1),
+            "K": self.q2,
+            "M": 0.5 * self.b1,
         }
         path = ["K", "G", "M", "K"]
         return sym_points, path

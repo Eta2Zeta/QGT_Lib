@@ -1,0 +1,48 @@
+{
+  "hamiltonian_name": "THF_Hamiltonian",
+  "hamiltonian_params": {
+    "omega": 3.141592653589793,
+    "A0": 0,
+    "polarization": "left",
+    "magnus_order": 1,
+    "analytic_magnus": false,
+    "eta": 1,
+    "theta_deg": 1.05,
+    "K_plus": 1.703,
+    "k_theta": 0.03120866830104321,
+    "a_M1": 134.21880627461354,
+    "lambda_factor": 0.3375,
+    "lambda_": 45.29884711768207,
+    "gamma": -24.75,
+    "M": 3.697,
+    "V": 0.0,
+    "v_star": -4303.0,
+    "v_star_prime": 1623.0,
+    "v_star_double_prime": -33.2
+  },
+  "path_labels": [
+    "K",
+    "G",
+    "M",
+    "K"
+  ],
+  "num_points_per_segment": 100,
+  "path_points": [
+    [
+      0.027027499566985556,
+      0.015604334150521605
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.013513749783492778,
+      0.023406501225782406
+    ],
+    [
+      0.027027499566985556,
+      0.015604334150521605
+    ]
+  ]
+}

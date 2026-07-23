@@ -1,19 +1,19 @@
 {
-  "angular_orientation": null,
+  "angular_orientation": "right_handed",
   "coordinate_labels": [
-    "kx",
-    "ky",
+    "r",
+    "phi",
     "kz"
   ],
-  "coordinate_system": "cartesian",
-  "dki": 0.0004133598450469303,
-  "dkj": 0.0004133598450469303,
+  "coordinate_system": "cylindrical",
+  "dki": 0.0002080577886736214,
+  "dkj": 0.0418879020478639,
   "hamiltonian_name": "THF_Hamiltonian",
   "hamiltonian_params": {
     "A0": 0,
     "K_plus": 1.703,
     "M": 3.697,
-    "V": 5.0,
+    "V": 0.0,
     "a_M1": 134.21880627461354,
     "analytic_magnus": false,
     "eta": 1,
@@ -31,20 +31,23 @@
   },
   "include_endpoints": false,
   "ki_range": [
-    -0.03079530845599628,
-    0.03079530845599628
+    0.0001040288943368107,
+    0.0311046394067064
   ],
   "kj_range": [
-    -0.03079530845599628,
-    0.03079530845599628
+    0.020943951023931952,
+    6.262241356155654
   ],
   "kk": 0.0,
-  "kvals_mode": "interior",
+  "kvals_mode": "cell_centers_periodic_phi",
   "mesh_spacing": 150,
-  "order": "xyz",
-  "phi_domain": null,
-  "phi_endpoint_included": null,
-  "phi_periodic": false,
-  "radial_reference_axis": null,
-  "rotation_axis": null
+  "order": "xpz",
+  "phi_domain": [
+    0.0,
+    6.283185307179586
+  ],
+  "phi_endpoint_included": false,
+  "phi_periodic": true,
+  "radial_reference_axis": "x",
+  "rotation_axis": "z"
 }

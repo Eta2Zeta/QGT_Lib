@@ -625,13 +625,13 @@ if __name__ == "__main__":
     import os
 
     plot_qgt_2d_comparison_with_energies(
+        "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonianChiralBasisProjected/dataset_1",
         "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonianChiralBasisProjected/dataset_2",
-        "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonian/dataset_1",
         quantity="berry",
         left_band=0,
-        right_band=4,
-        labels=("Full chiral Hamiltonian", "Chiral-basis projected"),
-        output_path="/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonian/qgt_2d_full_vs_chiral_basis_projected_trace_left_band_0_right_band_0.png",
+        right_band=0,
+        labels=("Chiral-basis Projected Naive Numerical", "Chiral-basis Projected Analytical"),
+        output_path="/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonian/chiral_basis_projected_naive_numerical_vs_chiral_basis_projected_analytical.png",
     )
 
     # base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/gWaveAltermagnetHamiltonian"
