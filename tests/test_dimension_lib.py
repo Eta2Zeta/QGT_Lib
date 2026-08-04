@@ -2,7 +2,9 @@ import numpy as np
 import pytest
 
 from Library.dimension_lib import (
+    cylindrical_order_axes,
     create_2d_coordinate_grid,
+    create_2d_coordinate_grid_from_ranges,
     is_cylindrical_order,
     map_k_by_order,
 )
@@ -61,6 +63,30 @@ def test_cylindrical_grid_maps_vectorized_to_cartesian_arrays():
     assert kz.shape == radius.shape
     assert np.allclose(np.sqrt(kx**2 + ky**2), radius)
     assert np.allclose(kz, 0.25)
+
+
+@pytest.mark.parametrize("order", ["xpz", "ypz", "xpy", "zpy", "ypx", "zpx"])
+def test_explicit_polar_ranges_work_for_every_cylindrical_order(order):
+    radius, phi, info = create_2d_coordinate_grid_from_ranges(
+        (0.0, 2.0),
+        (0.0, 2.0 * np.pi),
+        12,
+        order=order,
+    )
+    kx, ky, kz = map_k_by_order(radius, phi, 0.3, order)
+    _, _, _, fixed_axis = cylindrical_order_axes(order)
+    cartesian = {"x": kx, "y": ky, "z": kz}
+
+    assert info["order"] == order
+    assert info["phi_periodic"] is True
+    assert info["phi_endpoint_included"] is False
+    assert np.max(phi) < 2.0 * np.pi
+    assert np.allclose(cartesian[fixed_axis], 0.3)
+
+
+def test_cylindrical_order_reports_oriented_in_plane_axes():
+    assert cylindrical_order_axes("xpz") == ("x", "y", 1, "z")
+    assert cylindrical_order_axes("ypz") == ("y", "x", -1, "z")
 
 
 @pytest.mark.parametrize("order", ["pxz", "xyzp", "xpp", "abc"])

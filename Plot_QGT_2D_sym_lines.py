@@ -98,9 +98,8 @@ def _finite_range(arrays, pad_fraction=0.04):
     ymin = float(np.nanmin(finite_all))
     ymax = float(np.nanmax(finite_all))
     if ymin == ymax:
-        pad = 1.0 if ymin == 0.0 else abs(ymin) * pad_fraction
-    else:
-        pad = (ymax - ymin) * pad_fraction
+        return ymin, ymax
+    pad = (ymax - ymin) * pad_fraction
     return ymin - pad, ymax + pad
 
 

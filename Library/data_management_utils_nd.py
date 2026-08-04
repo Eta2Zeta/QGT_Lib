@@ -168,10 +168,11 @@ def setup_qgt_nd_results_dir(
     hamiltonian_template,
     param_ranges,
     parameter_spacing,
-    kx_range,
-    ky_range,
+    grid_info,
     mesh_spacing,
+    kk=0.0,
     band_index=None,
+    floquet_max_l=None,
     decimals=3,
     force_new=False
 ):
@@ -215,32 +216,33 @@ def setup_qgt_nd_results_dir(
             spacing_dict[n] = {"count": cnt, "scale": scl}
             
 
-    # Collect all public, simple attributes AND properties
-    params = {}
-    for k in dir(hamiltonian_template):
-        if k.startswith('_') or k in ('name', 'dim', 'get_filename'):
-            continue
-        try:
-            val = getattr(hamiltonian_template, k)
-            if not callable(val) and isinstance(val, (int, float, str, bool)):
-                params[k] = val
-        except Exception:
-            pass
+    if not hasattr(hamiltonian_template, "get_parameters_dict"):
+        raise TypeError(
+            "hamiltonian_template must provide get_parameters_dict(parameter='2D')"
+        )
+    params = hamiltonian_template.get_parameters_dict(parameter="2D")
+
+    k_grid = dict(grid_info)
+    k_grid["mesh"] = int(mesh_spacing)
+    k_grid["fixed_coordinate"] = float(kk)
 
     metadata = {
         "hamiltonian_name": Hname,
         "parameters": params,
         "scan_ranges": range_dict,
         "scan_spacing": spacing_dict,
-        "k_grid": {
-            "kx_min": float(kx_range[0]), "kx_max": float(kx_range[1]),
-            "ky_min": float(ky_range[0]), "ky_max": float(ky_range[1]),
-            "mesh": int(mesh_spacing)
-        }
+        "k_grid": k_grid,
     }
     
     if band_index is not None:
         metadata["band_index"] = int(band_index)
+    if floquet_max_l is not None:
+        metadata["floquet_diagnostic"] = {
+            "max_l": int(floquet_max_l),
+            "band_basis": "zero_fourier_harmonic_energy_order",
+            "index_order": ["coupled_band", "photon_index_l"],
+            "includes_same_band": False,
+        }
         
     # Attempt to find or create
     dir_path, used = pick_or_create_result_dir_simple(

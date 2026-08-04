@@ -306,13 +306,14 @@ class hamiltonian:
         result = scale * (rounded_real + 1j * rounded_imag)
         return result
 
-    def magnus_first_term(self, kx, ky, kz=0):
+    def magnus_first_term(self, kx, ky, kz=0, harmonics=None):
         """
         Compute the first term of the Magnus expansion:
         (1/omega) * [H1, H-1], rounded to 1e-16 precision.
         """
-        # One FFT contains both positive and negative Fourier harmonics.
-        harmonics = self.fourier_components_fft([1, -1], kx, ky, kz)
+        # Reuse a previously calculated Fourier decomposition when available.
+        if harmonics is None:
+            harmonics = self.fourier_components_fft([1, -1], kx, ky, kz)
         H1 = harmonics[1]
         Hm1 = harmonics[-1]
 
@@ -328,13 +329,14 @@ class hamiltonian:
 
         return rounded_magnus
 
-    def magnus_second_term(self, kx, ky, kz=0):
+    def magnus_second_term(self, kx, ky, kz=0, harmonics=None):
         """
         Compute the second Magnus term:
         (1/omega) * (1/2) * [H2, H-2]
         """
-        # One FFT contains both positive and negative Fourier harmonics.
-        harmonics = self.fourier_components_fft([2, -2], kx, ky, kz)
+        # Reuse a previously calculated Fourier decomposition when available.
+        if harmonics is None:
+            harmonics = self.fourier_components_fft([2, -2], kx, ky, kz)
         H2 = harmonics[2]
         Hm2 = harmonics[-2]
 
@@ -344,7 +346,7 @@ class hamiltonian:
         # Return the second Magnus term
         return (1 / (2 * self.omega)) * comm
 
-    def effective_hamiltonian(self, kx, ky, kz=0):
+    def effective_hamiltonian(self, kx, ky, kz=0, harmonics=None):
         """
         Compute the total effective Hamiltonian and its perturbation:
         H_eff = H_0 + sum of Magnus terms up to the specified order.
@@ -373,9 +375,19 @@ class hamiltonian:
                 # Expect analytic_magnus_first_term to ALREADY include the 1/omega factor
                 H_prime += self.analytic_magnus_first_term(kx, ky, kz)
             else:
-                H_prime += self.magnus_first_term(kx, ky, kz)
+                H_prime += self.magnus_first_term(
+                    kx,
+                    ky,
+                    kz,
+                    harmonics=harmonics,
+                )
         if self.magnus_order >= 2:
-            H_prime += self.magnus_second_term(kx, ky, kz)
+            H_prime += self.magnus_second_term(
+                kx,
+                ky,
+                kz,
+                harmonics=harmonics,
+            )
         
         # Compute effective Hamiltonian (H_eff = H_0 + H_prime)
         H_eff = H_0 + H_prime

@@ -6,16 +6,25 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 
+from Library.dimension_lib import coordinate_order_info
+
 # Import plotting functions
-from Library.plotting_lib_2d import (
+from Library.plotting_qgt_2d import (
     plot_qgt_component_surfaces,
     plot_qgt_eigenvalue_berry_trace_surfaces,
     plot_qgt_eigenvalue_berry_trace_heatmaps,
     plot_qgt_component_heatmaps,
     plot_qgt_eigenvalue_berry_component_heatmaps,
+    get_coordinate_axis_labels,
+    get_symmetric_plot_limits,
 )
 
-def plot_qgt_from_directory(target_dir):
+def plot_qgt_from_directory(
+    target_dir,
+    *,
+    zlim_berry=1000,
+    zlim_percentile=99,
+):
     """
     Loads QGT results and metadata from the specified directory and generates plots.
     """
@@ -48,6 +57,8 @@ def plot_qgt_from_directory(target_dir):
         if kx is None or ky is None:
             raise KeyError("Neither 'kx'/'ky' nor 'ki'/'kj' found in metadata.")
         Hamiltonian_Obj = meta_info.get("Hamiltonian_Obj", None)
+        kk = meta_info.get("kk", 0.0)
+        order = meta_info.get("order", "xyz")
         mesh_spacing = meta_info.get("mesh_spacing", "Unknown")
         print(f"Grid loaded. Mesh: {mesh_spacing}")
         if Hamiltonian_Obj:
@@ -103,7 +114,8 @@ def plot_qgt_from_directory(target_dir):
             results_dir=target_dir,
             save_fig=True,
             filename=f"qgt_component_surfaces_band_{b}.html",
-            show=False
+            show=False,
+            order=order,
         )
 
         # 2. Combined Plots
@@ -116,16 +128,22 @@ def plot_qgt_from_directory(target_dir):
             results_dir=target_dir,
             save_fig=True,
             filename=f"qgt_eigenvalue_berry_trace_surfaces_band_{b}.html",
-            show=False
+            show=False,
+            order=order,
         )
 
         print(f"Plotting QGT eigenvalue/Berry/trace heatmaps for band {b}...")
         plot_qgt_eigenvalue_berry_trace_heatmaps(
             kx, ky, eigenvalues, b_g_xy_imag, b_trace,
             eigenvalue_band=b,
+            zlim_berry=zlim_berry,
+            zlim_percentile=zlim_percentile,
             title=f"2D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {b})",
             results_dir=target_dir,
-            save_fig=True
+            save_fig=True,
+            hamiltonian=Hamiltonian_Obj if order == "xyz" else None,
+            kk=kk,
+            order=order,
         )
     print("Done.")
 
@@ -152,6 +170,9 @@ def plot_all_2d_berries_from_directory(target_dir):
         ky = meta_info.get("ky", meta_info.get("kj", None))
         if kx is None or ky is None:
             raise KeyError("Neither 'kx'/'ky' nor 'ki'/'kj' found in metadata.")
+        Hamiltonian_Obj = meta_info.get("Hamiltonian_Obj", None)
+        kk = meta_info.get("kk", 0.0)
+        order = meta_info.get("order", "xyz")
     except Exception as e:
         print(f"Failed to load metadata/grid: {e}")
         return
@@ -174,7 +195,7 @@ def plot_all_2d_berries_from_directory(target_dir):
     # Parameters matches Calc_QGT
     band = 1
     z_cutoff = 1000
-    z_percentile = 95
+    z_percentile = 99
 
     print("Plotting all-Berry 2D heatmaps...")
 
@@ -189,7 +210,10 @@ def plot_all_2d_berries_from_directory(target_dir):
                 zlim_berry=z_cutoff,
                 zlim_percentile=z_percentile,
                 results_dir=target_dir,
-                save_fig=True
+                save_fig=True,
+                hamiltonian=Hamiltonian_Obj if order == "xyz" else None,
+                kk=kk,
+                order=order,
             )
     else:
         print("Plotting all-Berry 2D for single band...")
@@ -200,7 +224,10 @@ def plot_all_2d_berries_from_directory(target_dir):
             zlim_berry=z_cutoff,
             zlim_percentile=z_percentile,
             results_dir=target_dir,
-            save_fig=True
+            save_fig=True,
+            hamiltonian=Hamiltonian_Obj if order == "xyz" else None,
+            kk=kk,
+            order=order,
         )
 
     print("Done all-Berry plots.")
@@ -433,8 +460,7 @@ def _shared_sym_qgt_ylim(left, right, quantity, left_band, right_band):
     ymin = float(np.nanmin(finite_all))
     ymax = float(np.nanmax(finite_all))
     if ymin == ymax:
-        pad = 1.0 if ymin == 0.0 else abs(ymin) * 0.05
-        return ymin - pad, ymax + pad
+        return ymin, ymax
     pad = 0.04 * (ymax - ymin)
     return ymin - pad, ymax + pad
 
@@ -497,7 +523,8 @@ def plot_qgt_2d_comparison_with_energies(
     labels=("Dataset 1", "Dataset 2"),
     energy_bands_to_plot=None,
     share_sym_qgt_range=True,
-    qgt_zmax_percentile=99.5,
+    zlim_percentile=99.0,
+    zlim_berry=None,
     cmap="inferno",
     background_color="0.35",
     output_path=None,
@@ -534,11 +561,18 @@ def plot_qgt_2d_comparison_with_energies(
     if finite.size == 0:
         raise ValueError(f"No finite values found for quantity '{quantity}'.")
 
-    qgt_vmin = float(np.nanmin(finite))
-    if qgt_zmax_percentile is None:
-        qgt_vmax = float(np.nanmax(finite))
+    if quantity in ("berry", "berry_curvature"):
+        qgt_vmin, qgt_vmax = get_symmetric_plot_limits(
+            finite,
+            zlim_berry,
+            zlim_percentile,
+        )
     else:
-        qgt_vmax = float(np.nanpercentile(finite, qgt_zmax_percentile))
+        qgt_vmin = float(np.nanmin(finite))
+        if zlim_percentile is None:
+            qgt_vmax = float(np.nanmax(finite))
+        else:
+            qgt_vmax = float(np.nanpercentile(finite, zlim_percentile))
         if qgt_vmax <= qgt_vmin:
             qgt_vmax = float(np.nanmax(finite))
 
@@ -585,21 +619,32 @@ def plot_qgt_2d_comparison_with_energies(
         (axes[2, 0], left, left_qgt, labels[0], left_band),
         (axes[2, 1], right, right_qgt, labels[1], right_band),
     ]:
+        order = dataset["meta_info"].get("order", "xyz")
+        coordinate_info = coordinate_order_info(order)
+        x_label, y_label = get_coordinate_axis_labels(
+            order,
+            backend="matplotlib",
+        )
         ax.set_facecolor(background_color)
         im = ax.imshow(
             np.ma.masked_invalid(qgt),
             origin="lower",
             extent=_image_extent(dataset["kx"], dataset["ky"]),
-            aspect="equal",
+            aspect=(
+                "equal"
+                if coordinate_info["coordinate_system"] == "cartesian"
+                else "auto"
+            ),
             cmap=qgt_cmap,
             vmin=qgt_vmin,
             vmax=qgt_vmax,
         )
         images.append(im)
-        _overlay_sym_path_on_qgt(ax, dataset)
+        if order == "xyz":
+            _overlay_sym_path_on_qgt(ax, dataset)
         ax.set_title(f"{label}: {qgt_label}, band {qgt_band}")
-        ax.set_xlabel(r"$k_x$")
-        ax.set_ylabel(r"$k_y$")
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
 
     cbar = fig.colorbar(images[-1], ax=axes[2, :], shrink=0.9, pad=0.02)
     cbar.set_label(qgt_label)

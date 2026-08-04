@@ -6,7 +6,6 @@ from tqdm import tqdm  # Import tqdm for progress bar
 
 
 # from Library import * 
-from Library.plotting_lib_2d import *
 from Library.Hamiltonian_v1 import *
 from Hamiltonian.Hamiltonian_v2 import * 
 from Library.eigenvalue_calc_lib import *

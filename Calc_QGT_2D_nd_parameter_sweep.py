@@ -25,10 +25,43 @@ from Library.utilities import generate_2d_sym_lines
 from Library.Hamiltonian_helper import get_Hamiltonian
 from Library.eigenvalue_calc_lib_1d import eigenvalues_along_path
 from Library.output_utils import print_calculation_complete
+from Library.dimension_lib import (
+    CARTESIAN_ORDERS,
+    create_2d_coordinate_grid_from_ranges,
+    cylindrical_order_axes,
+    is_cylindrical_order,
+    map_k_by_order,
+    normalize_coordinate_order,
+)
+
+
+def _metric_trace_on_sampled_plane(g_xx, g_yy, g_zz, order):
+    """Return the metric trace in the two-dimensional sampled Cartesian plane."""
+    order = normalize_coordinate_order(order)
+    diagonal = {"x": g_xx, "y": g_yy, "z": g_zz}
+    if order in CARTESIAN_ORDERS:
+        plane_axes = order[:2]
+    else:
+        _, _, _, fixed_axis = cylindrical_order_axes(order)
+        plane_axes = tuple(axis for axis in "xyz" if axis != fixed_axis)
+    return diagonal[plane_axes[0]] + diagonal[plane_axes[1]]
 
 
 # ---------- per-point worker ----------
-def _worker_qgt_point(arg, h_template, kx, ky, mesh_spacing, band, k_path):
+def _worker_qgt_point(
+    arg,
+    h_template,
+    ki,
+    kj,
+    mesh_spacing,
+    band,
+    k_path,
+    max_l,
+    kk,
+    order,
+    delta_k,
+    phi_periodic,
+):
     """
     arg: (param_values_dict, idx_tuple) OR (param_values_dict, idx_tuple, progress_label)
     """
@@ -43,40 +76,85 @@ def _worker_qgt_point(arg, h_template, kx, ky, mesh_spacing, band, k_path):
         setattr(H, k, v)
 
     # Full k-grid eigenproblem + Hamiltonians
-    eigenvalues, eigenfunctions, hamiltonian_array, hamiltonian_prime_array = \
-        grid_eigenvalues_eigenfunctions(H, kx, ky, mesh_spacing, dim=int(H.dim))
+    (
+        eigenvalues,
+        eigenfunctions,
+        hamiltonian_array,
+        hamiltonian_prime_array,
+        floquet_max_ratio_array,
+        floquet_max_ratio_indices_array,
+    ) = grid_eigenvalues_eigenfunctions(
+        H,
+        ki,
+        kj,
+        mesh_spacing,
+        dim=int(H.dim),
+        kk=kk,
+        order=order,
+        max_l=max_l,
+    )
 
     # QGT fields
-    dkx = abs(kx[0, 1] - kx[0, 0])
-    dky = abs(ky[1, 0] - ky[0, 0])
-    delta_k = min(dkx, dky)
-
     (g_xx, g_yy, g_zz,
      g_xy_r, g_xy_i,
      g_xz_r, g_xz_i,
      g_yz_r, g_yz_i) = QGT_grid_num(
-        kx, ky, eigenvalues, eigenfunctions, quantum_geometric_tensor_3d_num_phase_corrected,
+        ki, kj, eigenvalues, eigenfunctions, quantum_geometric_tensor_3d_num_phase_corrected,
         H, delta_k, band_index=band,
         progress_label=progress_label,
+        kk=kk,
+        order=order,
     )
-    trace = g_xx + g_yy
+    trace = _metric_trace_on_sampled_plane(g_xx, g_yy, g_zz, order)
 
     # Chern number
-    if hasattr(H, "b1") and hasattr(H, "b2"):
-        chern = compute_chern_number(g_xy_i, dkx, dky, kx, ky, H.b1, H.b2)
+    omega_x, omega_y, omega_z = berry_curvature_components_from_qgt(
+        g_xy_i,
+        g_xz_i,
+        g_yz_i,
+    )
+    if order == "xyz" and hasattr(H, "b1") and hasattr(H, "b2"):
+        dki = abs(ki[0, 1] - ki[0, 0])
+        dkj = abs(kj[1, 0] - kj[0, 0])
+        chern = compute_chern_number(g_xy_i, dki, dkj, ki, kj, H.b1, H.b2)
     else:
-        berry = -2.0 * g_xy_i
-        integral = np.trapz(np.trapz(berry, dx=dky, axis=1), dx=dkx, axis=0)
-        chern = integral / (2 * np.pi)
+        berry_flux = integrate_berry_flux_2d(
+            omega_x,
+            omega_y,
+            omega_z,
+            ki,
+            kj,
+            order=order,
+            phi_periodic=phi_periodic,
+        )
+        chern = berry_flux / (2.0 * np.pi)
+
+    winding = None
+    if is_cylindrical_order(order) and phi_periodic:
+        reference_axis, tangent_axis, tangent_sign, _ = (
+            cylindrical_order_axes(order)
+        )
+        omega_by_axis = {"x": omega_x, "y": omega_y, "z": omega_z}
+        _, winding = winding_numbers_vs_radius(
+            ki,
+            kj,
+            omega_by_axis[reference_axis],
+            tangent_sign * omega_by_axis[tangent_axis],
+        )
 
     # Calculate eigenvalues along symmetry path
     eigenvalues_sym, _ = eigenvalues_along_path(H, k_path)
 
     return (
         idx,
-        g_xx, g_xy_r, g_xy_i, g_yy, trace, float(chern),
+        g_xx, g_yy, g_zz,
+        g_xy_r, g_xy_i,
+        g_xz_r, g_xz_i,
+        g_yz_r, g_yz_i,
+        trace, float(chern), winding,
         eigenvalues, eigenfunctions,
         hamiltonian_array, hamiltonian_prime_array,
+        floquet_max_ratio_array, floquet_max_ratio_indices_array,
         eigenvalues_sym,
     )
 
@@ -86,30 +164,75 @@ def compute_qgt_nd_parallel(
     hamiltonian_template,
     param_ranges,
     parameter_spacing,
-    kx_range,
-    ky_range,
+    ki_range,
+    kj_range,
     mesh_spacing,
     band=0,
     num_points_per_segment=100,
     processes=None,
     force_new_dir=False,
     float_dtype=np.float64,
+    max_l=10,
+    kk=0.0,
+    order="xyz",
+    include_endpoints=True,
+    delta_k=1e-5,
 ):
     """
-    Builds an N-D parameter grid, computes QGT per point in parallel, then
-    assembles contiguous N-D arrays:
-        g_xx_grid, g_xy_real_grid, g_xy_imag_grid, g_yy_grid, trace_grid
-        shape: (*param_shape, Ny, Nx)
+    Build an N-D parameter sweep on a Cartesian or cylindrical momentum grid.
+
+    ``ki_range`` and ``kj_range`` describe the first two input coordinates for
+    ``order``. For example, ``order='xpz'`` means ``ki=r``, ``kj=phi``, and
+    ``kk=kz``. All nine QGT components are retained.
+
+    The contiguous field arrays have shapes:
+        QGT fields: (*param_shape, N_kj, N_ki)
         chern_grid shape: (*param_shape,)
+        winding_grid shape: (*param_shape, N_ki), for full polar circles
+        floquet_max_ratio_grid shape: (*param_shape, Ny, Nx, dim)
+        floquet_max_ratio_indices_grid shape: (*param_shape, Ny, Nx, dim, 2)
     Saves a single .npz bundle + meta.pkl in a dedicated directory.
     Returns: (root_dir, npz_path)
     """
-    # k-grid
-    kx_lin = np.linspace(kx_range[0], kx_range[1], mesh_spacing)
-    ky_lin = np.linspace(ky_range[0], ky_range[1], mesh_spacing)
-    kx, ky = np.meshgrid(kx_lin, ky_lin)   # (Ny, Nx)
+    if isinstance(max_l, (bool, np.bool_)) or not isinstance(
+        max_l,
+        (int, np.integer),
+    ):
+        raise TypeError("max_l must be a positive integer")
+    max_l = int(max_l)
+    if max_l < 1:
+        raise ValueError("max_l must be at least 1")
 
-    Ny, Nx = ky.shape
+    order = normalize_coordinate_order(order)
+    kk = float(kk)
+    delta_k = float(delta_k)
+    if not np.isfinite(kk):
+        raise ValueError("kk must be finite")
+    if not np.isfinite(delta_k) or delta_k <= 0.0:
+        raise ValueError("delta_k must be a finite positive Cartesian step")
+
+    # k-grid
+    ki, kj, grid_info = create_2d_coordinate_grid_from_ranges(
+        ki_range,
+        kj_range,
+        mesh_spacing,
+        order=order,
+        include_endpoints=include_endpoints,
+    )
+    kx, ky, kz = map_k_by_order(ki, kj, kk, order)
+    grid_info.update(
+        {
+            "kk": kk,
+            "kx_min": float(np.min(kx)),
+            "kx_max": float(np.max(kx)),
+            "ky_min": float(np.min(ky)),
+            "ky_max": float(np.max(ky)),
+            "kz_min": float(np.min(kz)),
+            "kz_max": float(np.max(kz)),
+        }
+    )
+
+    Ny, Nx = ki.shape
     dim = int(getattr(hamiltonian_template, "dim", 0))
     band = int(band)
     if dim <= 0:
@@ -149,22 +272,43 @@ def compute_qgt_nd_parallel(
     # Output arrays
     out_shape_fields = tuple(shape) + (Ny, Nx)
     g_xx_grid            = np.empty(out_shape_fields,              dtype=float_dtype)
+    g_yy_grid            = np.empty(out_shape_fields,              dtype=float_dtype)
+    g_zz_grid            = np.empty(out_shape_fields,              dtype=float_dtype)
     g_xy_real_grid       = np.empty(out_shape_fields,              dtype=float_dtype)
     g_xy_imag_grid       = np.empty(out_shape_fields,              dtype=float_dtype)
-    g_yy_grid            = np.empty(out_shape_fields,              dtype=float_dtype)
+    g_xz_real_grid       = np.empty(out_shape_fields,              dtype=float_dtype)
+    g_xz_imag_grid       = np.empty(out_shape_fields,              dtype=float_dtype)
+    g_yz_real_grid       = np.empty(out_shape_fields,              dtype=float_dtype)
+    g_yz_imag_grid       = np.empty(out_shape_fields,              dtype=float_dtype)
     trace_grid           = np.empty(out_shape_fields,              dtype=float_dtype)
     chern_grid           = np.empty(shape,                         dtype=float_dtype)
+    winding_grid = (
+        np.empty(tuple(shape) + (Nx,), dtype=float_dtype)
+        if is_cylindrical_order(order) and grid_info["phi_periodic"]
+        else None
+    )
     eigenvalues_grid     = np.empty(out_shape_fields + (dim,),     dtype=float_dtype)
     eigenfunctions_grid  = np.empty(out_shape_fields + (dim, dim), dtype=np.complex128)
     hamiltonian_grid     = np.empty(out_shape_fields + (dim, dim), dtype=np.complex128)
     hamiltonian_prime_grid = np.empty(out_shape_fields + (dim, dim), dtype=np.complex128)
+    floquet_max_ratio_grid = np.empty(
+        out_shape_fields + (dim,),
+        dtype=np.float64,
+    )
+    floquet_max_ratio_indices_grid = np.empty(
+        out_shape_fields + (dim, 2),
+        dtype=np.int32,
+    )
     eigenvalues_sym_grid = np.empty(tuple(shape) + (num_k_points, dim), dtype=float_dtype)
 
     # Directory
     root, used = setup_qgt_nd_results_dir(
         H_template, param_ranges, parameter_spacing,
-        kx_range, ky_range, mesh_spacing,
-        band_index=band, force_new=force_new_dir,
+        grid_info, mesh_spacing,
+        kk=kk,
+        band_index=band,
+        floquet_max_l=max_l,
+        force_new=force_new_dir,
     )
     bundle_path = os.path.join(root, "qgt_nd_bundle.npz")
     meta_path   = os.path.join(root, "meta.pkl")
@@ -177,58 +321,113 @@ def compute_qgt_nd_parallel(
     worker = partial(
         _worker_qgt_point,
         h_template=H_template,
-        kx=kx, ky=ky, mesh_spacing=mesh_spacing,
+        ki=ki, kj=kj, mesh_spacing=mesh_spacing,
         band=band,
         k_path=k_path,
+        max_l=max_l,
+        kk=kk,
+        order=order,
+        delta_k=delta_k,
+        phi_periodic=bool(grid_info["phi_periodic"]),
     )
 
     procs = processes or min(max(1, cpu_count() - 1), max(1, len(points_with_idx)))
     print(f"Launching QGT N-D sweep on {procs} processes over {len(points_with_idx)} points ...")
 
-    with Pool(processes=procs) as pool:
-        with tqdm(total=len(points_labeled), desc="QGT per parameter point", unit="pt") as pbar:
-            for result in pool.imap(worker, points_labeled):
-                (idx,
-                 gxx, gxyr, gxyi, gyy, tr, ch,
-                 eigenvalues, eigenfunctions,
-                 hamiltonian_array, hamiltonian_prime_array,
-                 eigenvalues_sym) = result
+    def _store_result(result):
+        (idx,
+         gxx, gyy, gzz,
+         gxyr, gxyi,
+         gxzr, gxzi,
+         gyzr, gyzi,
+         tr, ch, winding,
+         eigenvalues, eigenfunctions,
+         hamiltonian_array, hamiltonian_prime_array,
+         floquet_max_ratio_array, floquet_max_ratio_indices_array,
+         eigenvalues_sym) = result
 
-                g_xx_grid[idx]            = gxx
-                g_xy_real_grid[idx]       = gxyr
-                g_xy_imag_grid[idx]       = gxyi
-                g_yy_grid[idx]            = gyy
-                trace_grid[idx]           = tr
-                chern_grid[idx]           = ch
-                eigenvalues_grid[idx]     = eigenvalues
-                eigenfunctions_grid[idx]  = eigenfunctions
-                hamiltonian_grid[idx]     = hamiltonian_array
-                hamiltonian_prime_grid[idx] = hamiltonian_prime_array
-                eigenvalues_sym_grid[idx] = eigenvalues_sym
+        g_xx_grid[idx] = gxx
+        g_yy_grid[idx] = gyy
+        g_zz_grid[idx] = gzz
+        g_xy_real_grid[idx] = gxyr
+        g_xy_imag_grid[idx] = gxyi
+        g_xz_real_grid[idx] = gxzr
+        g_xz_imag_grid[idx] = gxzi
+        g_yz_real_grid[idx] = gyzr
+        g_yz_imag_grid[idx] = gyzi
+        trace_grid[idx] = tr
+        chern_grid[idx] = ch
+        if winding_grid is not None:
+            winding_grid[idx] = winding
+        eigenvalues_grid[idx] = eigenvalues
+        eigenfunctions_grid[idx] = eigenfunctions
+        hamiltonian_grid[idx] = hamiltonian_array
+        hamiltonian_prime_grid[idx] = hamiltonian_prime_array
+        floquet_max_ratio_grid[idx] = floquet_max_ratio_array
+        floquet_max_ratio_indices_grid[idx] = floquet_max_ratio_indices_array
+        eigenvalues_sym_grid[idx] = eigenvalues_sym
+        return idx
 
+    if procs == 1:
+        result_iterator = map(worker, points_labeled)
+        with tqdm(
+            total=len(points_labeled),
+            desc="QGT per parameter point",
+            unit="pt",
+        ) as pbar:
+            for result in result_iterator:
+                idx = _store_result(result)
                 pbar.set_postfix_str(_label_for_idx(idx))
                 pbar.update(1)
+    else:
+        with Pool(processes=procs) as pool:
+            with tqdm(
+                total=len(points_labeled),
+                desc="QGT per parameter point",
+                unit="pt",
+            ) as pbar:
+                for result in pool.imap(worker, points_labeled):
+                    idx = _store_result(result)
+                    pbar.set_postfix_str(_label_for_idx(idx))
+                    pbar.update(1)
 
     # Save bundle
-    np.savez_compressed(
-        bundle_path,
+    bundle_data = dict(
         names=np.array(names, dtype=object),
         shape=np.array(shape, dtype=int),
-        kx=kx, ky=ky,
-        dkx=abs(kx_lin[1] - kx_lin[0]) if Nx > 1 else np.nan,
-        dky=abs(ky_lin[1] - ky_lin[0]) if Ny > 1 else np.nan,
+        ki=ki,
+        kj=kj,
+        kx=kx,
+        ky=ky,
+        kz=kz,
+        order=np.array(order),
+        kk=np.float64(kk),
+        coordinate_labels=np.array(grid_info["coordinate_labels"], dtype=object),
+        coordinate_system=np.array(grid_info["coordinate_system"]),
+        phi_periodic=np.bool_(grid_info["phi_periodic"]),
+        dki=np.float64(grid_info["dki"]),
+        dkj=np.float64(grid_info["dkj"]),
+        delta_k=np.float64(delta_k),
         mesh_spacing=np.int32(mesh_spacing),
         **{f"axis_{i}_{names[i]}": axes[i] for i in range(len(names))},
         g_xx_grid=g_xx_grid,
+        g_yy_grid=g_yy_grid,
+        g_zz_grid=g_zz_grid,
         g_xy_real_grid=g_xy_real_grid,
         g_xy_imag_grid=g_xy_imag_grid,
-        g_yy_grid=g_yy_grid,
+        g_xz_real_grid=g_xz_real_grid,
+        g_xz_imag_grid=g_xz_imag_grid,
+        g_yz_real_grid=g_yz_real_grid,
+        g_yz_imag_grid=g_yz_imag_grid,
         trace_grid=trace_grid,
         chern_grid=chern_grid,
         eigenvalues_grid=eigenvalues_grid,
         eigenfunctions_grid=eigenfunctions_grid,
         hamiltonian_grid=hamiltonian_grid,
         hamiltonian_prime_grid=hamiltonian_prime_grid,
+        floquet_max_l=np.int32(max_l),
+        floquet_max_ratio_grid=floquet_max_ratio_grid,
+        floquet_max_ratio_indices_grid=floquet_max_ratio_indices_grid,
         k_path=k_path,
         k_dist=k_dist,
         node_indices=np.array(node_indices, dtype=int),
@@ -236,15 +435,31 @@ def compute_qgt_nd_parallel(
         path_points=path_points,
         eigenvalues_sym_grid=eigenvalues_sym_grid,
     )
+    if order == "xyz":
+        bundle_data["dkx"] = np.float64(grid_info["dki"])
+        bundle_data["dky"] = np.float64(grid_info["dkj"])
+    if winding_grid is not None:
+        bundle_data["winding_radius"] = np.asarray(ki[0, :], dtype=float)
+        bundle_data["winding_grid"] = winding_grid
+    np.savez_compressed(bundle_path, **bundle_data)
 
     meta = {
         "Hamiltonian_Template": H_template,
         "param_ranges": param_ranges,
         "parameter_spacing": parameter_spacing,
-        "kx_range": tuple(kx_range),
-        "ky_range": tuple(ky_range),
+        "grid_info": grid_info,
+        "ki_range": tuple(ki_range),
+        "kj_range": tuple(kj_range),
+        "kk": kk,
+        "order": order,
+        "include_endpoints": bool(include_endpoints),
+        "delta_k": delta_k,
         "mesh_spacing": int(mesh_spacing),
         "band": int(band),
+        "floquet_max_l": int(max_l),
+        "floquet_ratio_band_basis": "zero_fourier_harmonic_energy_order",
+        "floquet_ratio_index_order": ("coupled_band", "photon_index_l"),
+        "floquet_ratio_includes_same_band": False,
     }
     with open(meta_path, "wb") as f:
         pickle.dump(meta, f)
@@ -344,8 +559,8 @@ def compute_qgt_nd_parallel(
 #     "omega": {"n": 32, "scale": "log"},
 # }
 # k = 0.82
-# kx_range = (-k, k)
-# ky_range = (-k, k)
+# ki_range = (-k, k)
+# kj_range = (-k, k)
 # mesh_spacing = 150
 
 
@@ -396,22 +611,39 @@ THF_OMEGA_MIN = 5000
 THF_OMEGA_MAX = 100000
 H_template.omega = THF_OMEGA_MIN
 
+# param_ranges = {
+#     "V": (0.0, THF_V_MAX),
+#     "omega": (THF_OMEGA_MIN, THF_OMEGA_MAX),
+# }
+
+# parameter_spacing = {
+#     "V": {"n": 5, "scale": "linear"},
+#     "omega": {"n": 16, "scale": "log"},
+# }
+
 param_ranges = {
-    "V": (0.0, THF_V_MAX),
     "omega": (THF_OMEGA_MIN, THF_OMEGA_MAX),
 }
 
 parameter_spacing = {
-    "V": {"n": 5, "scale": "linear"},
     "omega": {"n": 16, "scale": "log"},
 }
 
-kx_range = (-H_template.k_theta, H_template.k_theta)
-ky_range = (-H_template.k_theta, H_template.k_theta)
+order = "xyz"
+kk = 0.0
+include_endpoints = True
+ki_range = (-H_template.k_theta, H_template.k_theta)
+kj_range = (-H_template.k_theta, H_template.k_theta)
+
+# Polar example for any supported cylindrical order:
+# order = "xpz"  # Also: ypz, xpy, zpy, ypx, zpx
+# ki_range = (0.0, H_template.k_theta)  # radius
+# kj_range = (0.0, 2.0 * np.pi)        # phi
 mesh_spacing = 150
 flat_band_index = 2
 num_points_per_segment = 100
 sweep_processes = 10
+floquet_max_l = 10
 
 
 def main():
@@ -425,14 +657,19 @@ def main():
         hamiltonian_template=H_template,
         param_ranges=param_ranges,
         parameter_spacing=parameter_spacing,
-        kx_range=kx_range,
-        ky_range=ky_range,
+        ki_range=ki_range,
+        kj_range=kj_range,
         mesh_spacing=mesh_spacing,
         band=flat_band_index,
         num_points_per_segment=num_points_per_segment,
         processes=sweep_processes,
         force_new_dir=False,
         float_dtype=np.float32,
+        max_l=floquet_max_l,
+        kk=kk,
+        order=order,
+        include_endpoints=include_endpoints,
+        delta_k=1e-5,
     )
 
 
