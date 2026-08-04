@@ -1,0 +1,35 @@
+{
+  "dki": 0.06325354336086875,
+  "dkj": 0.06325354336086875,
+  "hamiltonian_name": "MinimalHamSG127_2c2d",
+  "hamiltonian_params": {
+    "A0": 0.0,
+    "Jx": 0.0,
+    "Jy": 0.0,
+    "Jz": 0.2,
+    "analytic_magnus": false,
+    "lamb": 0.1,
+    "lamb_z": 0.1,
+    "magnus_order": 1,
+    "mu": 0.0,
+    "omega": 0.0,
+    "polarization": "left",
+    "t1": 0.3,
+    "t2": 0.3,
+    "t3": 0.3,
+    "t4": 0.3
+  },
+  "include_endpoints": true,
+  "ki_range": [
+    -4.71238898038469,
+    4.71238898038469
+  ],
+  "kj_range": [
+    -4.71238898038469,
+    4.71238898038469
+  ],
+  "kk": 0.0,
+  "mesh_spacing": 150,
+  "n_bands": 4,
+  "order": "xyz"
+}

@@ -9,7 +9,7 @@ from .QGT_calc_functions_3comp import *
 def QGT_grid_num(
     ki, kj, eigenvalues, eigenfunctions, quantum_geometric_tensor_func,
     hamiltonian, delta_k, band_index,
-    progress_label=None, kk=0, order="xyz"
+    progress_label=None, kk=0, order="xyz", show_progress=True
 ):
     """
     Calculate the quantum geometric tensor (QGT) components for a ki-kj grid with a fixed kk,
@@ -44,7 +44,13 @@ def QGT_grid_num(
     total_points = shape[0] * shape[1]
     desc = f"QGT grid [{progress_label}]" if progress_label else "Computing QGT grid"
 
-    with tqdm(total=total_points, desc=desc, unit="kpt", leave=False) as pbar:
+    with tqdm(
+        total=total_points,
+        desc=desc,
+        unit="kpt",
+        leave=False,
+        disable=not show_progress,
+    ) as pbar:
         for i in range(shape[0]):
             for j in range(shape[1]):
                 eigenfunction = eigenfunctions[i, j]

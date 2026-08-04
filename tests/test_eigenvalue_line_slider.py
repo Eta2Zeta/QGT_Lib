@@ -3,7 +3,7 @@ import json
 import numpy as np
 import pytest
 
-from Library.plotting_lib_2d import plot_eigenvalue_line_slider
+from Library.plotting_eigenvalues_2d import plot_eigenvalue_line_slider
 
 
 @pytest.fixture

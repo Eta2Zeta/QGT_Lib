@@ -2,24 +2,24 @@
     "hamiltonian_name": "gWaveAltermagnetHamiltonian",
     "kk": 0.0,
     "ki_range": [
-        -6.199964309733499,
-        6.199964309733501
+        0.0,
+        4.71238898038469
     ],
     "kj_range": [
-        -6.199964309733499,
-        6.199964309733501
+        0.0,
+        6.241297405131722
     ],
     "mesh_spacing": 150,
     "method_name": "numerical_phase_corrected",
     "include_endpoints": true,
-    "order": "xyz",
+    "order": "xpz",
     "hamiltonian_params": {
         "omega": 0.0,
         "A0": 0.0,
         "polarization": "left",
-        "magnus_order": 1,
+        "magnus_order": 0,
         "analytic_magnus": false,
-        "mu": 0,
+        "mu": 0.0,
         "Jx": 0.0,
         "Jy": 0.0,
         "Jz": 0.2,
@@ -28,10 +28,10 @@
         "t3": 0.3,
         "t4": 0.3,
         "lamb": 0.1,
-        "lamb_z": 0.1
+        "lamb_z": 0.5
     },
-    "dki": 0.08377580409572781,
-    "dkj": 0.08377580409572781,
+    "dki": 0.03162677168043416,
+    "dkj": 0.041887902047863905,
     "band_index": "ALL",
     "n_bands": 4
 }

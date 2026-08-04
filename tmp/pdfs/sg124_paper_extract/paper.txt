@@ -1,0 +1,1392 @@
+                                       PHYSICAL REVIEW B 110, 144412 (2024)
+  Editors’ Suggestion
+
+
+
+
+                                             Minimal models for altermagnetism
+                Mercè Roig ,1 Andreas Kreisel ,1 Yue Yu,2 Brian M. Andersen ,1 and Daniel F. Agterberg                       2
+                              1
+                                Niels Bohr Institute, University of Copenhagen, DK-2100 Copenhagen, Denmark
+                        2
+                          Department of Physics, University of Wisconsin-Milwaukee, Milwaukee, Wisconsin 53201, USA
+
+                   (Received 15 March 2024; revised 18 June 2024; accepted 12 September 2024; published 8 October 2024)
+
+                 Altermagnets feature vanishing net magnetization, like antiferromagnets, but exhibit time-reversal symmetry
+              breaking and momentum-dependent spin-split band structures. Motivated by the fact that all proposed altermag-
+              nets have paramagnetic states with multiple magnetic ions in the unit cell, we develop a class of realistic minimal
+              models for altermagnetism through a comparative analysis of the magnetic atom Wyckoff site symmetry and the
+              space group symmetry. Specifically, we develop electronic models for all centrosymmetric space groups with
+              magnetic atoms occupying inversion symmetric Wyckoff positions with multiplicity two. These forty models
+              include monoclinic, orthorhombic, tetragonal, rhombohedral, hexagonal, and cubic materials and describe
+              d-wave, g-wave, and i-wave altermagnetism. We further define and examine an altermagnetic susceptibility
+              and mean field instabilities within a Hubbard model to reveal that these models have altermagnetic ground
+              states. We shed insight on why most altermagnets form in nonsymmorphic space groups. We also provide the
+              symmetry-required form of the spin-orbit coupling and show it yields a Berry curvature that is linear in this
+              coupling for all forty models. We apply our models to representative cases of RuO2 , MnF2 , FeSb2 , κ-Cl, CrSb,
+              and MnTe.
+
+              DOI: 10.1103/PhysRevB.110.144412
+
+
+                        I. INTRODUCTION                                   predict new physical properties and useful functionalities for
+                                                                          applications. For such purposes, a crucial and useful step is
+    Altermagnetism has been recently recognized as a new
+                                                                          to identify realistic minimal tight-binding models that provide
+class of magnetic order [1–8]. This exceptional state shares
+                                                                          a platform to study the altermagnetic phase and understand
+common features with both conventional ferromagnets and
+                                                                          what favors this phase over conventional ferromagnetism and
+antiferromagnets. In particular, altermagnets exhibit energy
+                                                                          antiferromagnetism. Additionally, realistic tight-binding mod-
+splitting between spin states, similar to ferromagnets, while             els provide a setup to obtain analytic expressions for the Berry
+still featuring vanishing net magnetization, akin to antifer-             curvature and study the anomalous Hall response.
+romagnets. Nevertheless, the opposite spin sublattices in an                  Minimal models should naturally account for, and give
+altermagnet are not related by translation or inversion, but              insight into: stable altermagnetic order, the characteristic mo-
+instead they are connected by a crystal rotation symmetry.                mentum dependent spin splittings, and SOC-generated Berry
+A large number of materials have been proposed to host                    curvature. In addition, these models should be sufficiently
+this collinear-compensated magnetic order [6,7], including the            general to allow for an understanding of altermagnetism in
+rutile metals RuO2 [2,3,9] and MnF2 [4,8], FeSb2 [5], κ-Cl                monoclinic, orthorhombic, tetragonal, hexagonal, and cubic
+[10,11], MnTe [12] and CrSb [13]. In Ref. [14], a search                  materials and give rise to d-wave, g-wave, or i-wave alter-
+through the MAGNDATA database of magnetic materials                       magnetism. In this work, we provide such minimal models
+yields 62 altermagnetic candidate materials.                              of altermagnetism.
+    The unique electronic structure of altermagnets exhibiting                Our strategy for developing minimal models relies on the
+a spin splitting in reciprocal space makes them candidates                relationship between the site symmetry (S) of magnetic atoms
+for spintronics applications [4,15–17]. Specifically, the van-            and the point group symmetry (P) of the space group. This
+ishing net magnetization consequently leads to insensitivity              is motivated by the realization that in altermagnetic materials
+to external magnetic field perturbations, and allows for ap-              S is generically a smaller group than P. This follows because
+plications without requiring relativistic spin-orbit coupling             the magnetic sublattice atoms must be related by elements of
+(SOC). Another consequence predicted for this time-reversal               P [6], and these elements therefore cannot belong to S. This
+symmetry breaking phase includes the anomalous Hall effect                local point group symmetry breaking allows the development
+[3,18], previously associated mainly with ferromagnetism. In              of local multipolar moments that are symmetry forbidden
+the case of MnTe or RuO2 , for example, recent experimental               in P [26]. For example in RuO2 , the Ru has site symmetry
+reports are consistent with the expected response of altermag-            S = D2h while the point group symmetry is P = D4h . S allows
+nets, including the crystal Hall effect [19,20], spin currents            for local xy quadrupolar order to appear at the two Ru sites.
+[21], spin-splitting torque phenomena [22,23], and broken                 P implies that this xy quadrupolar order is of opposite sign
+Kramer’s degeneracy in the band structure [12,24,25].                     on the two Ru sites. In our minimal models, this local point
+    Understanding the origin of altermagnetism in these mate-             group symmetry breaking is key to determining the structure
+rials is necessary to study the detailed nature of this phase, and        of the altermagnetic spin splitting. Since these altermagnetic
+
+2469-9950/2024/110(14)/144412(20)                                 144412-1                                  ©2024 American Physical Society
+MERCÈ ROIG et al.                                                                             PHYSICAL REVIEW B 110, 144412 (2024)
+
+states are typically inversion invariant, it is natural to consider       TABLE I. Space groups and Wyckoff positions of multiplicty
+groups P and S that contain inversion symmetry.                       2 that allow altermagnetism: monoclinic and orthorhombic groups.
+    Specifically, we construct models for all space groups            The notation follows the Bilbao crystallographic server [34,35]. We
+that contain inversion symmetry and also contain inversion            note that some Wyckoff positions appear with an apparent multi-
+symmetric Wyckoff positions of multiplicity 2. Our minimal            plicity greater than 2, this occurs because a unit cell larger than the
+models therefore exhibit two bands in the paramagnetic state.         primitive unit cell is conventionally used in these cases.
+It is worthwhile contrasting our models with simpler single-
+                                                                      SG (P)          Wyckoff (S)         N         Spin splitting ( fN (k))
+band models [27,28] in which Fermi-surface instabilities of
+the Pomeranchuk type occur in the spin-triplet channel with           11 (C2h )        2a-2d (Ci )         Bg            αky kx + βky kz
+high orbital partial waves. In these models, the order parame-        12 (C2h )        4e, 4f (Ci )        Bg            αky kx + βky kz
+ter is the altermagnetic spin splitting itself. In our case, the      13 (C2h )        2a-2d (Ci )         Bg            αky kx + βky kz
+altermagnetic spin splitting is a secondary order parameter           14 (C2h )        2a-2d (Ci )         Bg            αky kx + βky kz
+which is induced through a combination of Néel order (the             15 (C2h )        2a-2d (Ci )         Bg            αky kx + βky kz
+primary order parameter) and the local point group symmetry
+                                                                      49 (D2h )       2a-2d (C2h )        B1g                  kx ky
+breaking discussed above. We believe our minimal models
+                                                                      51 (D2h )       2a-2d (C2h )        B2g                  kx kz
+are more realistic than single band models for two reasons:           53 (D2h )       2a-2d (C2h )        B3g                  ky kz
+(i) there are no known microscopic theories that give rise to         55 (D2h )       2a-2d (C2h )        B1g                  kx ky
+altermagnetic Pomeranchuk instabilities and (ii) DFT results          58 (D2h )       2a-2d (C2h )        B1g                  kx ky
+for altermagnetism in RuO2 show that the largest band split-          63 (D2h )       4a,4b (C2h )        B3g                  ky kz
+tings in the altermagnetic state occur at band degeneracies           64 (D2h )       4a,4b (C2h )        B3g                  ky kz
+[2,9], such degeneracies are not present in single-band Pomer-        65 (D2h )       4e,4f (C2h )        B1g                  kx kz
+anchuk models.                                                        66 (D2h )       4c-4f (C2h )        B1g                  kx ky
+    We note that several earlier works have applied various           67 (D2h )       4c-4f (C2h )        B3g                  kx ky
+tight-binding models to address, e.g., spin-wave dispersions          72 (D2h )       4c,4d (C2h )        B1g                  kx ky
+and superconductivity of altermagnets [29,30]. These toy              74 (D2h )       4a,4b (C2h )        B3g                  kx ky
+models focused on 2D square and Lieb lattices. Here, we take          74 (D2h )       4c,4d (C2h )        B2g                  kx ky
+a different strategy by systematically developing symmetry-
+dictated minimal models for all centrosymmetric space groups
+with magnetic atoms occupying inversion symmetric Wyckoff
+                                                                      orthorhombic, e.g., κ-Cl and FeSb2 , d-wave altermagnets, to
+positions with multiplicity two. Through such a comprehen-
+                                                                      hexagonal, e.g., CrSb and MnTe, g-wave altermagnets, and to
+sive investigation, we can gain insight into the universal
+                                                                      cubic i-wave altermagnets.
+properties of altermagnets, such as the band structure prop-
+                                                                         The paper is organized at follows. In Sec. II, we expose
+erties favorable for altermagnetism and a general form for
+                                                                      the minimal model reproducing the DFT band structure for
+the Berry curvature in altermagnets. Additionally, through
+                                                                      RuO2 , which justifies the choice of the altermagnetic order
+comparison with DFT, our models allow for material-specific
+                                                                      parameter. In Sec. III, we focus on the single-orbital minimal
+studies, as demonstrated below. Finally, distinct from earlier
+                                                                      model to analyze and compare the bare susceptibilities in the
+studies [3,31,32], all minimal models provided below contain
+                                                                      ferromagnetic and the altermagnetic channels. We show that
+the symmetry-allowed momentum-dependent SOC through-
+                                                                      this model is sufficient to capture a leading altermagnetic in-
+out the Brillouin zone (BZ), crucial for capturing important
+                                                                      stability by using both the random phase approximation (RPA)
+band degeneracies at the faces of the BZ.
+                                                                      and self-consistent Hartree-Fock calculations. In Sec. IV, we
+    The tight-binding models we develop are compared to
+                                                                      consider the same minimal model and use SOC in order to de-
+DFT results for RuO2 to demonstrate that our models capture
+                                                                      rive an analytic expression linear in the spin-orbit strength for
+key properties of the band structure and altermagnetic spin
+                                                                      the Berry curvature in the four-band model. In Sec. V, we ex-
+splittings. By introducing an altermagnetic susceptibility and
+                                                                      tend the discussion of minimal models to other altermagnetic
+using susceptibility analyses and self-consistent Hartree-Fock
+                                                                      candidates with orthorhombic, hexagonal, and cubic lattices.
+approaches, we show that these minimal models indeed give
+                                                                      Finally, Sec. VI presents our discussion and conclusions.
+rise to altermagnetism for a broad range of parameters. This
+susceptibility analysis sheds insight into the reason that of the
+53 inversion symmetric materials identified as altermagnetic               II. MINIMAL MODELS FOR ALTERMAGNETISM
+in Ref. [14], 52 belong to nonsymmorphic space groups. In
+particular, we show that nonsymmorphic symmetry-required                                  A. General considerations
+band degeneracies help stabilize altermagnetism. In addition,            Our models apply to all centrosymmetric space groups that
+we derive the form of the SOC for these models. This SOC              contain inversion symmetric Wyckoff positions of multiplicity
+is important for understanding the anomalous Hall effect in           2. Tables I and II give these space groups and the correspond-
+altermagnets. We provide a general analytic expression for the        ing Wyckoff positions. A key input for our models is the
+SOC-derived Berry curvature. The resulting Berry curvature is         relationship between the point group P and the Wyckoff site
+linear (as opposed to quadratic as found in previous minimal          symmetry group S. Specifically, the primary order parameter
+models [3,31]) in the SOC. This provides a natural explana-           we consider is Néel order on the two Wyckoff positions
+tion for the large crystal Hall effect in altermagnets. Finally,      (perhaps unsurprisingly, we show that this order parameter
+we apply our model to tetragonal, e.g., MnF2 and RuO2 , and           naturally accounts for the DFT bands in the altermagnetic
+
+                                                                144412-2
+MINIMAL MODELS FOR ALTERMAGNETISM                                                                  PHYSICAL REVIEW B 110, 144412 (2024)
+
+  TABLE II. Space groups and Wyckoff positions that allow alter-                          B. General minimal electronic model
+magnetism: tetragonal, rhombehedral, hexagonal, and cubic groups.
+                                                                                To construct our minimal tight-binding models we require
+SG (P)        Wyckoff (S)       N         Spin splitting ( fN (k))
+                                                                            N identified in Tables I and II. For ease of presentation,
+                                                                            we restrict ourselves to explicitly providing models for the
+83 (C4h )      2e,2f (C2h )     Bg          αkx ky + β(kx2 − ky2 )          twenty-seven entries that have primitive unit cells (these are
+84 (C4h )      2a-2d (C2h )     Bg          αkx ky + β(kx2 − ky2 )          the Wyckoff positions with multiplicity explicitly labeled by 2
+                                                                            in Tables I and II). The corresponding two sublattice positions
+87 (C4h )        4c (C2h )      Bg          αkx ky + β(kx2 − ky2 )          of the magnetic ions in the unit cell will be labeled by the
+123 (D4h )     2e,2f (D2h )     B1g                 kx2 − ky2               Pauli matrices τi , we will label spin degrees of freedom by
+                                                                            Pauli matrices σi . We also assume that the orbital degrees
+124 (D4h )     2b,2d (C4h )     A2g             kx ky (kx2 − ky2 )
+                                                                            of freedom belong to a singly degenerate IR of the Wyckoff
+127 (D4h )     2a,2b (C4h )     A2g             kx ky (kx2 − ky2 )          site symmetry group S. It is possible to consider orbitals that
+127 (D4h )     2c,2d (D2h )     B2g                    kx ky                belong to degenerate IRs, but these models will necessarily
+128 (D4h )     2a,2b (C4h )     A2g             kx ky (kx2 − ky2 )          contain more degrees of freedom and hence are not minimal
+131 (D4h )     2a-2d (D2h )     B1g                 kx2 − ky2               (we carry out a limited investigation of the multiorbital case
+                                                                            for RuO2 and find that the key features of our minimal model
+132 (D4h )     2a,2c (D2h )     B2g                    kx ky
+                                                                            persist). Our minimal model is remarkably versatile: specifi-
+136 (D4h )     2a,2b (D2h )     B2g                    kx ky                cally the model can be applied to monoclinic, orthorhombic,
+139 (D4h )      4c (D2h )       B1g                 kx2 − ky2               tetragonal, rhombehedral, hexagonal, and cubic space groups
+140 (D4h )      4c (C4h )       A2g             kx ky (kx2 − ky2 )          and allows for d-wave, g-wave, and i-wave altermagnetism.
+140 (D4h )      4d (D2h )       B2g                    kx ky                Furthermore, this models correctly capture the spin splittings
+                                                                            and the largest band splittings seen by DFT in the altermag-
+163 (D3d )       2b (S6 )       A2g            ky kz (ky2 − 3kx2 )          netic state.
+165 (D3d )       2b (S6 )       A2g            kx kz (kx2 − 3ky2 )              The general minimal model for altermagnetism has the
+                                                                            form
+167 (D3d )       6b (S6 )       A2g            kx kz (kx2 − 3ky2 )
+                                                                                   H = ε0,k + tx,k τx + tz,k τz + τy λ k · σ + τz J · σ ,   (1)
+176 (C6h )       2b (S6 )       Bg            αky kz (ky2 − 3kx2 )
+                                             +βkx kz (kx2 − 3ky2 )          with a sublattice independent dispersion ε0,k , inter- and in-
+                                                                            trasublattice hopping coefficients tx,k and tz,k , a SOC term
+192 (D6h )      2b (C6h )       A2g      kx ky (kx2 − 3ky2 )(ky2 − 3kx2 )   λ k , and a primary order parameter J.   Here the time-reversal
+193 (D6h )      2b (D3d )       B2g            kx kz (kx2 − 3ky2 )          symmetry operator is T = iτ0 σy K (where K is complex conju-
+194 (D6h )      2a (D3d )       B1g            ky kz (3kx2 − ky2 )          gation). The parameters in this minimal model are constrained
+                                                                            by the space group, point group G, and Wyckoff site sym-
+223 (Oh )       2a (D3d )       A2g              kx4 (ky2 − kz2 )           metry group S. We have restricted our minimal models for
+                                                +ky4 (kz2 − kx2 )           nondegenerate IRs of S, and Eq. (1) is valid for all such non-
+                                                +kz4 (kx2 − ky2 )           degenerate IRs since the Hamiltonian is built from electronic
+                                                                            bilinears that are independent of any sign change that arise for
+                                                                            a local rotation. The sublattice operators τ0 and τx are invariant
+state). As discussed in Ref. [33], this Néel order transforms as            under P and the operators τy and τz belong to the IR N shown
+N ⊗ AS , where N is an irreducible representation (IR) of                in Tables I and II (this follows because these two operators
+the point group G and AS is the axial IR of the spin-rotation              change sign under the interchange of the two sublattice sites).
+group.                                                                      In addition, translation symmetry implies ε0,k = ε0,k+G and
+   The IR N plays a central role in our theory and can be                  tz,k = tz,k+G , where G is a reciprocal lattice vector and, since
+identified from the knowledge of P and S by writing P =                     τy and τx couple the two magnetic atoms, tx,k+G = eiG·t12 tx,k
+S + hS, where h is a point group symmetry that switches the                 and λ k+G = eiG·t12 λ k where t12 is the translation between the
+two Wyckoff positions. N is then identified as the IR of P that            two magnetic atoms in the unit cell. All coefficients are even
+has character 1 for all elements in S and −1 for all elements               under k → −k due to the presence of inversion I in the
+in hS. In Tables I and II, N is given for each space group                 Wyckoff site symmetry group S.
+and Wyckoff position. Further, as we show explicitly later,                       Prior to providing specific examples and justifying our
+the altermagnetic spin splitting in all our minimal models is               minimal model with materials examples, we highlight impor-
+given by fN (k)σ where σ denotes the Néel spin direction                 tant general properties of the parameters that appear. First we
+and fN (k) is a momentum dependent function with the same                  note our altermagnetic order parameter encodes collinear mo-
+symmetry as N . In Tables I and II, under the column spin                  ments parallel to J that have opposite orientation on the two
+splitting, we give representative forms of fN (k). We note that            sublattice magnetic atoms. This term carries no k dependence.
+while we show the microscopic origin fN (k) for electronic                 The intrasublattice hopping term tz,k plays an important role
+models that include nondegenerate orbital IRs of the group S,               in our theory and its k dependence must share the same sym-
+the form of fN (k) is also correct for degenerate orbital IRs of           metry as the τz operator—hence tz,k belongs to the nontrivial
+the group S provided the site symmetry group S is not broken                IR N . This term quantifies the existence of local multipole
+by a local electronic orbital ordering.                                     moments that have opposite sign on the two magnetic atoms
+
+                                                                      144412-3
+MERCÈ ROIG et al.                                                                                  PHYSICAL REVIEW B 110, 144412 (2024)
+
+and appears due to the local point-group symmetry breaking
+                                                                            (a)                                (b )
+at the magnetic atom position. As discussed in more detail be-
+low, it is this term that gives rise to the momentum-dependent
+spin splitting that defines altermagnets. The hopping param-
+eter tx,k has the full point group symmetry. As we show
+later, if this hopping parameter is zero, then altermagnetism
+and ferromagnetism are degenerate within an RPA treatment.
+Finally, the SOC term follows from T and I symmetries. In
+particular, both the spin operators and τy are odd under T , so
+their product is T -invariant. From I symmetry, λ k = λ −k and            (c)                                 (d )
+hence this is also T invariant. As we show below, λ k gives rise
+to a Berry curvature that is linear in the magnitude of SOC.
+    It is informative to consider the dispersion relation when
+SOC vanishes. This is given by
+                              2                        1/2
+            Eα=± = ε0,k + α tx,k   + (tz,k + J · σ )2      . (2)
+This reveals that the altermagnetic spin splitting appears
+through the product tz,k J · σ and hence is a consequence of
+the interplay between the local symmetry breaking and the
+Néel order. This provides a microscopic realization of the                      FIG. 1. Sketch of the crystal structure for the tetragonal SG
+Ginzburg-Landau bilinear coupling between the Néel order                    136 and the relevant hoppings in the minimal model presented in
+and even-parity, odd-time reversal, octupolar order, which                  Eq. (1), with the red and blue colors representing the two sublattices.
+gives rise to the altermagnetic spin splitting [26], as discussed           (a) Crystal structure including the nonmagnetic atoms denoted by
+in the context of RuO2 in Ref. [33].                                        the green color. (b) Three-dimensional lattice illustration of the tx,k
+    As a specific example of our minimal model, it is worth-                hopping between sublattices. [(c) and (d)] Top view of the lattice
+while considering the simplest model for SG 136 and Wyckoff                 showing the tz,k hopping with the symmetry-imposed sign change,
+position 2a (this is the Wyckoff position for the magnetic                  which has an opposite sign on the two sublattices due to the presence
+atoms in RuO2 , MnF2 , NiF2 , and CoF2 ). SG 136 has point                  of the nonmagnetic atoms.
+group D4h and the 2a Wyckoff position has site symmetry D2h ,
+this implies that τy and τz belong to the B2g representation of                   C. Dispersion relations, altermagnetic spin splittings,
+D4h . The hoppings tx,k and tz,k are illustrated in Fig. 1. Here,                                    and Weyl-lines
+                      k
+tx,k = t0 cos k2x cos 2y cos k2z , the factors k2i appear because of           The general form of the dispersion for the minimal model
+the condition tx,k+G = eiG·t12 tx,k with t12 = ( 21 , 21 , 21 ). In ad-     in Eq. (1) is given by
+dition, tz,k = tz0 sin kx sin ky has d-wave symmetry-imposed                                              2
+sign changes which follow from the condition that τz belongs                          Eα=±,β=± = ε0,k + α tx,k + tz,k
+                                                                                                                  2
+                                                                                                                      + λ 2k + J2
+                                                                                                                              
+to the B2g representation and quantifies local point group
+                                                                                                                    k × J)2 1/2 .
+                                                                                                          2 J2 + (λ
+                                                                                                   + β2 tz,k                        (4)
+symmetry breaking through the appearance of xy quadrupolar
+order on the Ru sites due to surrounding O atoms. We note
+                                                                            In the limit of vanishing SOC, λ k = 0, the four bands are
+that for kx = π or ky = π both tx,k and tz,k vanish, revealing
+                                                                            generally nondegenerate, except in two cases. The first case
+symmetry-required nodal planes that exist due to the nonsym-
+                                                                            occurs when tz,k = 0. This defines Weyl planes in momen-
+morphic symmetry elements {C2x | 21 , 21 , 21 } and {C2y | 21 , 21 , 21 }
+                                                                            tum space with two twofold degenerate bands where the spin
+[36]. As we show later, these nodal planes aid in stabilizing
+                                                                            splitting vanishes. These Weyl planes are symmetry imposed
+the altermagnetic state. Further, for the spin degrees of free-
+                                                                            and always present due to the nontrivial symmetry of operator
+dom, σz ∼ A2g and (σx , σy ) ∼ Eg. Consequently, symmetry
+                                                                            τz . These Weyl planes are the nodes of the usual altermagnetic
+arguments imply that λ k is given by                                       spin splitting and, as mentioned earlier, are entirely given here
+                    kz     kx      ky                                       by the vanishing of the intrasublatice hopping tz,k . The second
+        λx,k = λ sin    sin cos ,                                           case corresponds to tx,k = 0 (which is often required by sym-
+                     2     2       2
+                       kz     ky      kx                                    metry to occur on the BZ boundary) and tz,k = ±|       J|, which
+        λy,k = −λ sin sin cos ,                                             defines Weyl lines. Along these lines, we have a twofold de-
+                       2      2       2                                     generacy together with two nondegenerate bands. These lines
+                      kz     kx      ky                                     are not symmetry imposed and appear when |tz,k | is larger than
+        λz,k = λz cos cos cos (cos kx − cos ky ).             (3)
+                      2       2       2                                     |
+                                                                             J|. As we will discuss in Sec. IV, this occurs in RuO2 and
+This approach has been applied to define the simplest tight-                these Weyl lines can be important for the Berry curvature.
+binding form for the parameters tx,k , tz,k , λ k for 27 Wyckoff                When λ k = 0, the Weyl planes discussed above (for which
+positions in Appendix A, providing many altermagnetic ex-                   tz,k = 0) become partially gapped to form Weyl lines or Weyl
+amples. We note that in the following we will consider                      points. Specifically, when tz,k = 0, Weyl lines occur when
+additional hopping terms in our minimal model to fit DFT                    symmetry requires the cross product between λ k and J to
+results. However, for SG 136, λ k remains the same.                        vanish, λ k × J = 0. The Weyl lines discussed in the previous
+
+                                                                      144412-4
+MINIMAL MODELS FOR ALTERMAGNETISM                                                               PHYSICAL REVIEW B 110, 144412 (2024)
+
+
+paragraph become gapped if λ k · J = 0 and survive otherwise.
+Related Weyl lines have been discussed in Refs. [32,37–39].
+
+ D. Application to RuO2 : Justification for the order parameter
+   Here we demonstrate how this model can describe the non-
+magnetic band structure of tetragonal altermagnetic material
+candidate RuO2 found in DFT [2], and captures the alter-
+magnetic spin splitting of the bands. We are giving explicit
+models for materials and examine these with realistic param-
+eters, thus all energies are in units of eV (unless specified
+otherwise). As shown in Appendix B, the orbital projection
+of the nonrelativistic DFT bands reveals that the dxy , dxz , dyz
+orbitals form bands crossing the Fermi level. We show that the
+minimal model can be generalized to a multiorbital case since
+the order parameter describing the spin splitting comes only
+from opposite spins in the two sublattices. In Appendix C,                 FIG. 2. Normal state (a) and altermagnetic (b) band structures for
+we discuss the case of another tetragonal material candi-              RuO2 obtained from the minimal model in Eq. (1) taking Eqs. (5) and
+date, MnF2 , where DFT has also identified an altermagnetic            (6), with hopping parameters detailed in Appendix D to reproduce
+phase [4].                                                             the DFT results (see Appendix B and Ref. [2]) and Jz = 0.2 in (b).
+   To construct the specific one-orbital tight-binding mod-            The gray bands correspond to the two-orbital model in Eqs. (7) and
+els for this tetragonal material, we consider dxy orbitals on          (8) with the hoppings in Appendix D. From the latter model there
+                                                                       are two more bands with a twofold spin-degeneracy higher in energy
+the Wyckoff position 2a for which the example discussed in
+                                                                       (not shown).
+Sec. II A applies. Specifically, we take the dispersion
+ ε0,k = t1 (cos kx + cos ky ) − μ + t2 cos kz + t3 cos kx cos ky
+         + t4 (cos kx + cos ky ) cos kz + t5 cos kx cos ky cos kz ,    the following symmetry-allowed terms:
+                                                                 (5)
+the hoppings                                                                   γz (ta,k +tb,k τx +tc,k τz ) + γx (td,k +te,k τx +t f ,k τz )
+                        kx      ky     kz                                          + tg,k γy τy + λ0 γy τ0 σz ,                                (7)
+         tx,k = t8 cos     cos cos ,
+                        2       2       2
+         tz,k = t6 sin kx sin ky + t7 sin kx sin ky cos kz ,    (6)    with
+and the SOC terms given by Eq. (3).
+   Figure 2(a) displays the normal state bands obtained from                   ta,k = (t9 + t10 cos kz )(cos kx − cos ky ),
+this minimal model using an appropriate choice of hopping                                      kx      ky      kz
+parameters specified in Appendix D. Notably, the minimal                       tb,k = t11 cos     cos cos (cos kx − cos ky ),
+model reproduces the main features of the bands, capturing                                     2        2      2
+the crossings at the Fermi level, as well as the characteristic                tc,k = t12 sin kx sin ky (cos kx − cos ky ),
+nodal lines along the X −M and Z−R−A directions. The tz,k τz                   td,k = t13 sin kx sin ky ,
+term in the minimal model in Eq. (1) is crucial since it is the
+only one controlling the splitting of the bands in the A−Z line.                               kx      ky    kz
+                                                                               te,k = t14 sin      sin cos ,
+In addition, the tx,k τx term is responsible for the splitting of                              2       2     2
+the band degeneracies in the −X and M−−Z directions.                         t f ,k = a0 + t15 (cos kx + cos ky ),
+The k-dependent SOC terms in Eq. (3) open a band splitting
+                                                                                                kx    ky  kz
+along the Z−R − A f lines (not shown), in agreement with the                   tg,k = t16 cos      cos cos (cos kx − cos ky ),                 (8)
+relativistic DFT results included in Appendix B. Figure 2(b)                                    2     2   2
+shows the band structure in the altermagnetic state obtained by
+including an order parameter as described in Eq. (1), resulting        where we have introduced the Pauli matrices γi to repre-
+in spin splittings in agreement with those obtained by the             sent orbital space, with γx ∼ B2g, γy ∼ A2g and γz ∼ B1g in
+magnetic DFT results [2]. Specifically, this model reproduces          the point group D4h . In contrast to the previous case, the
+the altermagnetic spin splitting along the M− and A−Z                 two-orbital model contains a symmetry-allowed on-site SOC
+directions, driven solely by the term tz,k τz .                        term λ0 , which splits the bands at the  point. Note that
+   The coupled dxz /dyz orbitals also cross the Fermi level            t13 sin kx sin ky γx has the same symmetry as tz,k and therefore
+in the RuO2 DFT bands (see Appendix B). Therefore we                   also controls the spin splitting along M− and A−Z lines.
+have additionally produced a two-orbital tight-binding model           The band structure from the dxz /dyz orbitals is also included in
+without including couplings with the one-orbital model. For            Fig. 2 and reproduces the relevant features of the DFT bands
+the two-orbital model, we duplicate the terms of the minimal           demonstrating that our choice of order parameter provides an
+model in Eq. (1) for the two orbitals and supplement it with           accurate description of the altermagnetic state.
+
+                                                                 144412-5
+MERCÈ ROIG et al.                                                                                PHYSICAL REVIEW B 110, 144412 (2024)
+
+                                                                                            †
+      III. SUSCEPTIBILITIES AND STABILIZATION                          where now S̃q = N1 k k+q     τz k . In the band basis, the al-
+                OF ALTERMAGNETISM                                      termagnetic susceptibility becomes
+   In the previous section, we introduced general minimal                                                             a  b 
+models describing altermagnetism. The purpose of the cur-                                 1                      2 f Ek − f Ek+q
+                                                                          χ (q, iqn )=−
+                                                                            AM
+                                                                                                   u τz uk+q
+                                                                                                    a      b
+                                                                                                                                    .
+rent section is to demonstrate that these models indeed give                              N k,a,b k                 iqn +Eka −Ek+q
+                                                                                                                               b
+
+rise to a leading altermagnetic instability and to examine                                                                         (15)
+the mechanism driving altermagnetism. For simplicity, we               In the q → 0, iqn → 0 limit, projecting the τz operator onto
+focus on the one-orbital model case shown in Eq. (1), even             the band basis using Eq. (10),
+though the discussion can also be extended to the multiorbital
+case. In addition, in order to analyze the expressions for the                                         1                    2[ f (Ek− ) − f (Ek+ )]
+susceptibility and describe simple mechanisms stabilizing al-               χ AM (0) = χ FM (0) −              sin2 θk
+                                                                                                       N                          Ek− − Ek+
+termagnetism, we neglect SOC in this section. We return to                                                 k
+the role of SOC in Sec. IV when discussing Berry curvature                                                                       
+                                                                                              df (ε)               df (ε)
+and the altermagnetic driven anomalous Hall effect.                                   −                        +                    .            (16)
+                                                                                               dε                   dε
+                                                                                                       ε=Ek+                ε=Ek−
+
+         A. Analytic expressions of the susceptibilities
+                                                                       In contrast to the ferromagnetic channel, the altermagnetic
+   To gain insight into what determines a leading alter-               susceptibility contains both intraband and interband contri-
+magnetic versus ferromagnetic instability, we have obtained            butions, and the competition between them determines the
+analytic expressions for the bare susceptibility in band space         leading instability. In order to stabilize altermagnetism, the
+considering the minimal Hamiltonian                                    interband contribution should be larger, whereas if the intra-
+                                                                       band part is dominant ferromagnetism is leading. Note that
+                     H  = ε0,k + tx,k τx + tz,k τz .           (9)    sin2 θk > 0 is also needed, i.e., a finite tx,k term in Eq. (1),
+From this expression, we see that the unitary transformation           since otherwise the two instabilities are degenerate.
+from sublattice to band basis is generally k-dependent. The               Importantly, Eq. (16) also shows that band degenera-
+transformation matrix                                                  cies enhance the interband susceptibility, as they correspond
+                                                                     to Ek+ − Ek− → 0. Hence, these have an important role in
+                         cos θ2k    sin θ2k                            stabilizing altermagnetism. Without considering SOC, the
+                 Uk =                                   (10)           nonsymmorphic symmetry ensures these band degeneracies
+                        − sin θ2k cos θ2k
+                                                                       on nodal planes. In the case of RuO2 , there are nodal planes
+                                                                       in the x, y faces of the BZ and two cross lines on the z
+diagonalizes H  , i.e., Uk† H Uk = diag(Ek+ , Ek− ), where
+                                                                       face, as seen in Fig. 2(a). Altermagnetism is also favored if
+cos θk = √ 2tz,k 2 and sin θk = √ 2tx,k 2 .                            there exists a nesting line between the two bands, leading
+            tz,k +tx,k                  tz,k +tx,k
+   The susceptibility in the usual spin channel is                     to a divergent interband susceptibility. In a three-dimensional
+                             β                                        picture, a nesting line in momentum space can exist between
+                                                                       two spherical Fermi surfaces centered around the same point,
+        χ FM (q, iqn ) = −      eiqn τ Tτ Sq (τ )S−q (0) ,     (11)
+                                 0
+                                                                       giving rise to a cusp in the density of states.
+                   †                                                     Examining the intra- and interband susceptibilities using
+where Sq = N1 k k+q       τ0 k , with the spinor k =                the tight-binding Hamiltonian in Eq. (1) shows that the band
+(ψk,1 ψk,2 ) in the sublattice basis. We refer to this as
+              T                                                        splitting due to the tx,k τx term has to be sufficiently large for
+the ferromagnetic channel since this susceptibility diverges at        the interband term to dominate in Eq. (16), which is typically
+q → 0 close to a ferromagnetic instability. Transforming to            the case since tx,k corresponds to nearest neighbor hopping, as
+the band basis,                                                        shown in Fig. 1. Expanding Eq. (16) close to the A point re-
+                                         a       b                 veals that the contribution from the van Hove singularity (see
+                   1                2 f  Ek  −  f  Ek+q                Fig. 2) gives rise to a dominant interband susceptibility, thus
+χ FM (q, iqn ) = −         uka uk+q
+                                b
+                                                        . (12)         stabilizing altermagnetism. To further emphasize the differ-
+                   N k,a,b            iqn + Ek − Ek+q
+                                              a      b
+                                                                       ence between symmorphic and nonsymmorphic space groups,
+Focusing on the uniform static susceptibility, the ferromag-           and elucidate the role of band degeneracies in driving the al-
+netic spin susceptibility has only intraband terms,                    termagnetic instability, we have compared the band structures
+                                                                      and the altermagnetic susceptibilities for a 2D minimal model
+                 1         df (ε)         df (ε)                       for SG 123 (symmorphic) and SG 136 (nonsymmorphic). SG
+    χ (0) = −
+      FM
+                                       +                . (13)         136 with Wyckoff position 2a has been discussed in Sec. II,
+                 N k        dε       +
+                                           dε       −
+                                      ε=Ek              ε=Ek           and based on the 2D model discussed in Appendix G inspired
+                                                                       by the RuO2 bands in Fig. 2(a), we consider the minimal
+   Motivated by the RuO2 band structure and the form of the            model
+altermagnetic order parameter shown in Eq. (1), we can obtain
+an equivalent expression for the altermagnetic susceptibility,                SG136
+                                                                             H2D    = t1 (cos kx + cos ky ) + t2 cos kx cos ky − μ
+                            β                                                                     kx    ky
+        χ AM (q, iqn ) = −     eiqn τ Tτ S̃q (τ )S̃−q (0) , (14)                       + t3 cos       cos τx + t4 sin kx sin ky τz ,             (17)
+                                 0
+                                                                                                   2     2
+
+                                                                 144412-6
+MINIMAL MODELS FOR ALTERMAGNETISM                                                                   PHYSICAL REVIEW B 110, 144412 (2024)
+
+                                                                          is U = 1.017 for SG 136 while for SG 123 a significantly
+                                                                          larger U = 1.72 would be needed.
+                                                                              Figure 3(e) shows the noninteracting altermagnetic sus-
+                                                                          ceptibility for both space groups. As seen, for SG 136 the
+                                                                          altermagnetic susceptibility is notably larger when compared
+                                                                          to SG 123. To understand this result, Eq. (16) is crucial as
+                                                                          it points out that band degeneracies have an important role in
+                                                                          stabilizing altermagnetism. Hence, in terms of altermagnetism
+                                                                          the main difference between symmorphic and nonsymmor-
+                                                                          phic space groups is indeed the symmetry-imposed band
+                                                                          degeneracies characteristic of nonsymmorphic space groups.
+
+                                                                                            B. Stabilization of altermagnetism
+                                                                             To demonstrate that the minimal tight-binding models in-
+                                                                          deed give rise to a leading altermagnetic instability, we start
+                                                                          from the Hamiltonian H  and consider standard intraorbital
+                                                                          Hubbard interaction U given by
+                                                                                                 Hint = U            ni,μ,↑ ni,μ,↓ ,       (19)
+                                                                                                               i,μ
+
+                                                                          where μ denotes the sublattice index, and show that this is
+                                                                          sufficient to give rise to altermagnetism. Note that Ref. [40]
+                                                                          demonstrated that Eq. (19) gives rise to the relevant altermag-
+                                                                          netic interaction in the band basis in the case of coincident van
+                                                                          Hove singularities.
+                                                                              In the multiorbital RPA approximation, the RPA suscepti-
+    FIG. 3. [(a) and (c)] Normal state and [(b) and (d)] alter-
+                                                                          bility matrix can be written as [29,41–43]
+magnetic band structures for space groups SG 136 (nonsymmor-
+phic) and SG 123 (symmorphic). In both cases, {t1 , t2 , t3 , t4 , μ} =    [χRPA (q, iqn )]μμ13 ,μ                                   −1 μ1 ,μ2
+                                                                                                ,μ4 = [χ0 (q, iqn )(1−U χ0 (q, iqn )) ]μ3 ,μ4 ,
+                                                                                                   2
+
+{−0.1, 0.1, 1.7, 0.3, 0.2} [see Eqs. (17) and (18)], with Jz = 0.2 in
+(b) and (d). (e) Comparison of the altermagnetic susceptibilities, with                                                                    (20)
+T = 10−4 and nk = 12002 , displaying a significantly larger altermag-     where iqn is a bosonic Matsubara frequency, [U ]μμ13 ,μ
+                                                                                                                               ,μ4 = U
+                                                                                                                                  2
+netic susceptibility in the nonsymmorphic case.                           for μ1 = μ2 = μ3 = μ4 and the bare susceptibility matrix is
+                                                                          given by
+with the hoppings illustrated in Fig. 16. As a symmorphic                                                    1
+                                                                               [χ0 (q, iqn )]μμ13 ,μ
+                                                                                                  ,μ4 = −
+                                                                                                     2
+                                                                                                                   G0 (k + q, iωn + iqn )
+example, we consider SG 123 and Wyckoff position 2e, which                                                  Nβ k,iω μ1 μ3
+corresponds to (0, 1/2) and (1/2, 0) in a 2D model. SG 123                                                            n
+
+has also point group D4h and the 2e Wyckoff position has                                                 × G0μ2 μ4 (k, iωn ).              (21)
+site symmetry D2h , and thus τy and τz belong to the B1g
+representation of D4h . The minimal model is then given by                The matrix product is calculated by combining the sublattice
+                                                                          indices to construct the matrix elements, Aμ1 +μ2 Ns ,μ3 +μ4 Ns ,
+   SG123
+  H2D    = t1 (cos kx + cos ky ) + t2 cos kx cos ky − μ                   with A = {χ0 (q, iqn ), U }, where in this case Ns = 2 since
+                                                                          we only have two sublattices, giving thus 4×4 matrices. In
+                        kx    ky                                          Eq. (21), the bare Green’s function corresponds to
+             + t3 cos      cos τx + t4 (cos kx − cos ky )τz . (18)
+                        2     2                                                                                         μ
+                                                                                                                       um (k)umν∗ (k)
+                                                                                            G0μν (k, iωn ) =                          ,    (22)
+Importantly, as opposed to the previous nonsymmorphic ex-
+                                                                                                                  m
+                                                                                                                       iωn − Em (k)
+ample, the term tz,k = t4 (cos kx − cos ky ) splits the bands at
+                                                                                 μ
+the BZ boundary.                                                          with um  (k) the k-dependent eigenvector connecting band
+   In Figs. 3(a) and 3(c), we show the normal state band                  space (m) with sublattice space (μ), and Em (k) the cor-
+structure for SG 136 and SG 123, respectively. The non-                   responding energy eigenvalue of the Hamiltonian H  for
+symmorphic space group [see Fig. 3(a)] features band                      band m.
+degeneracies at the BZ boundary, as seen along the X −M                      To obtain the physical spin susceptibility in the ferromag-
+direction. On the contrary, the symmorphic space group is                 netic channel, we sum over both sublattices
+crucially different, since the band is only degenerate at the
+                                                                                 χRPA
+                                                                                  FM
+                                                                                      (q, ω) =           [χRPA (q, iqn → ω + iη)]μ,μ
+                                                                                                                                 ν,ν .     (23)
+M point. The altermagnetic band structures are displayed in
+                                                                                                   μ,ν
+Figs. 3(b) and 3(d), showing the vastly distinct altermagnetic
+spin splitting between the two cases due to the different sym-            In analogy with the analysis of the bare susceptibilities in
+metries of the tz,k term. We also note that the required Hubbard          the previous section, we can obtain an expression for the
+interaction to acquire this spin splitting (in mean field theory)         susceptibility in the τz channel. Therefore the susceptibility in
+
+                                                                    144412-7
+MERCÈ ROIG et al.                                                                            PHYSICAL REVIEW B 110, 144412 (2024)
+
+                                                                        Hartree-Fock calculations, an established method to exam-
+                                                                        ine instabilities in Hubbard models and recently discussed
+                                                                        in view of two dimensional models for altermagnetism and
+                                                                        antiferromagnetism [29]. Here, we start from the same tight-
+                                                                        binding Hamiltonian and the Hubbard interaction, Eq. (19),
+                                                                        perform a mean-field decoupling ni,μ,σ → ni,μ,σ + δni,μ,σ ,
+                                                                        keep only terms quadratic in the fermionic operators and add
+                                                                        the mean-field Hamiltonian HMF = U i,μ,σ ni,μ,σ ni,μ,σ̄ to
+                                                                        H  . The expectation value of the local density operator ni,μ,σ
+                                                                        is then calculated using the eigenstates and eigenvalues in the
+                                                                        symmetry-broken phase at a given temperature T . Iterations
+                                                                        by updating the mean fields and the chemical potential while
+                                                                        fixing the total number of electrons are performed until self-
+                                                                        consistency is achieved.In Fig. 4(e), we show the magnetic
+                                                                        order parameter |M| = μ | nμ,↑ − nμ,↓ | for RuO2 versus
+                                                                        interaction strength U for both altermagnetic and ferromag-
+                                                                        netic order for a range of fillings n indicated by the inset.
+                                                                        As seen throughout the parameter regime, the altermagnetic
+                                                                        instability dominates by exhibiting the smallest critical inter-
+                                                                        action strength.
+
+                                                                         IV. BERRY CURVATURE AND CRYSTAL HALL EFFECT
+                                                                           In this section, we study altermagnetism in the presence of
+                                                                        SOC, and derive a general analytic expression for the Berry
+                                                                        curvature in the four-band case using the one-orbital minimal
+                                                                        model introduced in Eq. (1). Previous works have focused on
+                                                                        finding an effective two-band Hamiltonian [7,31], or solving
+    FIG. 4. [(a)–(d)] Bare and RPA susceptibilities in the ferromag-    numerically for the Berry curvature in the four bands case
+netic and altermagnetic channels [see Eqs. (23) and (24)] for RuO2 ,    [3]. In general, these approaches give rise to a vanishing Hall
+considering the minimal one-orbital model band structures shown in      conductivity quadratic in the SOC strength [18,31], which is
+        for U = 1.8, T = 0.02, and nk = 60 . (e) Order parameter
+                                              3                         expected to be weak in altermagnets [6]. Here, we obtain an
+Fig. 2(a),
+|M| = α |n↑,α − n↓,α | for RuO2 from a selfconsistent Hartree-Fock      analytic expression for the Berry curvature linear in the SOC,
+calculation at different fillings n where both an altermagnetic and     leading to a larger nonvanishing Hall conductivity. To capture
+ferromagnetic order parameter can be stabilized, for T = 0.02 and       this result, care needs to taken in writing down the SOC term,
+nk = 403 .                                                              for example replacing τy by τx in the SOC term [3,31] will
+                                                                        yield a Berry curvature that is quadratic in SOC.
+the altermagnetic channel for a two-band model can be written
+as                                                                            A. Berry curvature for the general minimal model
+                               μ
+ χRPA
+  AM
+      (q, ω) =          (−1)       (−1) [χRPA (q, iqn → ω+iη)]μ,μ
+                                       ν
+                                                              ν,ν .
+                                                                           Reference [44] describes an approach to obtain the Berry
+                  μ,ν                                                   curvature for an N-band system without computing the eigen-
+                                                              (24)      states. In particular, they provide a general expression for the
+If this susceptibility diverges before the usual spin chan-             quantum geometric tensor
+nel, it signifies that the altermagnetic phase is favored over
+ferromagnetism or spin-density wave order. The form of                                 Tn,i j = Tr(∂i Pn )(1 − Pn )(∂ j Pn ),       (25)
+χRPA
+  AM
+      (q, ω) also reveals that the altermagnetic instability is fa-
+                                                                        where Pn = |ψn ψn | is the projection operator onto band
+vored when the intersublattice components become negative,
+                                                                        n. The Berry curvature corresponds to the imaginary part,
+as shown in Appendix E.
+                                                                        n,i j = −2Tn,i j , which is antisymmetric in the indices i, j.
+   Figures 4(a)–4(d) display the RPA results for the RuO2
+bands shown in Fig. 2(a), considering only the one-orbital                 Without loss of generality, we consider SOC λ k to have
+minimal model in Eq. (1). As seen, altermagnetism becomes               an arbitrary orientation and fix the altermagnetic moments
+the leading instability and diverges at q → 0. We notice that           in-plane J = (J, 0, 0). This moment direction choice is conve-
+the bare susceptibility exhibits the same momentum structure            nient for application to previous observations in altermagnetic
+as the RPA susceptibility, as expected from a single orbital            material candidates, such as RuO2 [19,20]. In this case, fol-
+model. Therefore the discussion in Sec. III A gives insight             lowing Ref. [44] and labeling the bands by (α, β ) as in Eq. (4),
+into the competition between ferromagnetic and altermagnetic            we find the projection operator can be written as
+instabilities and the mechanisms stabilizing these phases.                                                           
+                                                                                               1        H         H
+   The leading altermagnetism implied from the above sus-                              Pα,β =      1+        1+           ,         (26)
+ceptibility analysis can be verified through selfconsistent                                    4        β
+                                                                                                        E         Eα,β
+
+                                                                  144412-8
+MINIMAL MODELS FOR ALTERMAGNETISM                                                                 PHYSICAL REVIEW B 110, 144412 (2024)
+
+
+where       = tz,k σx + λy,k τx σz − λz,k τx σy and E
+           H                                                 β=± =
+  
+β tz,k
+    2 + λ2 + λ2 are the corresponding eigenvalues.
+            z,k     y,k
+   We find a Berry curvature linear in the SOC when the SOC
+term has the same spin direction as the altermagnetic order
+parameter J. In this case, to linear order, the Berry curvature
+becomes
+                1
+   α,β,i j = 3              εmn [(J + βtz,k )∂m λx,k ∂ntx,k
+               Eα,β m,n=i, j
+
+              + β tx,k ∂m tz,k ∂n λx,k + β λx,k ∂m tx,k ∂ntz,k ],   (27)
+with εmn the antisymmetric tensor. This expression is relevant
+for any system with the four band Hamiltonian in Eq. (1).
+Therefore it is applicable to monoclinic, orthorhombic, tetrag-
+onal, rhombohedral, hexagonal, and cubic systems and the
+generality of this expression is one of the key result of this                 FIG. 5. Three-dimensional Berry curvature obtained from the
+manuscript. This expression reveals that this Berry curvature               analytic expression in Eq. (29), with α = + and (a) β = + and (b)
+result is linear in the component of the SOC parallel to the                β = −, considering the one-orbital minimal model [Eqs. (6) and (3)]
+Néel order (we note that in RuO2 , we have found that the SOC               normal state band structure for RuO2 shown in Fig. 2(a). We choose
+                                                                            J = 0.2 for the altermagnetic order parameter and estimate the SOC
+we consider here is linear in the atomic SOC). This is very
+                                                                            λ = 0.1 from the relativistic DFT calculations shown in Fig. 9.
+unlike the altermagnetic Rashba model [7], where the Berry
+curvature is quadratic in the Rashba SOC and the relevant
+SOC is perpendicular to the Néel moment.
+                                                                            shown in Fig. 2(a) features degeneracies. As discussed in
+                     B. Application to RuO2
+                                                                            Sec. III, the band degeneracies lead to a large interband sus-
+                                                                            ceptibility, thus favoring altermagnetism. Consequently, in the
+    For the tetragonal SG 136, i.e., RuO2 and MnF2 , the                    presence of an altermagnetic instability the Berry curvature is
+altermagnetic order parameter τz σz preserves the mirror                    guaranteed to be large at the nodal planes.
+symmetries Mx , My , Mz and therefore there is a vanishing                     In addition, as previously discussed in Sec. II, Fig. 5(b)
+anomalous Hall effect and Berry phase. Focusing on the                      shows that the presence of Weyl loops further enhances the
+tetragonal case, τz σx and τz σy can generate an anomalous                  Berry curvature [18]. Neglecting the SOC terms, the eigenen-
+Hall effect in the presence of SOC. In particular, the former               ergies for the minimal model in Eq.
+term breaks the Mx , Mz mirrors and, as a consequence, it can                                                   (4) with in-plane moment
+                                                                            J correspond to Eα=±,β=± = α tx,k    2 + (J + βt )2 . When
+generate a finite Hall conductivity σxz , which is given by the                                                                z,k
+
+integral over the filled bands of the Berry curvature                       tx,k = 0, one band is twofold degenerate for tz,k = ±J. The
+                                                                           band degeneracies stem from Weyl loops on the kz = π face,
+                       e2      dk                                           which manifest as band crossings along the Z−A direction in
+             σi j = −                    fn (k)n,i j ,    (28)
+                       h̄ BZ (2π )3 n                                       Fig. 2.
+                                                                                Remarkably, Fig. 5 can be used as an indication of the most
+with fn (k) the Fermi-Dirac distribution of each band n.                    favorable regions that the Fermi surface should touch in order
+   Recalling the form of the coefficients in the tight-binding              to obtain a large Berry curvature, thus giving rise to a large
+Hamiltonian given in Eqs. (3) and (6) for tetragonal systems                anomalous Hall response. As already suggested for FeSb2 in
+with the rutile structure, the Berry curvature in Eq. (27) gives            Ref. [5], the chemical doping can be used the push the Fermi
+                                  
+                   1            2 ky
+                                                                            surface to a large curvature  region.
+    α,β,xz =       3
+                      λt8 J cos       (cos kz − cos kx ),   (29)                In Figs. 6(a) and 6(b), we show the spin-up and spin-
+                8Eα,β              2
+                                                                            down Fermi surfaces for RuO2 , respectively, indicating the
+including only the terms that give rise to a nonvanishing Hall              sublattice weight. Panels (c) and (d) of Fig. 6 display the
+conductivity, i.e. do not average to zero in the BZ integral of             projected Berry curvature from Fig. 5 onto the two Fermi
+Eq. (28).                                                                   surfaces. As seen, when summing the contributions for the
+   In Fig. 5, we show the Berry curvature for the α = + and                 two Fermi surfaces this will give rise to a nonvanishing
+β = ± bands, considering the realistic hopping parameters                   anomalous crystal Hall effect. Figure 6(e) explicitly shows the
+in Fig. 2(a) for the one-orbital model reproducing the RuO2                 conductivity calculated using Eq. (28). In the limit λ → 0, the
+band structure. The same plots are obtained for α = − by                    conductivity scales linearly with SOC (dashed line) and this
+exchanging the red and blue colors due to inversion symmetry.               parameter is directly proportional to the atomic SOC [45].
+We have estimated a realistic SOC strength in RuO2 from                     Subleading nonlinear contributions are also present due to
+the splitting in the Z−R−A path in the relativistic DFT band                the nontrivial dependence of Eα,β on the SOC (solid line),
+structure, as shown in Fig. 9 in Appendix B. In agreement with              as seen from Eq. (4). For stoichiometric RuO2 , DFT results
+previous DFT calculations, the SOC has a weak effect on the                 predicted σxz = 36.4 S cm−1 [3]. Therefore, considering the
+bands [6]. Figure 5(a) shows that xz is large at the nodal                 linear in SOC contribution, we obtain a large conductivity.
+planes X −M and Z-R, where the normal state band structure                  Note that the calculation has been done using the minimal
+
+                                                                      144412-9
+MERCÈ ROIG et al.                                                                               PHYSICAL REVIEW B 110, 144412 (2024)
+
+                                                                       in cubic materials. In Appendix F we use the minimal model
+                                                                       to describe the bands for the organic compound κ-Cl, which
+                                                                       provides a platform to study 2D altermagnetism. Motivated by
+                                                                       this, Appendix G presents a minimal 2D model for altermag-
+                                                                       netism in a tetragonal system.
+
+                                                                                                      A. FeSb2
+                                                                          Initially FeSb2 was proposed to be a ferromagnet [46],
+                                                                       although Ref. [5] recently suggested that this material is non-
+                                                                       magnetic and, more intriguingly, the doped compound could
+                                                                       host unconventional magnetism. FeSb2 is an orthorhombic
+                                                                       material with space group 58. This space group has point
+                                                                       group D2h and Fe occupies the 2a Wyckoff position with site
+                                                                       symmetry C2h , see row 10 in Table I. This implies that the τz
+                                                                       and τy operators belong to the B1g representation of D2h . Based
+                                                                       on Ref. [46], we construct a minimal model for dx2 −y2 -orbitals,
+                                                                       considering Wyckoff positions at (0,0,0) and (1/2, 1/2, 1/2).
+                                                                       Thus, the minimal model in Eq. (1) in this case has the same
+                                                                       form for the hoppings tx,k and tz,k as in Eq. (6). The SOC is
+                                                                       given by
+                                                                                                     kz    kx  ky
+                                                                                          λx,k = λx sin sin cos ,
+                                                                                                     2     2   2
+                                                                                                     kz    ky  kx
+                                                                                       λy,k = λy sin sin cos ,
+                                                                                                     2     2   2
+                                                                                                     kz     kx  ky
+                                                                                       λz,k = λz cos cos cos ,                           (30)
+                                                                                                      2     2   2
+    FIG. 6. [(a) and (b)] Spin-up and spin-down Fermi surfaces for     and the dispersion ε0,k corresponds to
+RuO2 in the altermagnetic state, considering the minimal model in
+Eq. (1) and the state band structure shown in Fig. 2. The colorbar           ε0,k = t1x cos kx + t1y cos ky + t2 cos kz + t3 cos kx cos ky
+indicates sublattice weight. [(c) and (d)] Berry curvature shown in                  + t4x cos kx cos kz + t4y cos ky cos kz
+Fig. 5 projected onto the spin-up and spin-down Fermi surfaces. [(e)
+and (f)] Conductivity as a function of SOC strength, with J = 0.2                    + t5 cos kx cos ky cos kz − μ.                      (31)
+and nk = 2013 , and magnetic order, with λ = 0.1 and nk = 4013 ,       Figure 7(a) displays a single band picture inspired by the
+for T = 0.01. λDFT and Jeff denote the effective SOC and magnetic      FeSb2 band structure that crosses the Fermi energy at the R
+moment obtained by comparing with DFT results (see Appendix B          point [5,46]. Importantly, the spin splitting along the −S and
+and Ref. [2]).                                                         R−Z directions [see inset in Fig. 7(a)] can also be described
+                                                                       by the tz,k τz term, as seen in Fig. 7(b).
+one-orbital model in Eq. (1) and, as a consequence, we expect             In agreement with Ref. [5], only when lowering the chem-
+contributions from other bands in RuO2 , see Fig. 2(a).                ical potential we obtain a leading altermagnetic instability,
+Figure 6(f) displays the conductivity σxz as a function of             see also Appendix I. In contrast to the previous results for
+magnetic order J. As seen, σxz exhibits a significant J depen-         other compounds, in this case an RPA analysis reveals that
+dence both in terms of amplitude and sign. A similar strong            the altermagnetic susceptibility does not diverge at q → 0,
+dependence of the anomalous Hall response to band structure            pointing to an incommensurate altermagnetic state as the lead-
+details has been recently discussed for FeSb2 in Ref. [5].             ing instability due to Fermi surface nesting (see Appendix I).
+These results suggest that one might significantly enhance the         However, Ref. [5] only considered a few commensurate vec-
+Hall conductivity by band engineering or optimization of the           tors, whereas our RPA analysis shows a different q = 0
+altermagnetic order parameter.                                         leading divergence.
+                                                                          Notably, in FeSb2 there is a crucial difference com-
+                                                                       pared to the other materials discussed in this work. As seen
+             V. MINIMAL MODELS FOR OTHER
+                                                                       from Fig. 7(a), along the R-Z line the two bands disperse
+              ALTERMAGNETIC CANDIDATES
+                                                                       downwards. Therefore we expect that altermagnetism in this
+    In this section, we demonstrate that the general minimal           compound is not as stable as in the case of RuO2 and κ-Cl (see
+model in Eq. (1) can also be used to describe other alter-             Appendix F), where the bands close to the A and the S-point,
+magnetic candidates with different symmetry properties [6,7].          respectively, disperse in opposite directions giving rise to a
+Here we initially present results on the stability of d-wave           van Hove singularity. As shown in Appendix I, upon small
+altermagnetism for orthorhombic FeSb2 . We then develop                variations of the filling, altermagnetism becomes unstable and
+minimal models for g-wave altermagnetism in hexagonal ma-              ferromagnetism is the leading instability. Finally, we would
+terials such as CrSb and MnTe and for i-wave altermagnetism            like to point out that these predictions should be revisited
+
+                                                                 144412-10
+MINIMAL MODELS FOR ALTERMAGNETISM                                                              PHYSICAL REVIEW B 110, 144412 (2024)
+
+                                                                     and SOC
+                                                                                                        kz  2     
+                                                                                           λx,k = λ cos     f − fy2 ,
+                                                                                                        2 x
+                                                                                                            kz
+                                                                                           λy,k = −2λ cos fx fy ,
+                                                                                                            2
+                                                                                                        kz  2        
+                                                                                           λz,k = λz sin fx fx − 3 fy2 ,                (34)
+                                                                                                         2
+                                                                                                                             √
+                                                                                                                                 3k
+                                                                     where we have defined fx ≡ sin kx + sin k2x cos 2 y and fy ≡
+                                                                     √              √
+                                                                                      3k
+                                                                       3 cos k2x sin 2 y , see also Table III.
+                                                                         In agreement with the orthorhombic and tetragonal space
+                                                                     groups, for the hexagonal case the symmetry of the term cou-
+                                                                     pling to τz gives the symmetry of the altermagnetic splitting,
+                                                                     which corresponds to a g-wave. Therefore, also in this case,
+                                                                     the one-orbital minimal model in Eq. (1) is sufficient to de-
+                                                                     scribe the symmetry of the spin splitting. However, in contrast
+                                                                     to the examples of RuO2 and FeSb2 where only nondegenerate
+                                                                     1D orbital IRs of S exist, the case S = D3d also allows 2D
+                                                                     orbital IRs. In this case, it would be of interest to extend our
+   FIG. 7. Normal state (a) and altermagnetic (b) band structures    microscopic model to include these 2D degenerate orbital IRs
+inspired by FeSb2 obtained from the minimal model in Eq. (1)         since both degenerate 2D IRs and nondegenerate 1D IRs are
+considering Eqs. (6),(31), with hopping parameters detailed in       relevant to the electronic structure of CrSb and MnTe.
+Appendix D and Jz = 0.1 in (b). The BZ path is shown in the inset.
+                                                                                             C. i-wave altermagnetism
+when considering a more complete model including the full               In the previous cases, we have shown that the minimal
+set of d-orbitals. Nevertheless, the single-orbital model de-        model in Eq. (1) can give rise to d-wave and g-wave alter-
+scribes the right spin splitting and allows us to derive an          magnetism. Here, we demonstrate that it is also sufficiently
+expression for the Berry curvature, written in Eq. (29), which       general to allow for i-wave altermagnetism. In particular, we
+is large at the nodal planes and enhanced by Weyl lines, giving      focus on the cubic SG 223 with point group Oh and Wyckoff
+rise to a nonvanishing conductivity.                                 position 2a with site symmetry Th . Consequently, the τy and τz
+                                                                     operators belong to the A2g representation of the point group
+                                                                     Oh , see Table II. The translation between the two magnetic
+                   B. g-wave altermagnetism                          atoms in the unit cell is t12 = ( 21 , 21 , 21 ). Therefore the minimal
+                                                                     model in Eq. (1) has the following form (Table IV):
+   The case of CrSb is interesting since a particularly large
+band splitting as high as 1.2 eV has been predicted for this           ε0,k = t1 (cos kx + cos ky + cos kz ) − μ,
+compound [6,7], and the altermagnetic band splitting has been
+                                                                                          kx     ky      kz
+recently observed experimentally [13]. CrSb is a metal with                tx,k = t2 cos     cos cos ,
+an hexagonal structure and a critical temperature of 705 K,                               2      2       2
+thus already magnetically ordered at room temperature [47].                tz,k = t3 (cos kx − cos ky )(cos kx − cos kz )(cos ky − cos kz ),
+Motivated by this material and by MnTe [12], we give a                                                                                   (35)
+minimal model that gives rise to g-wave altermagnetism. Both
+                                                                     with SOC given by
+CrSb and MnTe belong to the space group 194, with point
+group D6h . The Cr and Mn atoms form an hexagonal lattice                                           ky    kz      kx
+                                                                                           λx,k = λ sinsin cos ,
+with Wyckoff position 2a, which has site symmetry D3d .                                             2      2       2
+Consequently, the τz and τy operators belong to the B1g repre-                                      kx    kz      ky
+sentation of D6h , see Table II. Incorporating t12 = (0, 0, 1/2)                       λy,k = λ sin sin cos ,
+                                                                                                    2      2       2
+the minimal model in Eq. (1) has the form
+                                                                                                    kx    ky       kz
+                                                                                      λz,k = λ sin sin cos .                       (36)
+                                   √                                                               2      2       2
+                            kx       3ky
+  ε0,k = t1   cos kx + 2 cos cos            + t2 cos kz − μ,         Since the altermagnetic spin splitting is given by tz,k and since,
+                            2        2                               in this case, tz,k belongs to the A2g representation of Oh and
+                                                           (32)      near the  point, tz,k ∼ x 4 (y2 − z2 ) + y4 (z2 − x 2 ) + z4 (x 2 −
+while for the hoppings with τz and τx , we obtain                    y2 ), this model describes an i-wave altermagnet.
+
+                                kz
+                 tx,k = t3 cos     ,                                               VI. DISCUSSION AND CONCLUSIONS
+                                2
+                                                                       We have provided minimal models for orthorhombic,
+                 tz,k = t4 sin kz fy fy2 − 3 fx2 ,           (33)    tetragonal, hexagonal, and cubic space groups. While we did
+
+                                                               144412-11
+MERCÈ ROIG et al.                                                                                        PHYSICAL REVIEW B 110, 144412 (2024)
+
+    TABLE III. Tight-binding coefficients for space groups with a nodal plane √and two atoms per unit cell at                the inversion center. Abbrevi-
+                                                                                              3k            √             √
+                                                                                                                            3k
+ation ci ≡ cos ki , si ≡ sin ki , ci/2 ≡ cos k2i , si/2 ≡ sin k2i , fx ≡ sin kx + sin k2x cos 2 y , and fy ≡ 3 cos k2x sin 2 y applies. We note that while
+products of fx and fy are convenient for describing the symmetry of the appropriate terms in the Hamiltonian, these products generally contain
+nearest neighbor hopping terms together with longer range hopping terms. Within tetragonal and hexagonal space groups, the coefficients for
+the two SOC τy σx,y are related. The other coefficients, which are generally different, are omitted from this table. For instance, sy (sx , sz ) in SG11
+means tz1 sy sx + tz2 sy sz .
+
+SG                            τx                          τz                         τy σx                       τy σy                          τy σz
+11(2a-2d)                    cy/2                    sy (sx , sz )                   cy/2                   sy/2 (sx , sz )                    cy/2
+14(2a-2d)            cy/2 (sx sz/2 , cz/2 )          sy (sx , sz )           cy/2 (sx sz/2 , cz/2 )      sy/2 (sx cz/2 , sz/2 )        cy/2 (sx sz/2 , cz/2 )
+
+51(2a-2d)                    cx/2                        sx sz                      sx/2 sy                      cx/2                        cx/2 sy sz
+53(2a-2d)                 cx/2 cz/2                      sy sz                    cx/2 cz/2                  sx/2 sy cz/2                    sx/2 sz/2
+
+55(2a-2d)                 cx/2 cy/2                      sx sy                   sx/2 cy/2 sz                cx/2 sy/2 sz                    cx/2 cy/2
+58(2a-2d)               cx/2 cy/2 cz/2                   sx sy                  sx/2 cy/2 sz/2              cx/2 sy/2 sz/2                cx/2 cy/2 cz/2
+
+127(2a,2b)                cx/2 cy/2                sx sy (cx − cy )             λsx/2 cy/2 sz               λcx/2 sy/2 sz                    cx/2 cy/2
+
+127(2c,2d)                cx/2 cy/2                      sx sy                  λsx/2 cy/2 sz              −λcx/2 sy/2 sz              cx/2 cy/2 (cx − cy )
+128(2a,2b)              cx/2 cy/2 cz/2             sx sy (cx − cy )            λsx/2 cy/2 sz/2             λcx/2 sy/2 sz/2                cx/2 cy/2 cz/2
+
+136(2a,2b)              cx/2 cy/2 cz/2                   sx sy                 λsx/2 cy/2 sz/2            −λcx/2 sy/2 sz/2           cx/2 cy/2 cz/2 (cx − cy )
+
+                                                 sz fx ( fx2 − 3 fy2 ),      λ1 cz/2 ( fx2 − fy2 )      −2λ1 cz/2 fx fy               sz/2 fx ( fx2 − 3 fy2 ),
+176(2b)                      cz/2
+                                                 sz fy ( fy2 − 3 fx2 )        +2λ2 cz/2 fx fy          +λ2 cz/2 ( fx2 − fy2 )         sz/2 fy ( fy2 − 3 fx2 )
+
+193(2b)                      cz/2                sz fx ( fx2 − 3 fy2 )          2λcz/2 fx fy             λcz/2 ( fx2 − fy2 )           sz/2 fy ( fy2 − 3 fx2 )
+
+194(2a)                      cz/2                sz fy ( fy2 − 3 fx2 )        λcz/2 ( fx2 − fy2 )          −2λcz/2 fx fy               sz/2 fx ( fx2 − 3 fy2 )
+
+
+
+not give examples, our approach can also be applied to mono-                     Our minimal model suggests an answer for this: in the
+clinic and rhombohedral space groups, see Tables I and II. For                   presence of strain xy , the term xy cos kx cos ky τz also appears
+the monoclinic case, an example is SG 14, with point group                       in the Hamiltonian. This term splits the van Hove singularity
+C2h , Wyckoff position 2a or 2b (this applies to the Re site in                  at the A point. As a consequence, we expect that altermag-
+K2 ReI6 [14]), and site symmetry Ci , our approach will give                     netism will be suppressed, potentially favoring other nearby
+a corresponding minimal model for a d-wave altermagnet.                          electronic instabilities. We expect that our minimal models
+For the rhombohedral case, an example is SG 167, with point                      will serve as a useful tool to examine spatial varying proper-
+group D3d , Wyckoff position 6b (this applies to the Fe site in                  ties of altermagnets, such as magnetic domain walls, and will
+FeCo3 [14]), and site symmetry S6 , our approach will give a                     shed insight into the interplay of other electronic instabilities,
+corresponding minimal model for a g-wave altermagnet.                            such as superconductivity, with altermagnetism.
+   Our minimal models also highlight the role of nonsym-                             In conclusion, through the comparison to DFT results, we
+morphic band degeneracies in altermagnetism. In particular,                      have developed realistic models for altermagnetism based on
+the altermagnetic susceptibility we introduce reveals that band                  a two magnetic atom sublattice in nonsymmorphic materials.
+degeneracies help to stabilize the altermagnetic state. This                     These models can be applied to monoclinic, orthorhombic,
+susceptibility further reveals that the presence of van Hove                     tetragonal, rhombohedral, and cubic point crystals and can
+singularities related to the band degeneracies are favorable for                 describe d-wave, g-wave, and i-wave altermagnets. Further-
+altermagnetism. Indeed, in the case of FeSb2 , we find that the                  more, we have shown that these models generically give rise
+corresponding lack of a van Hove singularity may lead to an                      to a Berry curvature that is linear in the spin-orbit coupling.
+incommensurate altermagnetic state. In addition, the nonsym-                     We expect that these minimal models will serve as a useful
+morphic band degeneracies enhance the Berry curvature and                        tool to understand altermagnetism and its properties.
+thus lead to a large crystal Hall effect.
+   The minimal models can also be used to obtain new in-
+                                                                                                      ACKNOWLEDGMENTS
+sight into the properties of altermagnets. For example, as
+outlined in Appendix H, we show how our minimal model                               We thank L. Li, D. Radevych, T. Shishidou, S. Sumita,
+can give rise to the existence of topological states and chiral                  and M. Weinert for useful discussions. M.R. acknowl-
+surface bound states. In addition, superconductivity has been                    edges support from the Novo Nordisk Foundation Grant No.
+observed in strained RuO2 [48–50], which is surprising since                     NNF20OC0060019. A.K. acknowledges support by the Dan-
+altermagnetism tends to strongly suppress superconductivity.                     ish National Committee for Research Infrastructure (NUFI)
+
+                                                                          144412-12
+MINIMAL MODELS FOR ALTERMAGNETISM                                                                          PHYSICAL REVIEW B 110, 144412 (2024)
+
+   TABLE IV. Tight-binding coefficients for space groups with two atoms per unit cell at the inversion center, but without nodal plane. The
+same abbreviation applies as in the previous table.
+
+SG                        τx                             τz                             τy σx                      τy σy                       τy σz
+13(2a-2d)           cz/2 , sx sz/2                  sy (sx , sz )                   cz/2 , sx sz/2           sy (sz/2 , sx cz/2 )         cz/2 , sx sz/2
+
+49(2a-2d)                cz/2                          sx sy                           sx sz/2                     sy sz/2                     cz/2
+                     cx/2 cy/2 ,                                                   λ1 sx/2 cy/2 sz            −λ1 cx/2 sy/2 sz             sx/2 sy/2 ,
+83(2e,2f)                                       (cx − cy ), sx sy
+                sx/2 sy/2 (cx − cy )                                              +λ2 cx/2 sy/2 sz            +λ2 sx/2 cy/2 sz        cx/2 cy/2 (cx − cy )
+84(2a,2b)                cz/2                   (cx − cy ), sx sy               (λ1 sx + λ2 sy )sz/2       (−λ1 sy + λ2 sx )sz/2         cz/2 (cx − cy )
+                                                                                                                        
+                   cx/2 cy/2 cz/2 ,                                               +λ1 sx/2 cy/2              −λ1 cx/2 sy/2          cx/2 cy/2 cz/2 (cx − cy ),
+84(2c,2d)                                       (cx − cy ), sx sy                                s                          s
+                   sx/2 sy/2 cz/2                                                 +λ2 cx/2 sy/2 z/2          +λ2 sx/2 cy/2 z/2      sx/2 sy/2 cz/2 (cx − cy )
+123(2e,2f)            cx/2 cy/2                     (cx − cy )                      λcx/2 sy/2 sz              λsx/2 cy/2 sz                sx/2 sy/2
+
+124(2b,2d)               cz/2                    sx sy (cx − cy )                      λsx sz/2                   λsy sz/2                     cz/2
+131(2a,2b)               cz/2                       (cx − cy )                         λsy sz/2                   λsx sz/2                  sx sy cz/2
+
+131(2c,2d)          cx/2 cy/2 cz/2                  (cx − cy )                     λcx/2 sy/2 sz/2            λsx/2 cy/2 sz/2             sx/2 sy/2 cz/2
+132(2a,2c)               cz/2                          sx sy                           λsx sz/2                 −λsy sz/2                cz/2 (cx − cy )
+
+                         cz/2 ,                  fy ( fy2 − 3 fx2 )sz ,              λ1 fx sz/2                 λ1 fy sz/2                    cz/2 ,
+163(2b)
+                 fx (3 fy2 − fx2 )sz/2   fx fy ( fx2 − 3 fy2 )(3 fx2 − fy2 )    +λ2 ( fx2 − fy2 )cz/2         −2λ2 fx fy cz/2         fx (3 fy2 − fx2 )sz/2
+
+                         cz/2 ,                  fx ( fx2 − 3 fy2 )sz ,             λ1 fx sz/2                  λ1 fy sz/2                     cz/2 ,
+165(2b)
+                 fy (3 fx2 − fy2 )sz/2   fx fy ( fx2 − 3 fy2 )(3 fx2 − fy2 )      +2λ2 fx fy cz/2          +λ2 ( fx2 − fy2 )cz/2       fy (3 fx2 − fy2 )sz/2
+
+192(2b)                  cz/2            fx fy ( fx2 − 3 fy2 )(3 fx2 − fy2 )           λsz/2 fx                  λsz/2 fy                      cz/2
+
+223(2a)             cx/2 cy/2 cz/2       (cx − cy )(cy − cz )(cz − cx )            λcx/2 sy/2 sz/2            λsx/2 cy/2 sz/2            λsx/2 sy/2 cz/2
+
+
+
+through the ESS-Lighthouse Q-MAT. D.F.A. and Y.Y. were                           that partially describe the respective electronic structure. Con-
+supported by the National Science Foundation Grant No. DM-                       structing a tight-binding model from a Wannier projection
+REF 2323857.                                                                     allows a Hartree-Fock calculation of the full model finding
+                                                                                 an altermagnetic instability as discussed in the literature [2].
+                                                                                     Relativistic DFT calculations. In order to estimate the
+      APPENDIX A: TABLES OF MINIMAL MODELS
+                                                                                 magnitude of the SOC in RuO2 , we perform additional ab
+   Here we provide explicit minimal models for all space                         initio calculations in the full relativistic setting of FPLO [52]
+groups in Tables I and II that have primitive lattice structures.                (version 22.00-62) and plot the band structure for comparison
+We provide two tables. Table III contains only nonsymmor-                        in Fig. 9, revealing an effective SOC constant λ = 0.1 eV, as
+phic space groups with nodal planes in the paramagnetic state.                   used in our minimal models of the main text.
+These nodal planes have fourfold degenerate fermions that
+exist when spin-orbit coupling is not included, and they appear
+                                                                                                     APPENDIX C: THE CASE OF MnF2
+on a planar face of the Brillouin zone. Table IV contains min-
+imal models for symmorphic groups and all nonsymmorphic                              In Sec. II, we have presented the minimal one-orbital
+groups that do not contain nodal planes.                                         model and have demonstrated that it can describe the nor-
+                                                                                 mal state and altermagnetic band structure of RuO2 . Here,
+                                                                                 we focus on the material candidate MnF2 and compare DFT
+      APPENDIX B: DFT CALCULATIONS FOR RuO2
+                                                                                 calculations with the minimal model in Eq. (1) relevant for this
+   Orbital projection of the DFT bands. In order to construct                    compound both in the normal state and altermagnetic phase.
+low-energy minimal models for RuO2 , we perform ab initio                        In the case of MnF2 , DFT calculations have revealed that there
+calculations using the crystal structure from Ref. [51]. Within                  is only one orbital close to the Fermi level in the normal state
+the full-potential local-orbital (FPLO) code, we calculate the                   when performing a non-spin-polarized calculation [4]. The
+electronic structure in the paramagnetic state and examine the                   single-band limit is also shown in Fig. 10 by introducing an
+orbital character of the band structure by projecting to the d                   on-site Coulomb interaction U .
+orbitals in the local octahedral environment of the Ru(1) and                        DFT calculations. In order to obtain hopping parameters
+Ru(2) atoms, see Fig. 8. Focusing on the low-energy disper-                      for a minimal model describing the low-energy band structure
+sion, one can construct minimal one- and two-orbital models                      of MnF2 , we adopt the crystal structure from x-ray diffraction
+
+                                                                           144412-13
+MERCÈ ROIG et al.                                                                            PHYSICAL REVIEW B 110, 144412 (2024)
+
+
+
+
+                                                                          FIG. 9. Comparison of the band structure of RuO2 from a scalar
+                                                                      relativistic DFT calculation (red, dashed) and a fully relativistic
+                                                                      calculation (black lines) revealing the splitting of the bands due to
+                                                                      SOC.
+
+
+                                                                         Minimal model. In Fig. 11(a), we display a minimal one-
+                                                                      orbital model obtained from Eq. (1) relevant for MnF2 in the
+                                                                      single-band limit, as shown in Figs. 10(a) and 10(b) in the
+                                                                      normal state DFT calculations. Similar to the case of RuO2
+                                                                      in Fig. 2, in the normal state the minimal model captures
+                                                                      the crossings at the Fermi level and the nodal lines in the
+                                                                      band structure. Note that in the case of MnF2 , in the DFT
+                                                                      calculations a large U interaction is introduced to obtain the
+
+
+    FIG. 8. DFT band structure (black lines) together with the pro-
+jection onto atomic d orbitals of the Ru(1) atom (a) and the
+Ru(2) atom (b) with√ the choice of the √  local coordinate system
+             1, 0)/ 2 and ẑ = (1, √
+as x̂ = (−1, √                     1, 0)/ 2 for Ru(1) and x̂ =
+(−1, −1, 0)/ 2 and ẑ = (−1, 1, 0)/ 2 for Ru(2).
+
+
+
+in Ref. [53] with space group P42 /mnm (No. 136) and lattice
+constants a = b = 4.873, c = 3.31. The Mn atoms are on the
+2a Wyckoff position and the F atoms on the 4f position with
+internal parameter (0.305,0.305,0). We verify the electronic
+structure as found earlier [4] from calculations using the full-
+potential local-orbital (FPLO) code [52], version 22.00-62 as
+well as the full potential linearized augmented plane-wave
+(LAPW) basis as implemented in WIEN2K [54], both using
+the LDA exchange-correlation functional. Without additional
+correlations from the LDA + U approach, the entangled Mn
+d bands are close to the Fermi level as still visible with weak
+correlations, see Figs. 10(a) and 10(b). Once larger corre-
+lations are imposed, the d bands are pushed down and up,
+leaving a pair of bands from one orbital per Mn close to the
+Fermi level. Allowing for spin polarization within a calcula-
+tion in WIEN2K where anti-parallel moments are imposed, we
+retain two bands for each spin polarization close to the Fermi
+level, see Figs. 10(c) and 10(d). A similar state is observed             FIG. 10. DFT calculations for MnF2 . [(a) and (b)] Electronic
+irrespective of whether imposing a finite U or not. However,          structure as obtained from a paramagnetic LDA+U calculation. The
+due to the large local moment, the bands acquire an additional        bands are shown for two different values of the parameter U . [(c) and
+crossing between  and Z as well as unusual spin shifts along         (d)] Electronic structure from a spin-polarized calculation by fixing
+the path between the A and Z points.                                  the total moment to vanish.
+
+                                                                144412-14
+MINIMAL MODELS FOR ALTERMAGNETISM                                                                   PHYSICAL REVIEW B 110, 144412 (2024)
+
+
+
+
+    FIG. 11. Normal state (a) and altermagnetic (b) band structures
+for MnF2 obtained from the minimal model in Eq. (1) with Eqs. (5)
+and (6), hopping parameters detailed in Table V to reproduce the
+DFT results (see Fig. 10) and Jz = 0.05 in (b).
+
+
+single band crossing the Fermi level. However, allowing for
+formation of local moments yields a band structure below the
+Fermi level with different properties (see Ref. [4] and Fig 10):
+the spin splitting in the A−Z line is reversed for one orbital              FIG. 12. [(a)–(d)] Bare and RPA susceptibilities in the ferromag-
+and the spin-up band approaches the spin-down, as opposed                netic and altermagnetic channels [see Eqs. (23) and (24)] for MnF2 ,
+to the result obtained from the minimal model, as shown                  considering the minimal one-orbital model band structures shown
+in Fig. 11(b). The more physical picture for MnF2 might                  in Fig. 11(a), forU = 0.36, T = 0.02, and nk = 603 . (e) Order
+be an ordering of large paramagnetic moments occurring at                parameter |M| = α |n↑,α − n↓,α | from a selfconsistent Hartree-
+T = 67 K [55] while the compound stays insulating.                       Fock calculation at different fillings n where both an altermagnetic
+                                                                         and ferromagnetic order parameter can be stabilized, for T = 0.02
+                                                                         and nk = 403 .
+          APPENDIX D: HOPPING PARAMETERS
+              FOR THE MINIMAL MODELS                                             APPENDIX E: SUSCEPTIBILITY COMPONENTS
+                                                                                           IN SUBLATTICE SPACE
+   In order to reproduce the band structures shown in Fig. 2
+for RuO2 , Fig. 7 for FeSb2 , Fig. 11 for MnF2 , and Fig. 14 for            The susceptibility in the altermagnetic channel in Eq. (24)
+κ-Cl, we include in Tables V and VI the choice of all hopping            reveals that when the intersublattice components become neg-
+parameters. In particular, Table V details all hoppings for the          ative the altermagnetic instability is favored. Figure 13 shows
+one-orbital minimal models. Note that the case of κ-Cl is a              the sublattice components of the susceptibility for the one-
+two-dimensional model, and therefore some hoppings are not               orbital minimal models band structure shown in Fig. 2(a) for
+relevant. Table VI includes all hopping parameters for the two-          RuO2 and Fig. 11(a) for MnF2 , with the bare and RPA sus-
+orbital model in the RuO2 case, to obtain the gray bands in              ceptibilities shown in Figs. 4(a)–4(d) and Figs. 12(a)–12(d),
+Fig. 2.                                                                  respectively. As seen, for a leading altermagnetic instability
+
+   TABLE V. Hopping parameters to obtain the band structures for the tetragonal compounds RuO2 in Fig. 2 and MnF2 in Fig. 11 [see Eqs. (5)
+and (6)], and the orthorhombic materials FeSb2 in Fig. 7 [Eqs. (31) and (6)] and κ-Cl in Fig. 14 [Eqs. (F1) and (F2)].
+
+Tetra.              t1            t2            t3           t4                 t5             t6              t7            t8           μ
+RuO2           −0.05             0.7          0.5          −0.15          −0.4                −0.6            0.3           1.7           0.25
+MnF2            0                0.13          0           −0.02           0.015               0              0.03          0.33         −0.01
+
+Ortho.        t1x          t1y           t2           t3           t4x         t4y       t5             t6            t7           t8     μ
+FeSb2        −0.1         −0.05         −0.05         0.06         0.1         0.05    −0.05           0.05          −0.1         0.15   −0.12
+κ-Cl          0.08        −0.01           -          −0.03         —            —       —              0.05           —           0.3    −0.1
+
+
+                                                                   144412-15
+MERCÈ ROIG et al.                                                                             PHYSICAL REVIEW B 110, 144412 (2024)
+
+                                                                          TABLE VI. Hopping parameters for the two-orbital model
+                                                                      shown in Eqs. (5)–(8) to obtain the band structure in Fig. 2 (gray line)
+                                                                      relevant for RuO2 .
+
+                                                                                t1      t2     t3      t4     t5      t6     t7     t8     μ
+                                                                      RuO2      0.18 −1       −0.5 −0.1 −0.1 −0.6            0    −0.2 −3
+                                                                                t9      t10    t11    t12     t13     t14   t15    t16    a0
+    FIG. 13. Intra- and intersublattice components of the bare sus-
+                                                                      RuO2 −0.1         0     −0.2     0       0      0     0.1     0      3
+ceptibility shown in Eq. (21) considering the one-orbital minimal
+model bands shown in Fig. 11 for MnF2 (a) and Fig. 2 for RuO2
+(b), with T = 0.02 and nk = 603 .
+                                                                      the spin splitting is reversed along the kx = ky and kx = −ky
+                                                                      directions, since τz ∼ sin kx sin ky .
+the intersublattice components become negative along the
+                                                                          As shown in Figs. 15(a)–15(d), for this band the van Hove
+−X and M− directions, with [χ0 (q)]AB = [χ0 (q)]BA . In con-
+                                                                      singularity at the Fermi level gives rise to a q → 0 peak in
+trast, when the ferromagnetic instability is leading they are
+                                                                      both the ferromagnetic and altermagnetic bare susceptibili-
+both positive along the same lines. Notably, the susceptibili-
+                                                                      ties, but the latter is the leading instability. The Hartree-Fock
+ties [χ0 (q)]AA and [χ0 (q)]BB split in the −M direction, and the
+                                                                      results in Fig. 15(e) show that the altermagnetic state can
+splitting is reversed in the -M  direction, with M = (π , π , 0)
+                                                                      be stabilized at a lower value of the Hubbard interaction U .
+and M  = (−π , π , 0).
+                                                                      When initializing with ferromagnetic ordering, this state is in
+                                                                      principle also stable, and the magnetization sets in gradually
+                APPENDIX F: ORGANIC κ-Cl                              with U . These results are robust against changes in the overall
+    The κ-Cl organic compound belongs to the 2D layer space           filling with the modification that the saturation value of the
+group L25, and it provides a platform to study 2D alter-              (sublattice) magnetization first decreases and then increases
+magnetism for which it is possible to find a weak-coupling            again. This can be understood in terms of a nonmonotonic
+mechanism to stabilize the altermagnetic state [40]. This ma-         behavior of the density of states (slope of black curve in inset)
+terial differs from the other materials in this work since it         of Fig. 15.
+lacks inversion symmetry. This lack of inversion symmetry                 Examining the model in Eqs. (F1) and (F2) shows that a
+will alter the form of the SOC which is expected to be weak.          sufficiently large t8 hopping is crucial to obtain a dominant
+For these reasons we do not discuss SOC in this section. The          interband susceptibility, in agreement with the analysis of
+anomalous Hall effect and spin current generation has been            the effect of coincident van Hove singularities in Ref. [40].
+predicted for this material [10,11]. In addition, it has been sug-    Motivated by this, in Appendix G, we describe a toy model
+gested that the magnetic order can induce finite momentum             for a 2D tetragonal system inspired by RuO2 , giving rise to a
+superconductivity [56]. In these works, the models considered         leading altermagnetic instability assuming that the Fermi level
+have two dimers in the unit cell, which result in four bands,         is also at the coincident van Hove singularities.
+but due to bonding/antibonding the bands split in two pairs.
+Therefore, in the large dimerization limit, we can focus only
+on the antibonding set of bands [57]. We argue that this is
+sufficient to capture a leading altermagnetic instability. As a
+consequence, we can construct the minimal model in Eq. (1)
+by considering Wyckoff positions (0,0,0) and (1/2, 1/2, 0),
+which, through arguments similar to FeSb2 gives
+   ε0,k = t1x cos kx + t1y cos ky + t3 cos kx cos ky − μ,     (F1)
+with the hopping terms
+                                    kx      ky
+                     tx,k = t8 cos     cos ,
+                                    2        2
+                     tz,k = t6 sin kx sin ky .                (F2)
+Similar to the rutile case in Eq. (6), here the tz,k τz term also
+gives rise to the spin splitting with a d-wave symmetry.
+   In Fig. 14(a), we show the band structure by an appropriate
+choice of the hopping parameters (listed in Appendix D) in
+Eqs. (F1) and (F2), following the path shown in the inset
+and assuming that the Fermi level is at the double van Hove
+singularity at the S point. The obtained bands are in good               FIG. 14. Normal state (a) and altermagnetic (b) band structures
+agreement with those of Refs. [10,56]. Figure 14(b) shows             for κ-Cl obtained from the minimal model in Eq. (1) considering
+the effect of the altermagnetic order parameter in Eq. (1).           Eqs. (F1) and (F2), with hopping parameters detailed in Appendix D
+As seen, again in agreement with previous works [10,11,56],           and Jz = 0.05 in (b). The BZ path is shown in the inset.
+
+                                                                144412-16
+MINIMAL MODELS FOR ALTERMAGNETISM                                                           PHYSICAL REVIEW B 110, 144412 (2024)
+
+
+
+
+                                                                       FIG. 16. Sketch of the relevant hoppings in the minimal model
+                                                                    presented in Eq. (G1), with the red and blue colors representing the
+                                                                    two sublattices.
+
+
+                                                                    calculations that this model gives rise to a leading alter-
+                                                                    magnetic instability, as shown in Fig. 17(c). Importantly, the
+                                                                    altermagnetic instability is stabilized at a lower value of the
+   FIG. 15. [(a)–(d)] Bare and RPA susceptibilities in the ferro-
+magnetic and altermagnetic channels [see Eqs. (23) and (24)],
+                                                                    interaction U compared to the ferromagnetic ordering. In
+considering the minimal one-orbital model band structure for κ-Cl
+shown in Fig. 14(a), with U = 0.1 T = 10−4 and nk = 4002 . (e)
+Order parameter |M| for κ-Cl calculated within Hartree-Fock using
+the Hamiltonian in Eq. (F2), with T = 0.002 and nk = 3002 .
+
+
+ APPENDIX G: MINIMAL TWO-DIMENSIONAL MODEL
+ FOR ALTERMAGNETISM IN A TETRAGONAL SYSTEM
+   In Sec. II, we introduce the general one-orbital model
+describing altermagnets, and demonstrated in Fig. 2 that it
+can reproduce the main features of the bands for RuO2 . The
+dispersion and tight-binding parameters written in Eqs. (5)
+and (6) correspond to a 3D system. In this Appendix, we
+present a minimal 2D model that gives rise to a leading alter-
+magnetic instability, inspired by the RuO2 bands in Fig. 2(a)
+and assuming that the Fermi level is at the coincident van
+Hove singularities at the M point [40].
+   The minimal 2D model for the tetragonal system has the
+following form:
+       H2D = t1 (cos kx + cos ky ) + t2 cos kx cos ky − μ
+                    kx    ky
+            + t3 cos   cos τx + t4 sin kx sin ky τz ,    (G1)
+                     2     2
+where we have omitted the SOC terms for simplicity. This               FIG. 17. Normal state (a) and altermagnetic band structure
+model is obtained by evaluating the 3D model in Eqs. (3), (5)       (b) obtained from the 2D toy model in Eq. (G1) inspired by the
+and (6) at kz = 0. The hoppings in Eq. (G1) are illustrated in      RuO2 bands in Fig. 2. The hopping parameters are {t1 , t2 , t3 , t4 , μ} =
+Fig. 16.                                                            {−0.1, 0.1, 1.7, 0.3, 0.3}, with Jz = 0.2 for the magnetic order pa-
+   In Fig. 17, we show the band structure obtained from the         rameter in (b) [see Eq. (1)]. (c) Order parameter |M| for the bands
+minimal model in Eq. (G1), both in the normal state and             in (a) calculated within Hartree-Fock using the Hamiltonian in
+the altermagnetic state. We have verified with Hartree-Fock         Eq. (G1), with T = 0.0001 and nk = 12002 .
+
+                                                              144412-17
+MERCÈ ROIG et al.                                                                                PHYSICAL REVIEW B 110, 144412 (2024)
+
+
+
+
+    FIG. 18. Berry curvature in the σz = + sector on the kz = 0
+plane. We take t8 = 1, t6 + t7 = 1/2, λz = 1/4, and J1 = J2 = J3 =
+1/4. Here the integral of the Berry curvature over the kz = 0 plane is
+4π .
+
+
+addition, Fig. 17(c) shows two more details of this two dimen-
+sional toy model. First, for variations slightly away from the
+van Hove filling the critical U for the altermagnetic ordering
+becomes larger. Second, the order parameter has a steep onset
+(note the logarithmic scale) and quickly reaches values where               FIG. 19. (a)–(d) Bare and RPA susceptibilities in the ferromag-
+the electronic structure beomes insulating as also found in a            netic and altermagnetic channels [see Eqs. (23), (24)], considering
+similar model in Ref. [29].                                              the minimal one-orbital model band structure inspired on FeSb2
+                                                                         shown in Fig. 7(a), with U = 0.35, T = 0.02 and nk = 603 . (e)
+                                                                         Order parameter for FeSb2 obtained within Hartree-Fock from the
+  APPENDIX H: TOPOLOGICAL SURFACE STATE WITH
+                                                                         Hamiltonian in Eq. (31), with T = 0.002 and nk = 403 .
+     ALTERMAGNETIC ORDER PARAMETER τz σz
+   As an example of the utility of our minimal models,                   Here, the J2 and J3 terms have the same symmetry as the
+we develop conditions under which altermagnetism can lead                order parameter J1 τz σz , and they have a cos k2z factor in 3D.
+to topologically protected edge states. As discussed in the              Since momenta are invariant under the Mz ∝ σz symmetry, the
+main text, the altermagnetic order parameter τz σz preserves             Hamiltonian can be block-diagonalized based on the eigen-
+the mirrors Mx , My , Mz . Consequently, there is a vanish-              values of Mz . These blocks correspond to the σz = ± sectors.
+ing anomalous Hall effect and Berry curvature. However,                  Since these sectors are independent, we can define the Berry
+on the high-symmetry plane, it can exhibit nontrivial topo-              curvature in each sector separately. As the mirror operators
+logical properties akin to those of topological crystalline              Mx and My anti-commute with Mz , they interchange the two
+insulators [58].                                                         sectors. While analyzing a given sector, these two mirror
+   For experiments preserving Mz , it is worth studying the              symmetries are absent. Therefore the Berry curvature on the
+high-symmetry plane kz = 0 and kz = π . We take kz = 0                   Fermi surface in each sector is generically nonzero, as shown
+plane as an example. The minimal Hamiltonian for RuO2                    in Fig. 18. To ensure that the total Berry curvature vanishes,
+becomes (dxy orbitals only):                                             these two Berry curvatures need to be opposite. This implies
+                                                                         that, on the x = 0 plane, spin-up and spin-down electrons with
+                         kx       ky
+   H (kz = 0) = t8 cos      cos τx                                       kz = 0 generically propagate along opposite y directions.
+                         2        2                                         We now illustrate the possibility of chiral surface bound
+                   + (t6 + t7 ) sin kx sin ky τz                         states. Focusing on the σz = + sector, with generic param-
+                              kx     ky                                  eter J1 , the resulting two-band model is fully gapped. As
+                   + λz cos      cos (cos kx − cos ky )τy σz             the parameter J1 is tuned, pointwise gap closings can hap-
+                              2      2                                   pen in (J1 , kx , ky ) space. The closings are at J1 = 0 and
+                                       kx  ky
+                   + J1 τz σz + J2 sin sin τx σz                         J1 = 4(t6 + t7 ) (1+|tt8 8/J/J2 2 |)2 . Berry phase is thus nonzero for J1
+                                        2   2                            between the two closings, which implies the existence of
+                             kx     ky                                   chiral surface states. On the x = 0 surface, these chiral surface
+                   + J3 sin sin (cos kx − cos ky )τy . (H1)
+                              2     2                                    modes have kz = 0, and propagate along the y direction. In the
+
+                                                                   144412-18
+MINIMAL MODELS FOR ALTERMAGNETISM                                                              PHYSICAL REVIEW B 110, 144412 (2024)
+
+σz = − sector, the Berry phase is opposite, and the surface             ties in the ferromagnetic and altermagnetic channels using
+bound states propagate in the opposite direction. These pairs           the one-orbital minimal model in Eq. (1) for FeSb2 , with
+of chiral states resemble the quantum spin Hall effect but are          the bands shown in Fig. 7(a). As discussed in Sec. V A, the
+governed by mirror symmetries and located at high-symmetry              RPA analysis shows that the altermagnetic susceptibility is the
+planes.                                                                 leading instability, but diverges at a finite q.
+                                                                            As seen from the Hartree-Fock results in Fig. 19(e),
+                                                                        the altermagnetic state can be stabilized at a lower value
+         APPENDIX I: RPA AND SELFCONSISTENT
+                                                                        of the Hubbard interaction U . When initializing with fer-
+           HARTREE-FOCK RESULTS FOR FeSb2
+                                                                        romagnetic ordering, this state is in principle also stable,
+   In this Appendix, we present results from RPA analysis and           and it yields a fully polarized ferromagnet beyond its
+selfconsistent Hartree-Fock calculations using the minimal              critical U . These results are robust against changes in the
+model describing the low-energy electronic structure of FeSb2           overall filling with the modification that the saturation value
+where spin-resolved densities are allowed as order parameters.          of the (sublattice) magnetization increases with filling and the
+Figures 19(a)–19(d) display the bare and RPA susceptibili-              critical U for FeSb2 decreases (when approaching half filling).
+
+
+
+ [1] S. Hayami, Y. Yanagi, and H. Kusunose, Momentum-dependent               Shi, R. E. Dunin-Borkowski, S. Das, M. Kläui, J. Sinova, and
+     spin splitting by collinear antiferromagnetic ordering, J. Phys.        M. Jourdan, Direct observation of altermagnetic band splitting
+     Soc. Jpn. 88, 123702 (2019).                                            in CrSb thin films, Nat. Commun. 15, 2116 (2024).
+ [2] K.-H. Ahn, A. Hariki, K.-W. Lee, and J. Kuneš, Antiferromag-       [14] Y. Guo, H. Liu, O. Janson, I. C. Fulga, J. van den Brink, and
+     netism in RuO2 as d-wave Pomeranchuk instability, Phys. Rev.            J. I. Facio, Spin-split collinear antiferromagnets: A large-scale
+     B 99, 184432 (2019).                                                    ab-initio study, Mater. Today Phys. 32, 100991 (2023).
+ [3] L. Šmejkal, R. González-Hernández, T. Jungwirth, and J.            [15] R. González-Hernández, L. Šmejkal, K. Výborný, Y. Yahagi, J.
+     Sinova, Crystal time-reversal symmetry breaking and sponta-             Sinova, T. Jungwirth, and J. Železný, Efficient electrical spin
+     neous Hall effect in collinear antiferromagnets, Sci. Adv. 6,           splitter based on nonrelativistic collinear antiferromagnetism,
+     (2020).                                                                 Phys. Rev. Lett. 126, 127701 (2021).
+ [4] L.-D. Yuan, Z. Wang, J.-W. Luo, E. I. Rashba, and A. Zunger,       [16] L. Šmejkal, A. B. Hellenes, R. González-Hernández, J. Sinova,
+     Giant momentum-dependent spin splitting in centrosymmetric              and T. Jungwirth, Giant and tunneling magnetoresistance in
+     low-Z antiferromagnets, Phys. Rev. B 102, 014422 (2020).                unconventional collinear antiferromagnets with nonrelativistic
+ [5] I. I. Mazin, K. Koepernik, M. D. Johannes, R. González-                 spin-momentum coupling, Phys. Rev. X 12, 011028 (2022).
+     Hernández, and L. Šmejkal, Prediction of unconventional            [17] D.-F. Shao, S.-H. Zhang, M. Li, C.-B. Eom, and E. Y. Tsymbal,
+     magnetism in doped FeSb2 , Proc. Natl. Acad. Sci. 118,                  Spin-neutral currents for spintronics, Nat. Commun. 12, 7061
+     e2108924118 (2021).                                                     (2021).
+ [6] L. Šmejkal, J. Sinova, and T. Jungwirth, Beyond conventional       [18] L. Šmejkal, A. H. MacDonald, J. Sinova, S. Nakatsuji, and T.
+     ferromagnetism and antiferromagnetism: A phase with nonrel-             Jungwirth, Anomalous Hall antiferromagnets, Nat. Rev. Mater.
+     ativistic spin and crystal rotation symmetry, Phys. Rev. X 12,          7, 482 (2022).
+     031042 (2022).                                                     [19] Z. Feng, X. Zhou, L. Šmejkal, L. Wu, Z. Zhu, H. Guo, R.
+ [7] L. Šmejkal, J. Sinova, and T. Jungwirth, Emerging research              González-Hernández, X. Wang, H. Yan, P. Qin, X. Zhang, H.
+     landscape of altermagnetism, Phys. Rev. X 12, 040501 (2022).            Wu, H. Chen, Z. Meng, L. Liu, Z. Xia, J. Sinova, T. Jungwirth,
+ [8] S. Bhowal and N. A. Spaldin, Ferroically ordered magnetic               and Z. Liu, An anomalous Hall effect in altermagnetic ruthe-
+     octupoles in d-wave altermagnets, Phys. Rev. X 14, 011019               nium dioxide, Nat. Electron. 5, 735 (2022).
+     (2024).                                                            [20] R. D. Gonzalez Betancourt, J. Zubáč, R. Gonzalez-Hernandez,
+ [9] T. Berlijn, P. C. Snijders, O. Delaire, H.-D. Zhou, T. A. Maier,        K. Geishendorf, Z. Šobáň, G. Springholz, K. Olejník, L.
+     H.-B. Cao, S.-X. Chi, M. Matsuda, Y. Wang, M. R. Koehler,               Šmejkal, J. Sinova, T. Jungwirth, S. T. B. Goennenwein, A.
+     P. R. C. Kent, and H. H. Weitering, Itinerant antiferromagnetism        Thomas, H. Reichlová, J. Železný, and D. Kriegner, Sponta-
+     in RuO2 , Phys. Rev. Lett. 118, 077201 (2017).                          neous anomalous Hall effect arising from an unconventional
+[10] M. Naka, S. Hayami, H. Kusunose, Y. Yanagi, Y. Motome, and              compensated magnetic phase in a semiconductor, Phys. Rev.
+     H. Seo, Spin current generation in organic antiferromagnets,            Lett. 130, 036702 (2023).
+     Nat. Commun. 10, 4305 (2019).                                      [21] A. Bose, N. J. Schreiber, R. Jain, D.-F. Shao, H. P. Nair, J. Sun,
+[11] M. Naka, S. Hayami, H. Kusunose, Y. Yanagi, Y. Motome, and              X. S. Zhang, D. A. Muller, E. Y. Tsymbal, D. G. Schlom, and
+     H. Seo, Anomalous Hall effect in κ-type organic antiferromag-           D. C. Ralph, Tilted spin current generated by the collinear anti-
+     nets, Phys. Rev. B 102, 075112 (2020).                                  ferromagnet ruthenium dioxide, Nat. Electron. 5, 267 (2022).
+[12] S. Lee, S. Lee, S. Jung, J. Jung, D. Kim, Y. Lee, B. Seok, J.      [22] H. Bai, L. Han, X. Y. Feng, Y. J. Zhou, R. X. Su, Q. Wang,
+     Kim, B. G. Park, L. Šmejkal, C.-J. Kang, and C. Kim, Broken             L. Y. Liao, W. X. Zhu, X. Z. Chen, F. Pan, X. L. Fan, and
+     Kramers degeneracy in altermagnetic MnTe, Phys. Rev. Lett.              C. Song, Observation of spin splitting torque in a collinear
+     132, 036702 (2024).                                                     antiferromagnet RuO2 , Phys. Rev. Lett. 128, 197202 (2022).
+[13] S. Reimers, L. Odenbreit, L. Šmejkal, V. N. Strocov, P.            [23] S. Karube, T. Tanaka, D. Sugawara, N. Kadoguchi, M. Kohda,
+     Constantinou, A. B. Hellenes, R. Jaeschke Ubiergo, W. H.                and J. Nitta, Observation of spin-splitter torque in collinear
+     Campos, V. K. Bharadwaj, A. Chakraborty, T. Denneulin, W.               antiferromagnetic RuO2 , Phys. Rev. Lett. 129, 137201 (2022).
+
+
+                                                                  144412-19
+MERCÈ ROIG et al.                                                                               PHYSICAL REVIEW B 110, 144412 (2024)
+
+[24] T. Osumi, S. Souma, T. Aoyama, K. Yamauchi, A. Honma, K.                 models for the Fe pnictides, New J. Phys. 11, 025016
+     Nakayama, T. Takahashi, K. Ohgushi, and T. Sato, Observation             (2009).
+     of a giant band splitting in altermagnetic MnTe, Phys. Rev. B       [42] A. Kreisel, B. M. Andersen, P. O. Sprau, A. Kostin, J. C. S.
+     109, 115102 (2024).                                                      Davis, and P. J. Hirschfeld, Orbital selective pairing and gap
+[25] O. Fedchenko, J. Minár, A. Akashdeep, S. W. D’Souza, D.                  structures of iron-based superconductors, Phys. Rev. B 95,
+     Vasilyev, O. Tkach, L. Odenbreit, Q. Nguyen, D. Kutnyakhov,              174504 (2017).
+     N. Wind, L. Wenthaus, M. Scholz, K. Rossnagel, M. Hoesch,           [43] A. T. Rømer, D. D. Scherer, I. M. Eremin, P. J. Hirschfeld,
+     M. Aeschlimann, B. Stadtmüller, M. Kläui, G. Schönhense, T.              and B. M. Andersen, Knight shift and leading superconducting
+     Jungwirth, A. B. Hellenes et al., Observation of time-reversal           instability from spin fluctuations in Sr 2 RuO4 , Phys. Rev. Lett.
+     symmetry breaking in the band structure of altermagnetic RuO2 ,          123, 247001 (2019).
+     Sci. Adv. 10, eadj4883 (2024).                                      [44] A. Graf and F. Piéchon, Berry curvature and quantum metric
+[26] S. Hayami, M. Yatsushiro, Y. Yanagi, and H. Kusunose, Classi-            in N-band systems: An eigenprojector approach, Phys. Rev. B
+     fication of atomic-scale multipoles under crystallographic point         104, 085114 (2021).
+     groups and application to linear response tensors, Phys. Rev. B     [45] J. Clepkens, A. W. Lindquist, and H.-Y. Kee, Shadowed triplet
+     98, 165110 (2018).                                                       pairings in Hund’s metals with spin-orbit coupling, Phys. Rev.
+[27] V. Oganesyan, S. A. Kivelson, and E. Fradkin, Quantum theory             Res. 3, 013001 (2021).
+     of a nematic Fermi fluid, Phys. Rev. B 64, 195109 (2001).           [46] A. Lukoyanov, V. Mazurenko, V. Anisimov, M. Sigrist, and T.
+[28] C. Wu, K. Sun, E. Fradkin, and S.-C. Zhang, Fermi liquid insta-          Rice, The semiconductor-to-ferromagnetic-metal transition in
+     bilities in the spin channel, Phys. Rev. B 75, 115103 (2007).            FeSb2 , Eur. Phys. J. B 53, 205 (2006).
+[29] T. A. Maier and S. Okamoto, Weak-coupling theory of neutron         [47] I. J. Park, S. Kwon, and R. K. Lake, Effects of filling, strain,
+     scattering as a probe of altermagnetism, Phys. Rev. B 108,               and electric field on the Néel vector in antiferromagnetic CrSb,
+     L100402 (2023).                                                          Phys. Rev. B 102, 224426 (2020).
+[30] B. Brekke, A. Brataas, and A. Sudbø, Two-dimensional alter-         [48] M. Uchida, T. Nomoto, M. Musashi, R. Arita, and M. Kawasaki,
+     magnets: Superconductivity in a minimal microscopic model,               Superconductivity in Uniquely Strained RuO2 Films, Phys. Rev.
+     Phys. Rev. B 108, 224421 (2023).                                         Lett. 125, 147001 (2020).
+[31] Y. Fang, J. Cano, and S. A. A. Ghorashi, Quantum geometry           [49] J. P. Ruf, H. Paik, N. J. Schreiber, H. P. Nair, L. Miao, J. K.
+     induced nonlinear transport in altermagnets, Phys. Rev. Lett.            Kawasaki, J. N. Nelson, B. D. Faeth, Y. Lee, B. H. Goodge
+     133, 106701 (2024).                                                      et al., Strain-stabilized superconductivity, Nat. Commun. 12, 59
+[32] R. M. Fernandes, V. S. de Carvalho, T. Birol, and R. G. Pereira,         (2021).
+     Topological transition from nodal to nodeless Zeeman splitting      [50] C. A. Occhialini, L. G. P. Martins, S. Fan, V. Bisogni, T.
+     in altermagnets, Phys. Rev. B 109, 024404 (2024).                        Yasunami, M. Musashi, M. Kawasaki, M. Uchida, R. Comin,
+[33] P. A. McClarty and J. G. Rau, Landau theory of altermagnetism,           and J. Pelliciari, Strain-modulated anisotropic electronic struc-
+     Phys. Rev. Lett. 132, 176702 (2024).                                     ture in superconducting RuO2 films, Phys. Rev. Mater. 6,
+[34] M. I. Aroyo, J. M. Perez-Mato, C. Capillas, E. Kroumova,                 084802 (2022).
+     S. Ivantchev, G. Madariaga, A. Kirov, and H. Wondratschek,          [51] The Materials Project, Materials data on RuO2 by materials
+     Bilbao crystallographic server: I. databases and crystallographic        project, 10.17188/1307989 (2020).
+     computing programs, Z. Kristallogr. 221, 15 (2006).                 [52] K. Koepernik and H. Eschrig, Full-potential nonorthogonal
+[35] M. I. Aroyo, A. Kirov, C. Capillas, J. M. Perez-Mato, and                local-orbital minimum-basis band-structure scheme, Phys. Rev.
+     H. Wondratschek, Bilbao Crystallographic Server. II. Repre-              B 59, 1743 (1999).
+     sentations of crystallographic point groups and space groups,       [53] W. H. Baur and A. A. Khan, Rutile-type compounds. IV.
+     Acta Cryst. A 62, 115 (2006).                                            SiO2 , GeO2 and a comparison with other Rutile-type structures,
+[36] H. G. Suh, Y. Yu, T. Shishidou, M. Weinert, P. M. R. Brydon,             Acta Cryst. B 27, 2133 (1971).
+     and D. F. Agterberg, Superconductivity of anomalous pseu-           [54] P. Blaha, K. Schwarz, G. K. Madsen, D. Kvasnicka, and J. Luitz,
+     dospin in nonsymmorphic materials, Phys. Rev. Res. 5, 033204             WIEN2k an Augmented Plane Wave Plus Local Orbitals Pro-
+     (2023).                                                                  gram for Calculating Crystal Properties (Technische Universität
+[37] Y. Yu, T. Shishidou, S. Sumita, M. Weinert, and D. F.                    Wien, 2001).
+     Agterberg, Spin-orbit enabled unconventional Stoner mag-            [55] J. W. Stout and H. E. Adams, Magnetism and the third law of
+     netism, arXiv:2310.00838.                                                thermodynamics. The heat capacity of manganous fluoride from
+[38] D. S. Antonenko, R. M. Fernandes, and J. W. F. Venderbos,                13 to 320 K, J. Am. Chem. Soc. 64, 1535 (1942).
+     Mirror Chern bands and Weyl nodal loops in altermagnets,            [56] S. Sumita, M. Naka, and H. Seo, Fulde-Ferrell-Larkin-
+     arXiv:2402.10201.                                                        Ovchinnikov state induced by antiferromagnetic order in
+[39] L. Attias, A. Levchenko, and M. Khodas, Intrinsic anomalous              κ-type organic conductors, Phys. Rev. Res. 5, 043171
+     Hall effect in altermagnets, Phys. Rev. B 110, 094425 (2024).            (2023).
+[40] Y. Yu, H.-G. Suh, M. Roig, and D. F. Agterberg, Altermag-           [57] H. Kino and H. Fukuyama, Phase diagram of two-dimensional
+     netism from coincident van Hove singularities: Application to            organic conductors: (BEDT-TTF)2 X, J. Phys. Soc. Jpn. 65,
+     κ-Cl, arXiv:2402.05180.                                                  2158 (1996).
+[41] S. Graser, T. A. Maier, P. J. Hirschfeld, and D. J. Scalapino,      [58] L. Fu, Topological crystalline insulators, Phys. Rev. Lett. 106,
+     Near-degeneracy of several pairing channels in multiorbital              106802 (2011).
+
+
+
+
+                                                                   144412-20
+

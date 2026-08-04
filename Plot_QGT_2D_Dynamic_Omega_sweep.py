@@ -13,6 +13,8 @@ import Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected
 from Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected import ChiralHamiltonianChiralBasisProjected
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+from Library.plotting_qgt_2d import get_symmetric_plot_limits
 import json
 
 
@@ -43,7 +45,7 @@ def dynamic_2d_trace_hprime_eigs_vs_omega(
         output_html=None,
         trace_cmap="inferno",
         hprime_cmap="Viridis",
-        trace_zmax_percentile=99.5):
+        trace_zmax_percentile=99.0):
     """
     Interactive HTML plot for the N-D QGT bundle produced by
     ``Calc_QGT_2D_nd_parameter_sweep.py``.
@@ -380,7 +382,7 @@ def dynamic_2d_trace_hprime_eigs_vs_omega_dual(
     output_html=None,
     trace_cmap="inferno",
     hprime_cmap="Viridis",
-    trace_zmax_percentile=99.5,
+    trace_zmax_percentile=99.0,
 ):
     """
     Plotly HTML dual comparison for two N-D QGT bundles with an omega axis.
@@ -846,6 +848,8 @@ def dynamic_2d_qgt_vs_omega_jointed_html(
     drop_overlap=True,
     tol=1e-9,
     cmap="inferno",
+    berry_zlim=None,
+    berry_zlim_percentile=99.0,
     label_left="left",
     label_right="right",
     output_html=None,
@@ -929,9 +933,10 @@ def dynamic_2d_qgt_vs_omega_jointed_html(
     q = quantity.lower()
     label_q = {
         "trace": "QGT Trace",
-        "berry": "Berry Curvature Omega",
-        "imqxy": "Im(Q_xy)",
+        "berry": "Berry Curvature Ω<sub>xy</sub>",
+        "imqxy": "Im(Q<sub>xy</sub>)",
     }[q]
+    document_title = label_q.replace("<sub>", "_").replace("</sub>", "")
 
     ax_L, omega_L, shape_L = _get_omega_axis(bundle_L)
     ax_R, omega_R, shape_R = _get_omega_axis(bundle_R)
@@ -976,7 +981,22 @@ def dynamic_2d_qgt_vs_omega_jointed_html(
         symmetric_cbar = q != "trace"
     finite = field_join[np.isfinite(field_join)]
     vmin_data, vmax_data = float(np.nanmin(finite)), float(np.nanmax(finite))
-    if symmetric_cbar:
+    if q == "berry":
+        symmetric_limits = get_symmetric_plot_limits(
+            finite,
+            berry_zlim,
+            berry_zlim_percentile,
+        )
+        if symmetric_cbar:
+            vmin, vmax = symmetric_limits
+        else:
+            clipped_vmin = max(vmin_data, symmetric_limits[0])
+            clipped_vmax = min(vmax_data, symmetric_limits[1])
+            if clipped_vmin < clipped_vmax:
+                vmin, vmax = clipped_vmin, clipped_vmax
+            else:
+                vmin, vmax = vmin_data, vmax_data
+    elif symmetric_cbar:
         amax = max(abs(vmin_data), abs(vmax_data))
         vmin, vmax = -amax, amax
     else:
@@ -1039,7 +1059,7 @@ def dynamic_2d_qgt_vs_omega_jointed_html(
             visible=(i == 0),
             name=f"omega={omega_val:.4g} ({src})",
             colorbar=dict(title=label_q, thickness=18, len=0.60, y=0.32),
-            hovertemplate="kx: %{x:.3f}<br>ky: %{y:.3f}<br>Value: %{z:.4g}<extra></extra>",
+            hovertemplate="k<sub>x</sub>: %{x:.3f}<br>k<sub>y</sub>: %{y:.3f}<br>Value: %{z:.4g}<extra></extra>",
         ), row=2, col=1)
 
     steps = []
@@ -1093,8 +1113,8 @@ def dynamic_2d_qgt_vs_omega_jointed_html(
     else:
         fig.update_xaxes(title_text="k-path", row=1, col=1)
 
-    fig.update_xaxes(title_text="kx", row=2, col=1)
-    fig.update_yaxes(title_text="ky", scaleanchor="x2", scaleratio=1, row=2, col=1)
+    fig.update_xaxes(title_text="k<sub>x</sub>", row=2, col=1)
+    fig.update_yaxes(title_text="k<sub>y</sub>", scaleanchor="x2", scaleratio=1, row=2, col=1)
 
     def _sidebar_panel(pjson, title_label, title_color):
         def _fv(v):
@@ -1116,8 +1136,8 @@ def dynamic_2d_qgt_vs_omega_jointed_html(
         )
         kg = pjson["k_grid"]
         grid_rows = (
-            _row("kx", f'{_fv(kg["kx_min"])} to {_fv(kg["kx_max"])}')
-            + _row("ky", f'{_fv(kg["ky_min"])} to {_fv(kg["ky_max"])}')
+            _row("k<sub>x</sub>", f'{_fv(kg["kx_min"])} to {_fv(kg["kx_max"])}')
+            + _row("k<sub>y</sub>", f'{_fv(kg["ky_min"])} to {_fv(kg["ky_max"])}')
             + _row("mesh", str(kg["mesh"]))
         )
         band_row = _row("band index", str(pjson.get("band_index", "unknown")))
@@ -1147,7 +1167,7 @@ def dynamic_2d_qgt_vs_omega_jointed_html(
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>{label_q} vs omega jointed</title>
+  <title>{document_title} vs omega jointed</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; }}
     body {{

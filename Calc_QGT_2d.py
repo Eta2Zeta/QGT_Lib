@@ -16,11 +16,123 @@ from Library.eigenvalue_calc_lib_1d import eigenvalues_along_path
 from Library.QGT_lib import *
 from Library.topology import *
 from Library.utilities import *
-from Library.plotting_lib_2d import *
+from Library.dimension_lib import cylindrical_order_axes, is_cylindrical_order
+from Library.plotting_qgt_2d import (
+    plot_qgt_component_heatmaps,
+    plot_qgt_component_surfaces,
+    plot_qgt_eigenvalue_berry_component_heatmaps,
+    plot_qgt_eigenvalue_berry_trace_heatmaps,
+    plot_qgt_eigenvalue_berry_trace_surfaces,
+)
+from Library.plotting_qgt_polar import (
+    plot_berry_components_vs_phi_radius_slider,
+    plot_berry_winding_vs_radius,
+)
 from Library.Hamiltonian.RuO2Hamiltonian import *
 from Library.Hamiltonian.gWaveAltermagnetHamiltonian import *
 from Library.data_management_utils_2d import setup_2D_QGT_results_directory
 from Library.output_utils import print_calculation_complete
+
+
+def _save_polar_berry_diagnostics(
+    radius_grid,
+    phi_grid,
+    g_xy_imag,
+    g_xz_imag,
+    g_yz_imag,
+    *,
+    order,
+    band_indices,
+    results_dir,
+):
+    """Calculate and plot Berry winding diagnostics for a polar QGT grid."""
+    if not is_cylindrical_order(order):
+        return []
+
+    g_xy_imag = np.asarray(g_xy_imag)
+    g_xz_imag = np.asarray(g_xz_imag)
+    g_yz_imag = np.asarray(g_yz_imag)
+    if g_xy_imag.ndim == 2:
+        g_xy_imag = g_xy_imag[np.newaxis, ...]
+        g_xz_imag = g_xz_imag[np.newaxis, ...]
+        g_yz_imag = g_yz_imag[np.newaxis, ...]
+    if not (
+        g_xy_imag.ndim == 3
+        and g_xy_imag.shape == g_xz_imag.shape == g_yz_imag.shape
+    ):
+        raise ValueError(
+            "Polar Berry diagnostics require matching 2D or band-stacked QGT arrays"
+        )
+
+    band_indices = list(band_indices)
+    if len(band_indices) != g_xy_imag.shape[0]:
+        raise ValueError("band_indices must match the number of QGT band arrays")
+
+    omega_x, omega_y, omega_z = berry_curvature_components_from_qgt(
+        g_xy_imag,
+        g_xz_imag,
+        g_yz_imag,
+    )
+    omega_by_axis = {"x": omega_x, "y": omega_y, "z": omega_z}
+    reference_axis, tangent_axis, tangent_sign, _ = cylindrical_order_axes(order)
+    winding_real = omega_by_axis[reference_axis]
+    winding_imag = tangent_sign * omega_by_axis[tangent_axis]
+    winding_labels = (
+        f"Omega_{reference_axis}",
+        f"{'-' if tangent_sign < 0 else ''}Omega_{tangent_axis}",
+    )
+
+    output_paths = []
+    for position, band_index in enumerate(band_indices):
+        radius_values, winding_numbers = winding_numbers_vs_radius(
+            radius_grid,
+            phi_grid,
+            winding_real[position],
+            winding_imag[position],
+        )
+
+        winding_data_path = os.path.join(
+            results_dir,
+            f"berry_winding_vs_radius_band_{band_index}.npz",
+        )
+        np.savez(
+            winding_data_path,
+            radius=radius_values,
+            winding=winding_numbers,
+            band_index=int(band_index),
+            order=order,
+            winding_real_component=winding_labels[0],
+            winding_imag_component=winding_labels[1],
+        )
+        print(f"Saved Berry winding data to: {winding_data_path}")
+
+        winding_plot_path = plot_berry_winding_vs_radius(
+            radius_values,
+            winding_numbers,
+            band_index=band_index,
+            component_labels=winding_labels,
+            results_dir=results_dir,
+            save_fig=True,
+            show=False,
+        )
+        slider_path = plot_berry_components_vs_phi_radius_slider(
+            radius_grid,
+            phi_grid,
+            omega_x[position],
+            omega_y[position],
+            omega_z[position],
+            band_index=band_index,
+            winding_numbers=winding_numbers,
+            order=order,
+            results_dir=results_dir,
+            save_fig=True,
+            show=False,
+        )
+        output_paths.extend(
+            [winding_data_path, winding_plot_path, slider_path]
+        )
+
+    return output_paths
 
 
 def _save_sym_line_eigenvalues(Hamiltonian_Obj, results_subdir, *, num_points_per_segment=100):
@@ -314,7 +426,8 @@ def calculate_2d(
              g_xz_real_array, g_xz_imag_array, 
              g_yz_real_array, g_yz_imag_array) = QGT_grid_num(
                 ki, kj, eigenvalues, eigenfunctions, quantum_geometric_tensor_3d_num, 
-                Hamiltonian_Obj, delta_k=1e-5, band_index=band, kk=kk
+                Hamiltonian_Obj, delta_k=1e-5, band_index=band, kk=kk,
+                order=order,
             )
             trace_array = g_xx_array + g_yy_array + g_zz_array
 
@@ -325,7 +438,8 @@ def calculate_2d(
              g_xz_real_array, g_xz_imag_array, 
              g_yz_real_array, g_yz_imag_array) = QGT_grid_num(
                 ki, kj, eigenvalues, eigenfunctions, quantum_geometric_tensor_3d_num_phase_corrected, 
-                Hamiltonian_Obj, delta_k=1e-5, band_index=band, kk=kk
+                Hamiltonian_Obj, delta_k=1e-5, band_index=band, kk=kk,
+                order=order,
             )
             trace_array = g_xx_array + g_yy_array + g_zz_array
         
@@ -440,7 +554,10 @@ def calculate_2d(
         zlim_berry=z_cutoff,
         zlim_percentile=z_percentile,
         results_dir=results_subdir,
-        save_fig=True
+        save_fig=True,
+        hamiltonian=Hamiltonian_Obj if order == "xyz" else None,
+        kk=kk,
+        order=order,
     )
 
     # 1. QGT component surfaces
@@ -451,7 +568,8 @@ def calculate_2d(
         results_dir=results_subdir,
         save_fig=True,
         filename=f"qgt_component_surfaces_band_{band}.html",
-        show=False
+        show=False,
+        order=order,
     )
 
     # 2. Combined Plots
@@ -463,17 +581,35 @@ def calculate_2d(
         results_dir=results_subdir,
         save_fig=True,
         filename=f"qgt_eigenvalue_berry_trace_surfaces_band_{band}.html",
-        show=False
+        show=False,
+        order=order,
     )
 
     print(f"Plotting QGT eigenvalue/Berry/trace heatmaps for band {band}...")
     plot_qgt_eigenvalue_berry_trace_heatmaps(
         ki, kj, eigenvalues, g_xy_imag_array, trace_array,
         eigenvalue_band=band,
+        zlim_berry=z_cutoff,
+        zlim_percentile=z_percentile,
         title=f"2D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {band})",
         results_dir=results_subdir,
-        save_fig=True
+        save_fig=True,
+        hamiltonian=Hamiltonian_Obj if order == "xyz" else None,
+        kk=kk,
+        order=order,
     )
+
+    if is_cylindrical_order(order):
+        _save_polar_berry_diagnostics(
+            ki,
+            kj,
+            g_xy_imag_array,
+            g_xz_imag_array,
+            g_yz_imag_array,
+            order=order,
+            band_indices=[band],
+            results_dir=results_subdir,
+        )
 
     print_calculation_complete("2D QGT", results_subdir, artifact="Results", copied_to=temp_dir)
 
@@ -730,7 +866,10 @@ def calculate_2d_all_bands(
             zlim_berry=z_cutoff,
             zlim_percentile=z_percentile,
             results_dir=results_subdir,
-            save_fig=True
+            save_fig=True,
+            hamiltonian=Hamiltonian_Obj if order == "xyz" else None,
+            kk=kk,
+            order=order,
         )
 
         # 1. QGT component surfaces
@@ -741,7 +880,8 @@ def calculate_2d_all_bands(
             results_dir=results_subdir,
             save_fig=True,
             filename=f"qgt_component_surfaces_band_{band_to_plot}.html",
-            show=False
+            show=False,
+            order=order,
         )
 
         # 2. Combined Plots
@@ -753,16 +893,34 @@ def calculate_2d_all_bands(
             results_dir=results_subdir,
             save_fig=True,
             filename=f"qgt_eigenvalue_berry_trace_surfaces_band_{band_to_plot}.html",
-            show=False
+            show=False,
+            order=order,
         )
 
         print(f"Plotting QGT eigenvalue/Berry/trace heatmaps for band {band_to_plot}...")
         plot_qgt_eigenvalue_berry_trace_heatmaps(
             ki, kj, eigenvalues, g_xy_imag_all[band_to_plot], trace_all[band_to_plot],
             eigenvalue_band=band_to_plot,
+            zlim_berry=z_cutoff,
+            zlim_percentile=z_percentile,
             title=f"2D Results: {Hamiltonian_Obj.name if Hamiltonian_Obj else ''} (Band {band_to_plot})",
             results_dir=results_subdir,
-            save_fig=True
+            save_fig=True,
+            hamiltonian=Hamiltonian_Obj if order == "xyz" else None,
+            kk=kk,
+            order=order,
+        )
+
+    if is_cylindrical_order(order):
+        _save_polar_berry_diagnostics(
+            ki,
+            kj,
+            g_xy_imag_all,
+            g_xz_imag_all,
+            g_yz_imag_all,
+            order=order,
+            band_indices=range(n_bands),
+            results_dir=results_subdir,
         )
 
     print_calculation_complete("2D QGT all bands", results_subdir, artifact="Results", copied_to=temp_dir)

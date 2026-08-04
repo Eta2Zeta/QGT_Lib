@@ -16,6 +16,7 @@ from .HaldaneHamiltonian import HaldaneHamiltonian
 from .TwoOrbitalSpinfulHamiltonian import TwoOrbitalSpinfulHamiltonian
 from .TwoOrbitalUnspinfulHamiltonian import TwoOrbitalUnspinfulHamiltonian
 from .MinimalAltermagnetHamiltonian import MinimalAltermagnetHamiltonian
+from .MinimalHamSG124_2b2d import MinimalHamSG124_2b2d
 from .MinimalHamSG127_2a2b import MinimalHamSG127_2a2b
 from .MinimalHamSG127_2c2d import MinimalHamSG127_2c2d
 from .MinimalHamSG192_2b import MinimalHamSG192_2b
@@ -39,6 +40,7 @@ __all__ = [
     "TwoOrbitalSpinfulHamiltonian",
     "TwoOrbitalUnspinfulHamiltonian",
     "MinimalAltermagnetHamiltonian",
+    "MinimalHamSG124_2b2d",
     "MinimalHamSG127_2a2b",
     "MinimalHamSG127_2c2d",
     "MinimalHamSG192_2b",

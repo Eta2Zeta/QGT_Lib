@@ -7,7 +7,7 @@ import shutil
 
 import numpy as np
 
-from Library.Hamiltonian import THF_Hamiltonian
+from Library.Hamiltonian import *
 from Library.data_management_utils_2d import setup_2D_Eigen_results_directory
 from Library.dimension_lib import (
     create_2d_coordinate_grid,
@@ -18,7 +18,7 @@ from Library.eigenvalue_calc_lib import (
     grid_eigenvalues_eigenfunctions,
 )
 from Library.output_utils import print_calculation_complete
-from Library.plotting_lib_2d import (
+from Library.plotting_eigenvalues_2d import (
     plot_degeneracy_heatmap,
     plot_eigenvalue_line_slider,
     plot_eigenvalue_surfaces,
@@ -36,6 +36,7 @@ def calculation_2d(
     k_max=None,
     z_limit=1000,
     bands_to_plot=None,
+    max_l=10,
 ):
     """Calculate, save, and plot a 2D eigenvalue grid.
 
@@ -45,6 +46,15 @@ def calculation_2d(
     phi while ``kk`` fixes the third physical axis.
     """
     print(f"Performing 2D eigenvalue calculation ({Hamiltonian_Obj.name})...")
+
+    if isinstance(max_l, (bool, np.bool_)) or not isinstance(
+        max_l,
+        (int, np.integer),
+    ):
+        raise TypeError("max_l must be a positive integer")
+    max_l = int(max_l)
+    if max_l < 1:
+        raise ValueError("max_l must be at least 1")
 
     if k_max is None:
         k_max = getattr(Hamiltonian_Obj, "k_theta", 2.0 * np.pi)
@@ -67,7 +77,6 @@ def calculation_2d(
         "dki": grid_info["dki"],
         "dkj": grid_info["dkj"],
         "kk": float(kk) if kk is not None else None,
-        "include_endpoints": bool(include_end_points),
         "kvals_mode": grid_info["sampling"],
         "order": order,
         "coordinate_system": grid_info["coordinate_system"],
@@ -78,6 +87,14 @@ def calculation_2d(
         "phi_periodic": grid_info["phi_periodic"],
         "phi_domain": grid_info["phi_domain"],
         "phi_endpoint_included": grid_info["phi_endpoint_included"],
+        "floquet_max_l": (
+            max_l
+            if float(getattr(Hamiltonian_Obj, "A0", 0.0)) != 0.0
+            else None
+        ),
+        "floquet_ratio_band_basis": "zero_fourier_harmonic_energy_order",
+        "floquet_ratio_index_order": ["coupled_band", "photon_index_l"],
+        "floquet_ratio_includes_same_band": False,
         "hamiltonian_params": Hamiltonian_Obj.get_parameters_dict(parameter="2D"),
     }
 
@@ -94,13 +111,27 @@ def calculation_2d(
     if use_existing:
         eigenvalues = np.load(file_paths["eigenvalues"])
         eigenfunctions = np.load(file_paths["eigenfunctions"])
-        print("Loaded existing 2D eigenvalues, eigenfunctions, and metadata.")
+        floquet_max_ratio = np.load(file_paths["floquet_max_ratio"])
+        floquet_max_ratio_indices = np.load(
+            file_paths["floquet_max_ratio_indices"]
+        )
+        print(
+            "Loaded existing 2D eigenvalues, eigenfunctions, Floquet ratios, "
+            "and metadata."
+        )
 
         for file_path in file_paths.values():
             shutil.copy(file_path, os.path.join(temp_dir, os.path.basename(file_path)))
         print(f"Copied existing results to temporary directory: {temp_dir}")
     else:
-        eigenvalues, eigenfunctions, _, _ = grid_eigenvalues_eigenfunctions(
+        (
+            eigenvalues,
+            eigenfunctions,
+            _,
+            _,
+            floquet_max_ratio,
+            floquet_max_ratio_indices,
+        ) = grid_eigenvalues_eigenfunctions(
             Hamiltonian_Obj,
             ki,
             kj,
@@ -108,12 +139,26 @@ def calculation_2d(
             dim=dim,
             kk=kk,
             order=order,
+            max_l=max_l,
         )
 
         np.save(file_paths["eigenvalues"], eigenvalues)
         np.save(file_paths["eigenfunctions"], eigenfunctions)
+        np.save(file_paths["floquet_max_ratio"], floquet_max_ratio)
+        np.save(
+            file_paths["floquet_max_ratio_indices"],
+            floquet_max_ratio_indices,
+        )
         np.save(os.path.join(temp_dir, "eigenvalues.npy"), eigenvalues)
         np.save(os.path.join(temp_dir, "eigenfunctions.npy"), eigenfunctions)
+        np.save(
+            os.path.join(temp_dir, "floquet_max_ratio.npy"),
+            floquet_max_ratio,
+        )
+        np.save(
+            os.path.join(temp_dir, "floquet_max_ratio_indices.npy"),
+            floquet_max_ratio_indices,
+        )
 
         with open(file_paths["meta_json"], "w") as meta_file:
             json.dump(meta_target, meta_file, indent=2, sort_keys=True)
@@ -196,18 +241,72 @@ def calculation_2d(
         artifact="Results",
         copied_to=temp_dir,
     )
-    return eigenvalues, eigenfunctions, results_dir
+    return (
+        eigenvalues,
+        eigenfunctions,
+        floquet_max_ratio,
+        floquet_max_ratio_indices,
+        results_dir,
+    )
 
 
 def main():
-    Hamiltonian_Obj = THF_Hamiltonian(A0=0, V=5)
-    coordinate_order = "xyz"
+    # Hamiltonian_Obj = THF_Hamiltonian(A0=0, V=5)
+    # coordinate_order = "xyz"
+    # calculation_2d(
+    #     Hamiltonian_Obj,
+    #     force_new=False,
+    #     include_end_points=False,
+    #     kk=0.0,
+    #     order=coordinate_order,
+    # )
+
+    Hamiltonian_Obj = gWaveAltermagnetHamiltonian(
+        Jx=0.0,
+        Jy=0.0,
+        Jz=0.2,       # Jz turned on
+        lamb=0.1,
+        lamb_z=0.5,   # larger than the default 0.1
+        A0=0.0,
+        magnus_order=0,
+        t1=0.3,
+        t2=0.3,
+        t3=0.3,
+        t4=0.3
+    )
+
+    # Hamiltonian_Obj = MinimalHamSG127_2c2d(
+    #     Jx = 0.0,
+    #     Jy = 0.0,
+    #     Jz = 0.2,
+    #     lamb = 0.1,
+    #     lamb_z = 0.1,
+    #     A0 = 0.0,
+    #     t1 = 0.3,
+    #     t2 = 0.3,
+    #     t3 = 0.3,
+    #     t4 = 0.3
+    # )
+
+    # Hamiltonian_Obj = MinimalHamSG124_2b2d(
+    #     Jx=0.0,
+    #     Jy=0.0,
+    #     Jz=0.2,
+    #     lamb=0.1,
+    #     lamb_z=0.1,
+    #     A0=0.0,
+    #     t1=0.3,
+    #     t2=0.3,
+    #     t3=0.3,
+    #     t4=0.3,
+    # )
+
     calculation_2d(
         Hamiltonian_Obj,
-        force_new=False,
-        include_end_points=False,
+        force_new=True,
         kk=0.0,
-        order=coordinate_order,
+        order="xpz",
+        k_max=1.5 * np.pi,
     )
 
 

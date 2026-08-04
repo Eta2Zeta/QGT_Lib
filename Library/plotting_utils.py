@@ -2,6 +2,146 @@ import os
 import pickle
 import numpy as np
 
+
+def overlay_hamiltonian_symmetry_path(
+    axes,
+    kx,
+    ky,
+    hamiltonian,
+    *,
+    kk=0.0,
+    sym_kz_threshold=0.02,
+    color="white",
+    line_width=1.5,
+    point_size=30,
+    label_fontsize=10,
+    show_legend=False,
+):
+    """Overlay ``hamiltonian.get_sym_path()`` on one or more kx-ky axes.
+
+    Two-dimensional symmetry points are drawn directly. For three-dimensional
+    paths, only nodes and complete path segments within the plotted ``kz=kk``
+    slice are drawn.
+
+    Returns
+    -------
+    bool
+        Whether any symmetry path segment or point was drawn.
+    """
+    if hamiltonian is None:
+        return False
+    if not 0 <= sym_kz_threshold <= 1:
+        raise ValueError("sym_kz_threshold must be between 0 and 1.")
+
+    get_sym_path = getattr(hamiltonian, "get_sym_path", None)
+    if get_sym_path is None:
+        print(
+            f"{hamiltonian.__class__.__name__} does not define get_sym_path(); "
+            "skipping the symmetry overlay."
+        )
+        return False
+
+    try:
+        sym_points, path_names = get_sym_path()
+    except NotImplementedError:
+        print(
+            f"{hamiltonian.__class__.__name__} does not define a symmetry path; "
+            "skipping the symmetry overlay."
+        )
+        return False
+
+    path_names = list(path_names)
+    if not path_names:
+        return False
+
+    if hasattr(axes, "plot"):
+        plot_axes = (axes,)
+    else:
+        plot_axes = tuple(np.asarray(axes, dtype=object).reshape(-1))
+    if not plot_axes:
+        raise ValueError("axes must contain at least one Matplotlib axis.")
+
+    kx = np.asarray(kx)
+    ky = np.asarray(ky)
+    kx_range = float(np.nanmax(kx) - np.nanmin(kx))
+    ky_range = float(np.nanmax(ky) - np.nanmin(ky))
+    kz_tolerance = sym_kz_threshold * max(kx_range, ky_range)
+    fixed_kz = 0.0 if kk is None else float(kk)
+
+    visible_points = {}
+    for name in dict.fromkeys(path_names):
+        if name not in sym_points:
+            raise KeyError(f"Symmetry path references undefined point {name!r}.")
+
+        point = np.asarray(sym_points[name], dtype=float).reshape(-1)
+        if point.size not in (2, 3):
+            raise ValueError(
+                f"Symmetry point {name!r} must contain two or three coordinates."
+            )
+        if point.size == 3 and abs(point[2] - fixed_kz) > kz_tolerance:
+            visible_points[name] = None
+        else:
+            visible_points[name] = point[:2]
+
+    segments = []
+    for start_name, end_name in zip(path_names[:-1], path_names[1:]):
+        start_xy = visible_points[start_name]
+        end_xy = visible_points[end_name]
+        if start_xy is not None and end_xy is not None:
+            segments.append((start_xy, end_xy))
+
+    labeled_points = [
+        (name, visible_points[name])
+        for name in dict.fromkeys(path_names)
+        if visible_points[name] is not None
+    ]
+    if not segments and not labeled_points:
+        return False
+
+    for ax in plot_axes:
+        for segment_index, (start_xy, end_xy) in enumerate(segments):
+            ax.plot(
+                [start_xy[0], end_xy[0]],
+                [start_xy[1], end_xy[1]],
+                color=color,
+                linewidth=line_width,
+                linestyle="--",
+                alpha=0.95,
+                label=(
+                    "Symmetry Path"
+                    if show_legend and segment_index == 0
+                    else None
+                ),
+            )
+
+        for name, xy in labeled_points:
+            ax.scatter(
+                xy[0],
+                xy[1],
+                color=color,
+                edgecolor="black",
+                linewidth=0.4,
+                s=point_size,
+                zorder=5,
+            )
+            display_name = r"$\Gamma$" if name in {"G", "Gamma", "Γ"} else name
+            ax.annotate(
+                display_name,
+                (xy[0], xy[1]),
+                textcoords="offset points",
+                xytext=(5, 5),
+                ha="left",
+                color=color,
+                fontsize=label_fontsize,
+                fontweight="bold",
+            )
+
+        if show_legend and segments:
+            ax.legend(loc="upper right")
+
+    return True
+
+
 def load_qgt(folder_name):
     """Load QGT entries (np object array) and meta dict from a sweep folder."""
     base = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", folder_name)

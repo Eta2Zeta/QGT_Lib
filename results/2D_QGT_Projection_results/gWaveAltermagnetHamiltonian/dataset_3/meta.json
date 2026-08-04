@@ -1,0 +1,102 @@
+{
+    "calculation": "D3d_all_irrep_character_projection",
+    "hamiltonian_name": "gWaveAltermagnetHamiltonian",
+    "hamiltonian_params": {
+        "omega": 0.0,
+        "A0": 0.0,
+        "polarization": "left",
+        "magnus_order": 0,
+        "analytic_magnus": false,
+        "mu": 0.0,
+        "Jx": 0.0,
+        "Jy": 0.0,
+        "Jz": 0.2,
+        "t1": 0.3,
+        "t2": 0.3,
+        "t3": 0.3,
+        "t4": 0.3,
+        "lamb": 0.1,
+        "lamb_z": 0.5
+    },
+    "point_group": "D3d",
+    "group_element_order": [
+        "E",
+        "C3+",
+        "C3-",
+        "C2p_0",
+        "C2p_1",
+        "C2p_2",
+        "i",
+        "S6+",
+        "S6-",
+        "sigma_d_0",
+        "sigma_d_1",
+        "sigma_d_2"
+    ],
+    "irreps": [
+        "A1g",
+        "A2g",
+        "Eg",
+        "A1u",
+        "A2u",
+        "Eu"
+    ],
+    "irrep_dimensions": {
+        "A1g": 1,
+        "A2g": 1,
+        "Eg": 2,
+        "A1u": 1,
+        "A2u": 1,
+        "Eu": 2
+    },
+    "projection_normalization": "d_irrep / group_order",
+    "projected_components": [
+        "Omega_x",
+        "Omega_y"
+    ],
+    "projection_action": "coordinate_only",
+    "parallelization": {
+        "group_orbit": {
+            "axis": "group_element",
+            "tasks": 12,
+            "requested_workers": 6,
+            "effective_workers": 6,
+            "task_scope": "one group element",
+            "execution_mode": "spawned_process_pool",
+            "start_method": "spawn"
+        },
+        "irrep_projection": {
+            "axis": "irrep",
+            "processes": 6,
+            "tasks_per_process": 1,
+            "start_method": "spawn",
+            "data_sharing": "read_only_npy_memmap"
+        }
+    },
+    "qgt_method": "numerical_phase_corrected",
+    "berry_convention": {
+        "Omega_x": "-2 Im(Q_yz)",
+        "Omega_y": "+2 Im(Q_xz)"
+    },
+    "band_indices": [
+        0,
+        1,
+        2,
+        3
+    ],
+    "delta_k": 1e-05,
+    "mesh_spacing": 150,
+    "ki_range": [
+        -4.71238898038469,
+        4.71238898038469
+    ],
+    "kj_range": [
+        -4.71238898038469,
+        4.71238898038469
+    ],
+    "dki": 0.06325354336086875,
+    "dkj": 0.06325354336086875,
+    "kk": 0.0,
+    "kvals_mode": "endpoints",
+    "order": "xyz"
+}

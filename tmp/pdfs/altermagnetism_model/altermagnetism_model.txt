@@ -1,0 +1,2154 @@
+Symmetry constraints on the Berry curvature
+The minimal model for altermagnetism is:
+
+               H(k) = ε0,k + tx,k τx + tz,k τz + τy λk · σ + τz J · σ         (1)
+
+and for the hexagonal g-wave case
+                                 kz
+                                        tz,k = t4 sin kz fy fy2 − 3fx2
+                                                                         
+                 tx,k = t3 cos      ,
+                                 2
+                           kz 2                         kz
+                               f − fy2 , λy,k = −2λ cos fx fy
+                                       
+              λx,k = λ cos
+                            2 x                         2
+                                       kz
+                          λz,k = λz sin fx fx2 − 3fy2
+                                                      
+                                        2
+
+Case1: J = Jx , kz = π
+So on the plane kz = π,
+                             π                π
+                       cos     = 0,     sin     = 1,    sin π = 0.
+                             2                2
+Therefore
+
+                      tx = 0,      tz = 0,        λx = 0,    λy = 0
+and only λz survives. Thus if you turn on only Jx , the Hamiltonian on kz = π
+reduces to
+
+                    H (kz = π) = ε0,k + λz (k)τy σz + Jx τz σx
+Now comes the key point. Do a spin rotation about the x-axis by π/2. Under
+that rotation,
+
+                                 σx → σx ,        σz → −σy
+Concretely, we do unitary transformation on the Hamiltonian with the operator:
+U = √12 (I − iσx ). With the basic pauli matrix algebra, we find:
+                                                       
+                           1                  1
+              U σx U † = √ (I − iσx ) σx √ (I + iσx ) = σx ,
+                            2                  2
+and
+                                 1
+                   U σz U † =      (I − iσx ) σz (I + iσx ) = −σy .
+                                 2
+So the Hamiltonian becomes
+
+                        H ′ = ε0,k − λz (k)τy σy + Jx τz σx
+But τy σy is real (imaginary × imaginary), and τz σx is also real, so H ′ (k) is a
+real matrix for every (kx , ky ) on that plane. That means there is an antiunitary
+
+
+                                              1
+symmetry acting like complex conjugation on the whole kz = π plane. In
+other words, after acting on the Hamiltonian with the complex conjugation, the
+Hamiltonian is unchanged. But the Berry curvature changes sign under complex
+conjugation while the momentum point is unchanged (see Appendix A), it must
+satisfy
+
+                               Ωxy (k) = −Ωxy (k),
+where Ωxy (k), is the Berry curvature of H ′ and −Ωxy (k) is the Berry curvature
+of H ′ after complex conjugation. But the Berry curvature is real, so it must be
+zero on that plane:
+                                  Ωxy (k) = 0
+everywhere on that plane, except possibly at singular band-touching points.
+
+Case 2: J = Jz , kz = 0
+On the plane where kz = 0, with only Jz turned on, the g-wave altermagnet
+Hamiltonian reduces to
+
+                  H = ε0 + t3 τx + λx τy σx + λy τy σy + Jz τz σz .
+Similar to above, we will perform a combination of a unitary transformation
+with a complex conjugation. Let the unitary operation to be
+
+                                     U = τx σx .
+
+Acting on λx τy σx , τx anticommutes with τy and σx commutes with σx , we get
+−λx τy σx . For λy τy σy , τx anticommutes with τy and σx anticommutes with
+σy , we get λy τy σy . Then finally for Jz τz σz , τx anticommutes with τz and σx
+anticommutes with σz , we get Jz τz σz . Therefore, after the transformation the
+Hamiltonian becomes:
+
+                 H ′ = ε0 + t3 τx − λx τy σx + λy τy σy + Jz τz σz .
+Since −λx τy σx is the only imaginary term, complex conjugation flips it back
+and we get back H, and the same condition on the Berry curvature:
+
+                               Ωxy (k) = −Ωxy (k).
+And therefore
+                                    Ωxy (k) = 0.
+
+
+Spin Density Calculation
+                           ⟨c†n,k,α σαβ
+                                     i
+                                        cn,k,β ⟩ = ⟨S i (k)⟩
+
+                               S α (k) ∼ ϵαβγ Ωβγ (k)
+
+
+                                          2
+                                 c†n,k↑ cn,k↓ + c†n,k↓ cn,k↑
+
+
+Expectation of Spin for J = Jx , kz = 0
+Let the symmetry operator be M = τx σz , we can check that it commutes with
+the Hamiltonian:
+
+                                       [H, M ] = 0
+                         x
+Let’s test the x-spin (S = τ0 σx ). We sandwich it with the symmetry operator:
+
+                             M † (σx ) M = (τx σz ) σx (τx σz )
+                         =τx2 (σz σx σz ) = (I) (−σx ) = −Sx
+Therefore, ⟨S x ⟩ = 0 exactly. Let’s test the y-spin (S y = τ0 σy ):
+
+               M † (σy ) M = (τx σz ) σy (τx σz ) = τx2 (σz σy σz ) = −Sy
+Therefore, ⟨S y ⟩ = 0 exactly. Finally, let’s test the z-spin (S z = τ0 σz ):
+
+               M † (σz ) M = (τx σz ) σz (τx σz ) = τx2 (σz σz σz ) = +Sz
+Because no minus sign appears, the symmetry allows it to survive. Therefore,
+⟨S z ⟩ ̸= 0.
+
+
+
+
+                                             3
+1    Symmetry of the Berry Curvature near k = 0
+Again, the Hamiltonian is given as
+
+              H(k) = ε0,k + tx,k τx + tz,k τz + τy λk · σ + Jz τz σz .
+Near k = 0,
+                         3                              3
+                           kx + O k 3 ,                   ky + O k 3 .
+                                                                   
+                  fx =                        fy =
+                         2                              2
+It is convenient to define
+                              3               3
+                         X=     kx ,   Y =      ky ,      Z = kz .
+                              2               2
+Then the leading pieces are
+
+                              tx,k = t3 + O Z 2 ,
+                                               
+
+                     tz,k = t4 ZY Y 2 − 3X 2 + O k 5 ,
+                                                     
+
+                         λx = λ X 2 − Y 2 + O k 4 ,
+                                                   
+
+                           λy = −2λXY + O k 4 ,
+                                                  
+
+                           λz
+                               ZX X 2 − 3Y 2 + O k 6 .
+                                                     
+                     λz =
+                            2
+At k = 0, the Hamiltonian is
+
+                           H(0) = ε0,0 + t3 τx + Jz τz σz .
+For fixed σz = s = ±1,
+
+                           Hs (0) = ε0,0 + t3 τx + sJz τz .
+So the two orbital energies are
+                                                 q
+                Eα (0) = ε0,0 + αR,       R=           t23 + Jz2 ,   α=±
+Each Eα (0) is twofold degenerate because s =↑, ↓ give the same energy. That
+is the α-doublet. So the α = + doublet is
+
+                         {|α = +, s = +⟩, |α = +, s = −⟩}
+and similarly for α = −. The two α = ± doublets are separated by a gap
+
+                                       ∆ = 2R.
+So the Abelian Berry curvature of an individual band is not well-defined exactly
+at k = 0. What is welldefined is: first project into one gapped doublet α = ±,
+then diagonalize the leading k ̸= 0 perturbation inside that doublet. Formally,
+define the projector
+
+
+                                          4
+                                           X
+                                  Pα =           |α, s⟩⟨α, s|.
+                                           s=±
+
+Then the effective Hamiltonian inside that doublet is
+                                     (α)
+                                   Heff = Pα H(k)Pα .
+To leading order in small k, this is just first-order degenerate perturbation
+theory. Terms coupling the α doublet to the opposite −α doublet only enter at
+second order, suppressed by the gap 2R. Now write the small-k Hamiltonian as
+
+                                  H(k) = H(0) + V (k),
+where
+
+        V (k) = δε0 (k) + δtx (k)τx + tz (k)τz + τy (λx σx + λy σy + λz σz ) .
+Here δtx (k) = tx,k − t3 .
+Now projecting the H(0) into the α doublet,
+                           X
+           Pα H(0)Pα =       |α, s⟩⟨α, s|H(0) |α, s′ ⟩ ⟨α, s′ | = Eα (0)Pα .
+                           s,s′
+
+Once we restrict ourselves inside a 2d α subspace, we get our first term,
+
+                                            Eα (0).
+Projecting the first term in V (k) is straight-forward, since it is only identity:
+
+         Pα δε0 (k)P α = Pα [δε0 (k)I4 ] Pα = δε0 (k)Pα I4 Pα = δε0 (k)Pα .
+Again, once restricting ourselves inside an α doublet, we have
+
+                                           δε0 (k)ρ0 .
+
+Now project the δtx τx term. In the α eigenstate of
+
+                                      t3 τx + sJz τz
+the orbital pseudospin points along the vector
+
+                                         (t3 , 0, sJz )
+Therefore
+                                            t3
+                                     ⟨τx ⟩α,s = α
+                                            R
+This is independent of s. So inside the two-dimensional α doublet,
+                                                      t3
+                                   Pα τx Pα = α          12 .
+                                                      R
+
+                                                 5
+Therefore
+                                                    t3
+                           Pα [δtx (k)τx ] Pα = α      δtx (k)12 .
+                                                    R
+Similarly,
+                                          sJz
+                                   ⟨τz ⟩α,s = α
+                                              .
+                                           R
+Since s = +1 and s = −1 distinguish the two states inside the doublet, this
+becomes a Pauli matrix inside the doublet. Call that Pauli matrix ρz . Then
+                                                  Jz
+                                  Pα τz Pα = α       ρz .
+                                                  R
+So
+                                                    Jz
+                            Pα [tz (k)τz ] Pα = α      tz (k)ρz .
+                                                    R
+That gives the dz component:
+                                   Jz
+                                   dα,z = α
+                                      tz (k).
+                                   R
+Now the SOC terms. The important ones are
+
+                                   τy λx σx + τy λy σy
+They mix the two states inside the α doublet. With a standard phase convention
+for the doublet basis, one finds
+                                                 Jz
+                               Pα (τy σx ) Pα = α   ρy
+                                                 R
+                                                   Jz
+                               Pα (τy σy ) Pα = −α ρx
+                                                   R
+Meanwhile,
+
+                                   Pα (τy σz ) Pα = 0
+to first order, so λz does not appear in the leading projected Hamiltonian near
+k = 0. Therefore the projected SOC becomes
+                                                    Jz
+                  Pα [τy (λx σx + λy σy )] Pα = α      (−λy ρx + λx ρy ) .
+                                                    R
+Putting everything together,
+
+
+       (α)                             t3            Jz
+     Heff (k) = Eα (0) + δε0 (k) + α      δtx (k) + α [−λy ρx + λx ρy + tz ρz ] .
+                                       R             R
+So if we define
+
+
+                                           6
+                                                
+                                             −λy
+                                        Jz 
+                             dα (k) = α      λx  ,
+                                        R
+                                              tz
+then
+
+                (α)                          t3
+              Heff (k) = Eα (0) + δε0 (k) + α   δtx (k) + dα (k) · ρ
+                                             R
+where ρ acts inside the twofold degenerate α subspace, not in the original spin
+space and not in the original sublattice space.
+Using the small-k expansions,
+                                                       
+                                          2λXY 
+                              Jz 
+                      dα = α           λ X2 − Y 2   .
+                              R
+                                    t4 ZY Y 2 − 3X 2
+The two split bands inside the α doublet are labeled by β = ±:
+
+                      Eα,β (k) = ε0,k + αR + β |dα (k)| + · · · .
+Explicitly,
+
+                     |Jz |
+                           q
+                                            2                           2
+              |dα | =        λ2 (X 2 + Y 2 ) + t24 Z 2 Y 2 (Y 2 − 3X 2 ) .
+                      R
+Therefore the leading Berry curvature of band (α, β) is the ordinary two-level
+result
+
+                                    β dα · (∂i dα × ∂j dα )
+                            Ωαβ
+                             ij =                  3
+                                    2        |dα |
+Equivalently, since dα = α (Jz /R) a, with
+                                                 
+                                      2λXY 
+                        a=         λ X2 − Y 2   ,
+                                 t4 ZY Y 2 − 3X 2
+we get
+
+                                β            a · (∂i a × ∂j a)
+                        Ωαβ
+                         ij =     sgn (αJz )                   .
+                                2                  |a|3
+Define
+                                      2                           2
+                  D = λ2 X 2 + Y 2         + t24 Z 2 Y 2 Y 2 − 3X 2 .
+Then, in original momentum coordinates (kx , ky , kz ),
+
+
+
+
+                                            7
+                                                                   
+               αβ      3              λ2 t4 XY X 2 + Y 2 3X 2 − Y 2
+         Ωαβ
+          x = Ωky kz =   β sgn (αJz )
+                       2                           D3/2          
+          αβ   αβ      3              λ t4 Y X + Y 2 3X 2 − Y 2
+                                       2     2   2
+         Ωy = Ωkz kx = β sgn (αJz )
+                       2                           D3/2              
+          αβ   αβ        9              λ t4 Y Z X 2 + Y 2 3X 2 − Y 2
+                                          2
+         Ωz = Ωkx ky = − β sgn (αJz )
+                         4                           D3/2
+with
+                              3              3
+                         X=     kx ,   Y =     ky ,     Z = kz
+                              2              2
+
+2       Symmetry of the Spin Expectation
+For the g-wave model near k = 0, we had
+                                   q
+                              R = t23 + Jz2 ,
+and
+                                             
+                                          −λy
+                                     Jz 
+                              dα = α      λx  .
+                                     R
+                                           tz
+The projected physical spin operators are
+                                            t3
+                                Pα σ x Pα = α  ρx
+                                            R
+                                            t3
+                                Pα σy Pα = α ρy
+                                            R
+                                 Pα σz Pα = ρz
+Therefore
+                                         t3
+                              ⟨σx ⟩αβ = α   ⟨ρx ⟩αβ
+                                         R
+                                         t3
+                              ⟨σy ⟩αβ = α ⟨ρy ⟩αβ
+                                         R
+                                ⟨σz ⟩αβ = ⟨ρz ⟩αβ
+Since
+                                               dα
+                                 ⟨ρ⟩αβ = β          ,
+                                              |dα |
+we get
+
+
+
+
+                                        8
+                                                    t3   λy
+                       ⟨σx ⟩αβ = −β sgn (Jz )          q
+                                                    R λ2 + λ 2 + t 2
+                                                                 x            y       z
+
+                                                  t3   λx
+                       ⟨σy ⟩αβ = β sgn (Jz )         q
+                                                  R λ2 + λ 2 + t 2
+                                                             x            y       z
+
+                                                                 tz
+                       ⟨σz ⟩αβ = βα sgn (Jz ) q
+                                                       λ2x + λ2y + t2z
+
+For the g-wave expansion,
+
+                                    λx = λ X 2 − Y 2
+                                                                 
+
+                                       λy = −2λXY
+                                  tz = t4 ZY Y 2 − 3X 2
+                                                                      
+
+with
+                                   3                3
+                           X=        kx ,    Y =      ky ,       Z = kz
+                                   2                2
+So
+                               t3                     2λXY
+          ⟨σx ⟩αβ = β sgn (Jz )   q
+                               R                    2                           2
+                                    λ2 (X 2 + Y 2 ) + t24 Z 2 Y 2 (Y 2 − 3X 2 )
+                                                               
+                               t3                λ X2 − Y 2
+          ⟨σy ⟩αβ = β sgn (Jz ) q
+                               R                    2                           2
+                                    λ2 (X 2 + Y 2 ) + t24 Z 2 Y 2 (Y 2 − 3X 2 )
+                                                                  
+                                            t4 ZY Y 2 − 3X 2
+          ⟨σz ⟩αβ = βα sgn (Jz ) q
+                                                  2                           2
+                                   λ2 (X 2 + Y 2 ) + t24 Z 2 Y 2 (Y 2 − 3X 2 )
+
+
+3      SG 139
+Near Γ,
+
+                                  tx (k) = tx (0) + δtx (k),
+with
+
+                                            tx (0) ≡ T.
+For the simplest SG 136 model, T = t0 . For the RuO2 parametrization in the
+paper, T = t8 . The leading small- k forms are
+
+
+
+
+                                                9
+                               kz     kx     ky     λ
+                     λx = λ sin   sin    cos      ≈ kx kz
+                               2       2      2     4
+                               kz     ky     kx       λ
+                   λy = −λ sin    sin    cos      ≈ − ky kz
+                               2      2       2       4
+                                   λz 2        2
+                                                 
+                             λz ≈       ky − k x
+                                    2
+Also,
+
+                                  tz (k) ≈ Bkx ky .
+For the simplest model, B = tz0 . For the RuO2 model with
+
+                  tz = t6 sin kx sin ky + t7 sin kx sin ky cos kz ,
+one has
+
+                                    B = t6 + t7 .
+Define
+                                  λ              p
+                           L=       ,   R=           T 2 + Jz2 .
+                                  4
+Then
+
+                 λx = Lkx kz ,     λy = −Lky kz ,           tz = Bkx ky .
+The projected d-vector is therefore
+                                                   
+                                −λy            Lky kz
+                          Jz            J z
+                 dα = α          λx  = α  Lkx kz  .
+                          R              R
+                                 tz            Bkx ky
+Let
+
+                        D = L2 kz2 kx2 + ky2 + B 2 kx2 ky2 .
+                                            
+
+Then
+
+                                     |Jz | √
+                                  |dα | =    D.
+                                      R
+Using the same projected spin operators as before,
+                                              T
+                                 Pα σx Pα = α    ρx ,
+                                              R
+                                              T
+                                 Pα σy Pα = α ρy ,
+                                              R
+                                 Pα σz Pα = ρz ,
+and
+
+
+                                            10
+                                                 dα
+                                    ⟨ρ⟩αβ = β         ,
+                                                |dα |
+we get
+                                              T Lky kz
+                          ⟨σx ⟩αβ = β sgn (Jz )  √
+                                              R    D
+                                              T Lkx kz
+                        ⟨σy ⟩αβ = β sgn (Jz )    √
+                                              R    D
+                                               Bkx ky
+                        ⟨σz ⟩αβ = βα sgn (Jz ) √
+                                                  D
+So the leading k-dependence is
+
+                     Sx ∼ ky kz ,     Sy ∼ kx kz ,        Sz ∼ kx ky ,
+up to the common normalization denominator.
+Use the two-band formula
+
+                                    β dα · (∂i dα × ∂j dα )
+                          Ωαβ
+                           ij =                   3         .
+                                    2        |dα |
+Since
+                                               Jz
+                                     dα = α       a,
+                                               R
+with
+                                            
+                                      Lky kz
+                                a =  Lkx kz  ,
+                                      Bkx ky
+we can write
+
+                           β             a · (∂i a × ∂j a)
+                       Ωαβ
+                        ij =  sgn (αJz )                   .
+                           2                   |a|3
+Now compute the three components:
+
+                     a · ∂kx a × ∂ky a = L2 Bkx ky kz2 ,
+                                      
+
+                     a · ∂ky a × ∂kz a = L2 Bkx2 ky kz ,
+                                      
+
+                        a · (∂kz a × ∂kx a) = L2 Bkx ky2 kz .
+Therefore
+
+                          αβ      β            L2 Bkx2 ky kz
+                    Ωαβ
+                     x = Ωky kz =   sgn (αJz )
+                                  2               D3/2
+                          αβ      β            L Bkx ky2 kz
+                                                2
+                    Ωαβ
+                     y = Ωkz kx =   sgn (αJz )
+                                  2               D3/2
+                                                2          2
+                          αβ      β            L  Bk x ky kz
+                    Ωαβ
+                     z = Ωkx ky =   sgn (αJz )      3/2
+                                  2               D
+
+                                          11
+4    SG 127 (2a, 2b)
+From the paper’s tables, SG 127(2a, 2b) has N = A2g and representative split-
+ting
+
+                                 fN (k) = kx ky kx2 − ky2
+                                                               
+
+and the tight-binding row gives
+
+            tz ∼ sx sy (cx − cy ) ,     λx ∼ λsx/2 cy/2 sz ,       λy ∼ λcx/2 sy/2 sz .
+Near Γ,
+                                                            1 2
+                                                              x − y2 .
+                                                                    
+                     sx ∼ x,     sy ∼ y,      cx − cy ∼ −
+                                                            2
+So I will write
+
+                                      tz = Bxy x2 − y 2 ,
+                                                       
+
+where B absorbs the coefficient and sign. Also,
+
+                                 λx = Lxz,          λy = Lyz,
+with L = λ/2 if we literally expand sx/2 ∼ x/2, sy/2 ∼ y/2, sz ∼ z. As before,
+set
+
+                                  Jx = Jy = 0,         Jz ̸= 0
+The projected d-vector is
+                                      
+                                   −λy
+                              Jz                           p
+                       dα = α      λx  ,              R=        T 2 + Jz2 ,
+                              R
+                                    tz
+where
+
+                                           T = tx (0).
+So define
+                                                 
+                                       −Lyz
+                                a=     Lxz     
+                                                  ,
+                                         2    2
+                                    Bxy x − y
+such that
+                                                    Jz
+                                           dα = α      a.
+                                                    R
+The denominator is
+                                                                   2
+                   D = |a|2 = L2 z 2 x2 + y 2 + B 2 x2 y 2 x2 − y 2 .
+                                             
+
+
+                                               12
+4.1      Spin texture
+Using the same projected spin operators as before,
+                                            T
+                              Pα σ x Pα = α   ρx
+                                            R
+                                            T
+                               Pα σ y Pα = α ρ y
+                                            R
+                               Pα σz Pα = ρz
+and
+                                             dα
+                                ⟨ρ⟩αβ = β         ,
+                                            |dα |
+we get
+                                                T Lyz
+                        ⟨σx ⟩αβ = −β sgn (Jz )    √
+                                                R D
+                                               T Lxz
+                          ⟨σy ⟩αβ = β sgn (Jz ) √
+                                               R D
+                                                         
+                                            Bxy x2 − y 2
+                     ⟨σz ⟩αβ = βα sgn (Jz )      √
+                                                   D
+So the numerator lobe structures are
+
+                                    Sx ∼ yz
+                                    Sy ∼ xz
+                              Sz ∼ xy x2 − y 2 .
+                                              
+
+The z-spin component has the g-wave A2g -type structure.
+
+4.2      Berry curvature
+The two-band Berry curvature is
+
+                             β            a · (∂i a × ∂j a)
+                     Ωαβ
+                      ij =     sgn (αJz )                   .
+                             2                  D3/2
+So we need
+
+                             Nij = a · (∂i a × ∂j a)
+Let
+
+                                  ∆ = x2 − y 2
+Then
+
+
+
+
+                                       13
+                                           
+                                       −Lyz
+                                 a =  Lxz 
+                                       Bxy∆
+The derivatives are
+                                                   
+                                           0
+                           ∂x a =        Lz      
+                                                    ,
+                                     By 3x2 − y 2
+                                                   
+                                         −Lz
+                           ∂y a =        0       
+                                                    ,
+                                     Bx x2 − 3y 2
+                                             
+                                         −Ly
+                                ∂z a =  Lx  .
+                                          0
+1. Nxy
+Compute
+                                                      
+                                       LBxz x2 − 3y 2 
+                                   
+
+                       ∂x a × ∂y a =  −LByz 3x2 − y 2  .
+                                           L2 z 2
+Dot with a:
+
+                        Nxy =(−Lyz) LBxz x2 − 3y 2
+                                                  
+
+                              + (Lxz) −LByz 3x2 − y 2
+                                                     
+
+                              + Bxy∆ L2 z 2 .
+                                          
+
+So
+
+                Nxy = BL2 xyz 2 − x2 − 3y 2 − 3x2 − y 2 + ∆ .
+                                                        
+
+Since ∆ = x2 − y 2 ,
+
+              − x2 − 3y 2 − 3x2 − y 2 + x2 − y 2 = −3 x2 − y 2 .
+                                                           
+
+Therefore
+
+                           Nxy = −3BL2 xyz 2 x2 − y 2 .
+                                                     
+
+2. Nyz
+Compute
+                                                        
+                                       −BLx2 x2 − 3y 2 
+                                  
+
+                       ∂y a × ∂z a =  −BLxy x2 − 3y 2  .
+                                           −L2 xz
+Dot with a:
+
+
+                                           14
+                      Nyz =(−Lyz) −BLx2 x2 − 3y 2
+                                                 
+
+                            + (Lxz) −BLxy x2 − 3y 2
+                                                   
+
+                            + Bxy∆ −L2 xz .
+                                        
+
+The first two terms cancel, leaving
+
+                         Nyz = −BL2 x2 yz x2 − y 2 .
+                                                  
+
+3. Nzx
+Compute
+                                                     
+                                     BLxy 3x2 − y 2
+                                   
+
+                     ∂z a × ∂x a =  BLy 2 3x2 − y 2  .
+                                         −L2 yz
+Dot with a:
+
+                       Nzx =(−Lyz) BLxy 3x2 − y 2
+                                                  
+
+                             + (Lxz) BLy 2 3x2 − y 2
+                                                    
+
+                             + Bxy∆ −L2 yz .
+                                          
+
+The first two terms cancel, leaving
+
+                         Nzx = −BL2 xy 2 z x2 − y 2 .
+                                                   
+
+Therefore
+                                                                  
+                           β           BL2 x2 yz x2 − y 2
+               Ωαβ   αβ
+                x = Ωyz = − sgn (αJz )          3/2
+                              2                    D          
+                              β              BL xy z x2 − y 2
+                                               2   2
+              Ωαβ
+                y  = Ω αβ
+                       zx = −    sgn (αJ z )
+                              2                    D3/2         
+                αβ     αβ     3β              BL xyz 2 x2 − y 2
+                                                 2
+              Ωz = Ωxy = −        sgn (αJz )
+                               2                     D3/2
+As a Berry-curvature pseudovector,
+
+                     Ω = (Ωx , Ωy , Ωz ) = (Ωyz , Ωzx , Ωxy ) .
+So
+
+                              Ωx ∼ x2 yz x2 − y 2
+                                                     
+
+                              Ωy ∼ xy 2 z x2 − y 2
+                                                     
+
+                              Ωz ∼ xyz 2 x2 − y 2
+                                                     
+
+up to the common denominator and signs.
+
+
+
+
+                                        15
+5      SG 127 (2c, 2d)
+Table III gives for SG 127(2c, 2d):
+
+                                  tx ∼ cx/2 cy/2 ,
+                                      tz ∼ sx sy
+                               λx ∼ λsx/2 cy/2 sz ,
+                              λy ∼ −λcx/2 sy/2 sz ,
+                            λz ∼ cx/2 cy/2 (cx − cy ) .
+Near Γ, set
+
+                          x = kx ,     y = ky ,         z = kz .
+Then
+
+                                      sx sy ≈ xy
+                                               xz
+                                sx/2 cy/2 sz ≈
+                                                2
+                                               yz
+                                cx/2 sy/2 sz ≈
+                                                2
+and
+                                       1 2
+                                          x − y2 .
+                                                 
+                            cx − cy ≈ −
+                                       2
+For the Jz projection, the λz term does not enter at leading order because
+
+                               Pα (τy σz ) Pα = 0.
+So the leading projected theory uses only
+
+                                      tz = Bxy
+                                     λx = Lxz
+                                     λy = −Lyz
+where B, L absorb constants.
+The projected two-band vector is
+                                                Jz
+                                     dα = α        a,
+                                                R
+with
+                              p
+                         R=       T 2 + Jz2 ,     T = tx (0),
+and
+                                         
+                               −λy      Lyz
+                         a =  λx  =  Lxz 
+                                tz      Bxy
+
+                                         16
+Define
+
+                      D = |a|2 = L2 z 2 x2 + y 2 + B 2 x2 y 2 .
+                                                
+
+
+5.1      Spin texture
+Using the same projected spin operators,
+                                              T
+                                 Pα σ x Pα = α  ρx
+                                              R
+                                              T
+                                 Pα σ y Pα = α ρ y
+                                              R
+                                 Pα σz Pα = ρz
+we get
+                                              T Lyz
+                            ⟨σx ⟩αβ = β sgn (Jz )√
+                                              R D
+                                              T Lxz
+                         ⟨σy ⟩αβ = β sgn (Jz ) √
+                                              R D
+                                                Bxy
+                         ⟨σz ⟩αβ = βα sgn (Jz ) √
+                                                  D
+So the numerator structures are
+
+                          Sx ∼ yz,    Sy ∼ xz,      Sz ∼ xy.
+The z-spin component has the d-wave B2g lobe structure.
+
+5.2      Berry Curvature
+Use
+
+                            β              a · (∂i a × ∂j a)
+                        Ωαβ
+                         ij =   sgn (αJz )                   .
+                             2                   D3/2
+Now compute the derivatives:
+                                              
+                                           0
+                               ∂x a =  Lz  ,
+                                          By
+                                               
+                                          Lz
+                               ∂y a =  0  ,
+                                          Bx
+                                              
+                                          Ly
+                               ∂z a =  Lx  .
+                                           0
+Nxy
+
+
+                                         17
+                                Nxy = a · (∂x a × ∂y a)
+First,
+                                                  
+                                           LBxz
+                           ∂x a × ∂y a =  LByz 
+                                           −L2 z 2
+Dot with a:
+
+              Nxy = (Lyz)(LBxz) + (Lxz)(LByz) + (Bxy) −L2 z 2
+                                                                
+
+                  = BL2 xyz 2
+So
+
+                                  Nxy = BL2 xyz 2 .
+Nyz
+
+                             Nyz = a · (∂y a × ∂z a) .
+First,
+
+                                          −BLx2
+                                                
+
+                          ∂y a × ∂z a =  BLxy  .
+                                           L2 xz
+Dot with a:
+
+              Nyz = (Lyz) −BLx2 + (Lxz)(BLxy) + (Bxy) L2 xz
+                                                           
+
+                 = BL2 x2 yz.
+So
+
+                                  Nyz = BL2 x2 yz.
+Nzx
+
+                             Nzx = a · (∂z a × ∂x a) .
+First,
+                                                
+                                          BLxy
+                          ∂z a × ∂x a =  −BLy 2  .
+                                           L2 yz
+Dot with a:
+
+              Nzx = (Lyz)(BLxy) + (Lxz) −BLy 2 + (Bxy) L2 yz
+                                                            
+
+                 = BL2 xy 2 z.
+
+
+                                          18
+So
+
+                                Nzx = BL2 xy 2 z.
+Therefore
+
+                                  β             BL2 x2 yz
+                      Ωαβ   αβ
+                       x = Ωyz =    sgn (αJz )
+                                  2              D3/2
+                                                   2
+                                  β             BL   xy 2 z
+                      Ωαβ
+                       y  = Ωαβ
+                             zx =   sgn (αJ z )
+                                  2              D3/2
+                                  β             BL2 xyz 2
+                      Ωαβ    αβ
+                       z = Ωxy =    sgn (αJz )
+                                  2              D3/2
+As a pseudovector,
+
+                     Ω = (Ωx , Ωy , Ωz ) = (Ωyz , Ωzx , Ωxy ) .
+So
+
+                                      Ωx ∼ x2 yz
+                                      Ωy ∼ xy 2 z
+                                      Ωz ∼ xyz 2
+up to the common denominator and band/sign factor.
+
+
+6     SG 192 (2b)
+Set
+
+                           x = fx ,     y = fy ,       z = kz
+near Γ, so fx , fy are the small in-plane hexagonal momenta. For SG 194 the
+paper explicitly defines fx , fy as the hexagonal lattice form factors, with fx ∼
+x, fy ∼ y near Γ.
+For SG 192(2b), use
+
+                                 tz = BW (x, y),
+where
+
+                     W (x, y) = xy x2 − 3y 2           3x2 − y 2 .
+                                                               
+
+And the leading SOC pieces are
+
+                            λx = Lxz,          λy = Lyz.
+As usual, the λz term does not enter the leading Jz -projected two-band Hamil-
+tonian because
+
+
+
+                                          19
+                                Pα (τy σz ) Pα = 0
+Therefore the projected two-band vector is
+                                 Jz             p
+                        dα = α      a,   R=         T 2 + Jz2 ,
+                                 R
+with
+
+                                    T = tx (0)
+and
+                                         
+                              −λy      −Lyz
+                        a =  λx  =  Lxz  .
+                               tz      BW
+The denominator is
+
+                     D = |a|2 = L2 z 2 x2 + y 2 + B 2 W 2 .
+                                               
+
+
+6.1      Spin texture
+Using the same projected spin operators,
+                                             T
+                                Pα σ x Pα = α  ρx
+                                             R
+                                             T
+                                Pα σ y Pα = α ρ y
+                                             R
+                                 Pα σz Pα = ρz
+we get
+                                                T Lyz
+                         ⟨σx ⟩αβ = −β sgn (Jz )   √
+                                                R D
+                                               T Lxz
+                          ⟨σy ⟩αβ = β sgn (Jz ) √
+                                               R D
+                                                            
+                                      Bxy x − 3y 2 3x2 − y 2
+                                            2
+               ⟨σz ⟩αβ = βα sgn (Jz )            √
+                                                   D
+So the numerator structures are
+
+                                   Sx ∼ −yz,
+                                 Sy ∼ xz,
+                        Sz ∼ xy x − 3y 2 3x2 − y 2 .
+                                    2
+                                                 
+
+The z-component spin texture has the full sixth-order hexagonal i-wave skeleton.
+
+
+
+
+                                         20
+6.2      Berry Curvature
+Use
+                                     β            Nij
+                             Ωαβ
+                              ij =     sgn (αJz ) 3/2 ,
+                                     2           D
+where
+
+                              Nij = a · (∂i a × ∂j a) .
+We need the derivatives of
+                                          
+                                      −Lyz
+                                a =  Lxz  .
+                                      BW
+They are
+                                           
+                                         0
+                               ∂x a =  Lz  ,
+                                        BWx
+                                           
+                                        −Lz
+                               ∂y a =  0  ,
+                                        BWy
+                                           
+                                        −Ly
+                               ∂z a =  Lx  .
+                                         0
+Because W is homogeneous degree 6,
+
+                               xWx + yWy = 6W.
+1. Nxy
+First,
+                                                
+                                         BLzWy
+                        ∂x a × ∂y a =  −BLzWx 
+                                          L2 z 2
+Dot with a:
+
+          Nxy = (−Lyz) (BLzWy ) + (Lxz) (−BLzWx ) + (BW ) L2 z 2
+                                                                   
+
+              = BL2 z 2 [W − yWy − xWx ]
+Using
+
+                               xWx + yWy = 6W
+we get
+
+
+
+                                         21
+                              Nxy = −5BL2 z 2 W.
+So
+
+                  Nxy = −5BL2 z 2 xy x2 − 3y 2       3x2 − y 2 .
+                                                             
+
+2. Nyz
+First,
+                                               
+                                        −BLxWy
+                        ∂y a × ∂z a =  −BLyWy  .
+                                         −L2 xz
+Then
+
+       Nyz = (−Lyz) (−BLxWy ) + (Lxz) (−BLyWy ) + (BW ) −L2 xz .
+                                                              
+
+The first two terms cancel exactly, so
+
+                              Nyz = −BL2 xzW.
+Therefore
+
+                   Nyz = −BL2 xzxy x2 − 3y 2         3x2 − y 2 .
+                                                             
+
+or
+
+                   Nyz = −BL2 x2 yz x2 − 3y 2        3x2 − y 2 .
+                                                             
+
+3. Nzx
+First,
+                                               
+                                         BLxWx
+                         ∂z a × ∂x a =  BLyWx  .
+                                         −L2 yz
+Then
+
+         Nzx = (−Lyz) (BLxWx ) + (Lxz) (BLyWx ) + (BW ) −L2 yz .
+                                                              
+
+Again, the first two terms cancel, leaving
+
+                              Nzx = −BL2 yzW.
+Therefore
+
+                   Nzx = −BL2 yzxy x2 − 3y 2         3x2 − y 2 .
+                                                             
+
+or
+
+                   Nzx = −BL2 xy 2 z x2 − 3y 2       3x2 − y 2 .
+                                                             
+
+
+                                         22
+Thus
+                                                                
+                     β             BL2 x2 yz x2 − 3y 2 3x2 − y 2
+        Ωαβ   αβ
+         x = Ωyz = −    sgn (αJz )
+                     2                          D3/2            
+          αβ     αβ  β             BL xy z x − 3y 2 3x2 − y 2
+                                     2    2   2
+        Ωy = Ωzx = − sgn (αJz )
+                     2                          D3/2              
+          αβ     αβ  5β             BL z xy x − 3y 2 3x2 − y 2
+                                       2 2      2
+        Ωz = Ωxy = −     sgn (αJz )
+                      2                           D3/2
+As a pseudovector,
+
+                    Ω = (Ωx , Ωy , Ωz ) = (Ωyz , Ωzx , Ωxy ) .
+So the numerator structures are
+
+                      Ωx ∼ x2 yz x2 − 3y 2        3x2 − y 2
+                                                             
+
+                      Ωy ∼ xy 2 z x2 − 3y 2       3x2 − y 2
+                                                             
+
+                      Ωz ∼ xyz 2 x2 − 3y 2        3x2 − y 2
+                                                             
+
+up to common signs and the denominator.
+
+
+
+
+                                       23
+A      Berry Curvature Under Complex Conjuga-
+       tion
+The reason for why the Berry curvature changing sign after complex conjugation
+is as follows: for one isolated band, the Berry curvature is
+
+                            Ωij (k) = −2 Im ⟨∂i u | ∂j u⟩ .
+Under K, the state becomes
+
+                                       |u⟩ 7→ |u⟩∗ .
+Then
+                                                                       ∗
+                           ⟨∂i u∗ | ∂j u∗ ⟩ = (⟨∂i u | ∂j u⟩)
+So its imaginary part changes sign:
+
+                       Im ⟨∂i u∗ | ∂j u∗ ⟩ = − Im ⟨∂i u | ∂j u⟩ .
+So Berry curvature is odd under complex conjugation:
+
+                                      Ωij → −Ωij .
+
+
+B      Projection of the SOC Terms
+Let |uα,s ⟩ is the orbital τ -space eigenvector of
+
+                                   hs = t3 τx + sJz τz .
+Let
+                                             q
+                                     R=           t23 + Jz2
+Define an angle θ by
+                                           Jz                   t3
+                             cos θ =          ,       sin θ =      .
+                                           R                    R
+For spin up, s = +1,
+
+                                   h↑ = t3 τx + Jz τz .
+A convenient choice of orbital eigenvectors is
+
+                                  cos θ2                            − sin θ2
+                                                                          
+                     |u+,↑ ⟩ =               ,    |u−,↑ ⟩ =                   .
+                                  sin θ2                             cos 2 θ
+
+
+For spin down, s = −1,
+
+
+
+                                                 24
+                                    h↓ = t3 τx − Jz τz .
+A compatible gauge choice is
+
+                                   sin θ2                                   cos θ2
+                                                                                    
+                   |u+,↓ ⟩ =                    ,       |u−,↓ ⟩ =                       .
+                                cos θ2                                     − sin 2   θ
+
+Now use
+                                                              
+                                                    0     −i
+                                   τy =                            .
+                                                    i     0
+First do α = +. Let
+                                      θ                         θ
+                               C = cos ,                 S = sin .
+                                      2                         2
+Then
+                                                                       
+                                       C                                 S
+                       |u+,↑ ⟩ =          ,              |u+,↓ ⟩ =         .
+                                       S                                 C
+Therefore
+                                                                
+                                                             −iC
+                                τy |u+,↓ ⟩ =                      .
+                                                              iS
+So
+                                                       
+                                                    −iC
+                       ⟨u+,↑ | τy |u+,↓ ⟩ = (C, S)
+                                                     iS
+                                                    = −iC 2 + iS 2
+                                                    = −i C 2 − S 2
+                                                                              
+
+                                                    = −i cos θ
+                                                         Jz
+                                                    = −i
+                                                         R
+Since
+
+                                      ⟨↑ |σx | ↓⟩ = 1,
+we get
+                                                                       Jz
+                            ⟨+, ↑ |τy σx |+, ↓⟩ = −i                      .
+                                                                       R
+The Hermitian conjugate gives
+                                                                       Jz
+                            ⟨+, ↓ |τy σx |+, ↑⟩ = +i                      .
+                                                                       R
+the projected operator is
+
+
+                                                    25
+                                                               
+                                        Jz         0    −i              Jz
+                     P+ (τy σx ) P+ =                               =      ρy .
+                                        R          i    0               R
+So for α = +,
+                                                        Jz
+                              P+ (τy σx ) P+ = +           ρy .
+                                                        R
+Now do α = −. We chose
+                                                                    
+                                   −S                               C
+                        |u−,↑ ⟩ =     ,           |u−,↓ ⟩ =              .
+                                   C                                −S
+Then
+                                                           
+                                                       iS
+                                 τy |u−,↓ ⟩ =
+                                                       iC
+So
+                                                       
+                                                       iS
+                          ⟨u−,↑ | τy |u−,↓ ⟩ = (−S, C)
+                                                       iC
+                                             = −iS 2 + iC 2
+                                             = +i C 2 − S 2
+                                                                        
+
+                                             = +i cos θ
+                                                  Jz
+                                             = +i
+                                                  R
+Thus, in the basis
+
+                                  {|−, ↑⟩, |−, ↓⟩},
+we get
+                                                            
+                                      Jz          0     i                   Jz
+                     P− (τy σx ) P− =                            =−            ρy .
+                                      R           −i    0                   R
+So for α = −,
+                                                        Jz
+                              P− (τy σx ) P− = −           ρy
+                                                        R
+Putting both cases together,
+                                                        Jz
+                              Pα (τy σx ) Pα = α           ρy
+                                                        R
+
+
+
+
+                                             26
+C       Transformation of Pauli Matrices
+For σz,
+
+                          ⟨α, s|σz |α, s′ ⟩ = ⟨uα,s | uα,s′ ⟩ ⟨s|σz |s′ ⟩ .
+Since σz is diagonal in spin,
+
+                                       ⟨s|σz |s′ ⟩ = sδss′ .
+Thus
+
+                                     ⟨α, ↑ |σz |α, ↑⟩ = +1,
+                                     ⟨α, ↓ |σz |α, ↓⟩ = −1,
+and off-diagonal terms vanish. Therefore, in the doublet basis,
+                                             
+                                       1 0
+                         Pα σ z Pα =             = ρz .
+                                       0 −1
+For σx , it flips spin:
+
+                                σx | ↑⟩ = | ↓⟩,        σx | ↓⟩ = | ↑⟩.
+So the projected matrix is off-diagonal:
+
+                                ⟨α, ↑ |σx |α, ↓⟩ = ⟨uα,↑ | uα,↓ ⟩ .
+Now compute the orbital overlap. For α = +, choose
+                                              
+                                C                S
+                     |u+,↑ ⟩ =     , |u+,↓ ⟩ =     ,
+                                 S              C
+where
+                                          θ                   θ
+                                   C = cos ,           S = sin ,
+                                          2                   2
+with
+                                             Jz                   t3
+                                   cos θ =      ,      sin θ =       .
+                                             R                    R
+Then
+                                                                                t3
+                   ⟨u+,↑ | u+,↓ ⟩ = CS + SC = 2CS = sin θ =                        .
+                                                                                R
+So
+                                                             
+                                             t3       0   1           t3
+                             P+ σ x P+ =                          =      ρx .
+                                             R        1   0           R
+For α = −, with a compatible gauge,
+
+
+                                                  27
+                                                            
+                                    −S                      C
+                       |u−,↑ ⟩ =       ,        |u−,↓ ⟩ =        .
+                                    C                       −S
+Then
+                                                                     t3
+                  ⟨u−,↑ | u−,↓ ⟩ = −SC − CS = − sin θ = −               .
+                                                                     R
+So
+                                                   t3
+                                   P− σ x P− = −      ρx
+                                                   R
+Combining both,
+                                                   t3
+                                   Pα σ x Pα = α      ρx
+                                                   R
+For σy , it also flips spin, but with phases:
+
+                                     σy | ↑⟩ = i| ↓⟩,
+                                    σy | ↓⟩ = −i| ↑⟩.
+The same orbital overlap appears. Therefore, in the α = + subspace,
+                                             
+                                  t3   0 −i        t3
+                      P+ σ y P+ =               = ρy .
+                                  R    i 0         R
+For α = −, the orbital overlap is negative, so
+                                                   t3
+                                   P− σ y P− = −      ρy
+                                                   R
+Thus
+                                                   t3
+                                   Pα σy Pα = α       ρy
+                                                   R
+
+
+
+
+                                           28
+D       Transformation of axial vectors:
+Suppose we have a two-band Hamiltonian
+
+                                  H(k) = d(k) · σ
+and define
+
+                                             d(k)
+                                  n(k) =
+                                            |d(k)|
+For one band,
+
+                               ⟨σ⟩β (k) = βn(k).
+The Berry curvature two-form is
+                              1
+                      Ωij (k) = n(k) · [∂i n(k) × ∂j n(k)]
+                              2
+Now consider a point-group symmetry g. It acts on momentum as
+
+                                   k 7→ k′ = Rk.
+Because n is a spin direction, it transforms as an axial vector:
+
+                                  n (k′ ) = An(k),
+where
+
+                                   A = det(R)R.
+For a proper rotation, det(R) = +1, so A = R. For a mirror or inversion,
+det(R) = −1, so spin picks up the extra axial-vector sign. Now we want to
+prove that this implies a transformation rule for Ω. Start from
+                                       "                   #
+                     ′   ′    1    ′     ∂n (k′ ) ∂n (k′ )
+                   Ωij (k ) = n (k ) ·           ×           .
+                              2           ∂ki′       ∂kj′
+Use
+
+                         n (k′ ) = An(k),     k = R−1 k′ .
+By the chain rule,
+
+                          ∂n (k′ )    X ∂kp ∂n(k)
+                              ′    =A             .
+                           ∂ki        p
+                                        ∂ki′ ∂kp
+
+Since
+
+                                    k = R−1 k′ ,
+
+
+                                        29
+we have
+                                       ∂kp
+                                           = R−1 pi .
+                                                
+                                         ′
+                                       ∂ki
+So
+                                             X
+                         ∂i′ n (k′ ) = A             R−1 pi ∂p n(k).
+                                                        
+                                              p
+
+Similarly,
+                                             X
+                         ∂j′ n (k′ ) = A             R−1 qj ∂q n(k).
+                                                        
+                                              q
+
+Now plug these into the Berry curvature:
+                          "                                    #
+          ′   ′    1          X
+                                    −1
+                                                X
+                                                     −1
+                                                        
+        Ωij (k ) = [An] · A       R        ∂ n×A
+                                         pi p
+                                                   R        ∂ n .
+                                                          qj q
+                   2           p                 q
+
+Because A = det(R)R is an orthogonal matrix with det A = +1, it preserves
+dot products and cross products:
+
+                                     (Aa) · (Ab) = a · b,
+                               (Aa) × (Ab) = A(a × b)
+Therefore all the A’s disappear from the scalar triple product:
+
+                       (An) · [(Aa) × (Ab)] = n · (a × b).
+So we get
+                               X                 1
+                Ω′ij (k′ ) =          R−1 pi R−1 qj n · [∂p n × ∂q n] .
+                                         
+                               p,q
+                                                   2
+
+But the last factor is just
+
+                                             Ωpq (k).
+Hence
+                                       X
+                     Ω′ij (Rk) =             R−1 pi R−1 qj Ωpq (k)
+                                                      
+                                       p,q
+
+This is the general covariance rule for the Berry curvature tensor. Usually people
+convert the antisymmetric tensor Ωij into a pseudovector:
+                                                  1
+                                       Ωa =         ϵaij Ωij
+                                                  2
+So
+
+
+
+                                               30
+                                    X
+                      Ω′ij (Rk) =         R−1 pi R−1 qj Ωpq (k).
+                                                   
+                                    p,q
+becomes:
+                                   1
+                      Ω′a (Rk) =     ϵaij R−1 pi R−1 qj Ωpq (k).
+                                                   
+                                   2
+Because R is orthogonal,
+
+                        R−1 = RT                 R−1 pi = Rip .
+                                                    
+                                          =⇒
+Therefore,
+                                  1
+                           Ω′a (Rk) =
+                                    ϵaij Rip Rjq Ωpq (k).
+                                  2
+Now we use the key Levi-Civita identity:
+
+                            ϵaij Rip Rjq = det(R)Rar ϵrpq
+This identity says that the Levi-Civita symbol-and therefore the cross product-
+picks up a minus sign when R reverses orientation. Using it,
+                                1
+                       Ω′a (Rk) = det(R)Rar ϵrpq Ωpq (k)
+                                2                         
+                                             1
+                             = det(R)Rar       ϵrpq Ωpq (k) .
+                                             2
+But the quantity in brackets is precisely Ωr :
+                                           1
+                               Ωr (k) =      ϵrpq Ωpq (k).
+                                           2
+Hence
+                                                 X
+                          Ω′a (Rk) = det(R)          Rar Ωr (k).
+                                                 r
+In vector notation,
+
+                             Ω′ (Rk) = det(R)RΩ(k).
+If g is a symmetry, the transformed field Ω′ is identified with the original field
+Ω, so we write
+
+                              Ω(Rk) = det(R)RΩ(k).
+which is exactly the same axial-vector transformation law as spin:
+
+                              n(Rk) = det(R)Rn(k)
+So this is the precise statement: n transforms as an axial vector and Ω also
+transforms as an axial vector. Therefore they have the same symmetry repre-
+sentation, even though they are not the same function.
+
+
+                                            31
+E       Example for SG 194
+Here we show exactly why the spin texture and Berry curvature transfrom as
+the same irrep while having different k depedency.
+For the Jz g-wave case, use the surviving group generated by
+
+                                C3z ,     My ,    I.
+For the in-plane components of an axial vector, the representation matrices are
+
+                                    cos 2π  − sin 2π
+                                                     
+                      D (C3z ) =         3          3
+                                    sin 2π   cos 2π
+                                      3         3
+                                          −1 0
+                           D (My ) =
+                                           0 1
+                                              
+                                         1 0
+                             D(I) =
+                                         0 1
+This is the Eg representation: two-dimensional, even under inversion.
+A pair of functions
+                                               
+                                        Fx (k)
+                               F (k) =
+                                         Fy (k)
+transforms as Eg if
+
+                              F (gk) = D(g)F (k)
+for all group generators g. So, we need to check if
+
+                      S(gk) = Ag S(k),        Ω(gk) = Ag Ω(k)
+
+where
+
+                               Ag = det (Rg ) Rg
+for a spatial operation Rg . Now for the actual formulas, define
+
+                           X = r cos ϕ,       Y = r sin ϕ
+Then
+
+                                X 2 + Y 2 = r2 ,
+                               2XY = r2 sin 2ϕ,
+                             X 2 − Y 2 = r2 cos 2ϕ,
+                          Y Y 2 − 3X 2 = −r3 sin 3ϕ,
+                                       
+
+                           Y 3X 2 − Y 2 = r3 sin 3ϕ.
+                                        
+
+Also
+
+
+                                         32
+                              D = λ2 r4 + t24 Z 2 r6 sin2 3ϕ.
+So the spin texture can be written schematically as
+
+                           r2 sin 2ϕ     r2 cos 2ϕ     Zr3 sin 3ϕ
+                                                                 
+             Sαβ (k) = C1 √          , C1 √        , C2 √           ,
+                                D             D             D
+where C1 , C2 are constants containing β, α, sgn Jz , t3 /R, λ, t4 . The constants do
+not matter for spatial symmetry.
+Now package Berry curvature as a pseudovector:
+                                                                  
+                    Ω = (Ωx , Ωy , Ωz ) = Ωky kz , Ωkz kx , Ωkx ky .
+From your formulas,
+                                                     
+                              XY X 2 + Y 2 3X 2 − Y 2
+                         Ωx ∝
+                                        D3/2       
+                              Y X + Y 2 3X 2 − Y 2
+                                2   2
+                         Ωy ∝
+                                        D3/2           
+                                Y Z X + Y 2 3X 2 − Y 2
+                                      2
+                         Ωz ∝ −
+                                         D3/2
+In polar form,
+
+                           r6 sin 3ϕ cos ϕ      r6 sin 3ϕ sin ϕ      Zr5 sin 3ϕ
+                                                                                 
+        Ωαβ (k) =       C3                 , C3                 , C4                  .
+                                D3/2                 D3/2              D3/2
+Again, C3 , C4 are constants. They do not matter for symmetry.
+
+E.1     Transformation of the Berry curvature
+So the in-plane Berry curvature has the structure
+                                                  
+                          Ωx                   cos ϕ
+                               = Q(k) sin 3ϕ
+                          Ωy                   sin ϕ
+where
+
+                                           Q(k)
+is invariant under C3z , My , and I. The denominator is invariant because it only
+contains things like
+
+                                   r2 ,   Z 2,    sin2 3ϕ.
+Now check the generators.
+
+
+
+
+                                             33
+E.1.1     Rotation
+Under
+                                                   2π
+                                 C3z : ϕ → ϕ +        ,
+                                                    3
+we have
+
+                          sin 3ϕ → sin(3ϕ + 2π) = sin 3ϕ,
+and
+                                                     
+                            cos ϕ                 cos ϕ
+                                     → D (C3z )           .
+                             sin ϕ                sin ϕ
+Therefore
+                                                 
+                          Ωx                       Ωx
+                               (C3z k) = D (C3z )     (k).
+                          Ωy                       Ωy
+And,
+                              Ω (C3 k) = R2π/3 Ω(k).
+
+E.1.2     Mirror
+Take the mirror
+
+                        My :      (X, Y, Z) → (X, −Y, Z),
+or
+
+                                       ϕ → −ϕ.
+For a mirror with matrix
+
+                                RMy = diag(1, −1, 1),
+an axial vector transforms with
+                       
+          AMy = det RMy RMy = − diag(1, −1, 1) = diag(−1, 1, −1).
+So the axial-vector rule says
+
+                          (Vx , Vy , Vz ) → (−Vx , Vy , −Vz ) .
+Under
+
+                                    My : ϕ → −ϕ,
+we have
+
+                      sin 3ϕ → − sin 3ϕ,        cos ϕ → cos ϕ,
+
+
+                                           34
+and
+                                                   
+                                  cos ϕ        cos ϕ
+                                           →            .
+                                   sin ϕ      − sin ϕ
+Therefore
+                                                                           
+                   cos ϕ       − sin 3ϕ cos ϕ     −1        0               cos ϕ
+           sin 3ϕ          →                   =                    sin 3ϕ          .
+                   sin ϕ       + sin 3ϕ sin ϕ      0        1               sin ϕ
+So
+                                                   
+                              Ωx                     Ωx
+                                   (My k) = D (My )     (k).
+                              Ωy                     Ωy
+Finally,
+
+                                     Ωz ∝ Z sin 3ϕ,
+so
+
+                                       Ωz → −Ωz .
+Therefore
+
+                       Ω (My k) = (−Ωx , Ωy , −Ωz ) = AMy Ω(k).
+
+E.1.3      Inversion
+Under inversion,
+
+                          I:     (X, Y, Z) → (−X, −Y, −Z),
+so
+
+                                       ϕ → ϕ + π.
+Then
+
+                                 sin 3(ϕ + π) = − sin 3ϕ,
+and
+                                                     
+                                cos(ϕ + π)       cos ϕ
+                                              =−         .
+                                 sin(ϕ + π)       sin ϕ
+The two minus signs cancel:
+                                                              
+                                   cos(ϕ + π)              cos ϕ
+                     sin 3(ϕ + π)               = sin 3ϕ           .
+                                   sin(ϕ + π)              sin ϕ
+Therefore
+
+
+                                           35
+                                       
+                            Ωx           Ωx
+                               (Ik) = +     (k).
+                            Ωy           Ωy
+That is even parity: g. So (Ωx , Ωy ) obeys exactly the Eg matrices. That is
+what it means rigorously that
+
+                               (Ωx , Ωy ) ∼ Eg .
+
+E.2     Transformation of Spin Texture
+Now compare the spin texture.
+                                           
+                           Sx          sin 2ϕ
+                              = P (k)
+                           Sy          cos 2ϕ
+with P (k) also invariant under the same group.
+
+E.2.1   Rotation C3z
+                                                     
+                   sin(2ϕ + 4π/3)                sin 2ϕ
+                                    = D (C3z )
+                   cos(2ϕ + 4π/3)               cos 2ϕ
+Also,
+                                 
+                             2π
+                   sin 3 ϕ +          = sin(3ϕ + 2π) = sin 3ϕ.
+                              3
+So
+
+                              Sz (C3 k) = Sz (k)
+Therefore
+
+                            S (C3 k) = R2π/3 S(k)
+
+E.2.2   Reflection My :
+Now test spin.
+
+                                  Sx ∝ sin 2ϕ
+Under ϕ → −ϕ,
+
+                              sin 2ϕ → − sin 2ϕ,
+so
+
+                                  Sx → −Sx .
+Next,
+
+
+                                        36
+                                     Sy ∝ cos 2ϕ
+Under ϕ → −ϕ,
+
+                                   cos 2ϕ → cos 2ϕ
+so
+
+                                      Sy → Sy .
+Finally,
+
+                                    Sz ∝ Z sin 3ϕ
+Under ϕ → −ϕ,
+
+                                 sin 3ϕ → − sin 3ϕ,
+so
+
+                                     Sz → −Sz .
+Therefore
+
+                       S (My k) = (−Sx , Sy , −Sz ) = AMy S(k).
+
+E.2.3      Inversion
+                                     ϕ→ϕ+π
+gives
+
+                 sin(2ϕ + 2π) = sin 2ϕ,         cos(2ϕ + 2π) = cos 2ϕ
+So
+
+                                    (Sx , Sy ) ∼ Eg
+
+
+F       An A1g irrep basis of D6h
+Here we show that a polynomial basis H6 (x, y) = r6 cos 6ϕ = x6 − 15x4 y 2 +
+15x2 y 4 − y 6 transforms under the irrep A1g of point group D6h and therefore
+when multiplying by the other irreps like B1g of Ωz , the resulting irrep is still
+B1g . A convenient generating set for D6h is
+
+                                   C6z ,   C2x ,    i.
+If H6 is invariant under these, it is invariant under the whole group.
+
+
+
+                                           37
+F.1      Sixfold rotation C6z
+Under
+                                                  π
+                                 C6z : ϕ → ϕ +      ,
+                                                  3
+we get
+                           h     π i
+               cos 6ϕ → cos 6 ϕ +      = cos(6ϕ + 2π) = cos 6ϕ.
+                                  3
+So
+
+                                  C6z : H6 → H6 .
+
+F.2      In-plane twofold rotation C2x
+Take C2x , a 180◦ rotation about the x-axis:
+
+                           C2x : (x, y, z) → (x, −y, −z).
+In the xy-plane this means
+
+                                      ϕ → −ϕ.
+Then
+
+                           cos 6ϕ → cos(−6ϕ) = cos 6ϕ.
+So
+
+                                  C2x : H6 → H6 .
+The other C2′ and C2′′ axes are generated by conjugating this one with powers
+of C6z , so they also leave it invariant.
+
+F.3      Inversion i
+Under inversion,
+
+                            i : (x, y, z) → (−x, −y, −z).
+In polar angle,
+
+                                     ϕ → ϕ + π.
+Therefore
+
+                  cos 6ϕ → cos[6(ϕ + π)] = cos(6ϕ + 6π) = cos 6ϕ.
+So
+
+
+                                            38
+                                          i : H6 → H6 .
+This is the g part: it is even under inversion.
+Therefore, it is totally valid for the Ωz ∼ yz(3x2 −y 2 )(x6 −15x4 y 2 +15x2 y 4 −y 6 )
+because it still transforms under B1g while having a different nodal structure.
+
+
+G       Notes on the projection method
+This should follow the section 4.4 of Dresselhaus. We want to use the example
+of the D3 group to show how the projection method is useful.
+Following the chapter, write
+
+                                   D3 = e, r, r2 , s1 , s2 , s3
+                                       
+
+where
+    • r = C3 is a 120◦ rotation,
+
+    • r2 = C3−1 ,
+    • si = C2′ (i) are the three in-plane twofold rotations.
+Suppose
+
+                                       f = x + 2y + 3z.
+We already know that
+
+                                    (x, y) ∼ E,      z ∼ A2 .
+But imagine we did not recognize this. If we sum the diagonal partner projec-
+tors, we obtain the character projector. Meaning that for example, for the irrep
+E, we are summing the projector
+
+                 (Γ)        (Γ)     dΓ X (Γ)               dΓ X (Γ)
+        P̂ (Γ) = P̂11 + P̂22 =              D11 (R)∗ ÛR +         D22 (R)∗ ÛR
+                                    |G|                    |G|
+                                        R∈G                    R∈G
+                                    dΓ X (Γ)              (Γ)
+                                  =         (D11 (R)∗ + D22 (R)∗ )ÛR
+                                    |G|
+                                        R∈G
+                                    dΓ X (Γ)
+                                  =       χ (R)∗ ÛR
+                                     6
+                                         R
+
+For D3 , this gives
+                               1                                       
+                    P̂ (A1 ) =    Ûe + Ûr + Ûr2 + Ûs1 + Ûs2 + Ûs3
+                               6
+                       (A2 )   1                                       
+                    P̂       =    Ûe + Ûr + Ûr2 − Ûs1 − Ûs2 − Ûs3
+                               6
+
+                                                39
+and
+                                                 1                  
+                                    P̂ (E) =       2Ûe − Ûr − Ûr2
+                                                 3
+Notice that the C2′ operations do not appear in P̂ (E) , because the E-irrep char-
+acter for that class is zero. Applying these to f ,
+
+                                                 P̂ (A1 ) f = 0,
+                                                P̂ (A2 ) f = 3z,
+                                            P̂ (E) f = x + 2y.
+Therefore
+
+                                    f = |{z}  3z + (x + 2y) .
+                                         0 + |{z}
+                                                   | {z }
+                                            A1        A2            E
+
+This is the first practical use: the projectors function as a symmetry analyzer. A
+zero result is also useful information: it says that the original function contains
+no component of that irrep.
+
+G.1     Example 2 Use full matrices to seperate the x and
+        the y
+The character projector only extracts the entire two-dimensional E subspace.
+It cannot distinguish the x partner from the y-partner.
+For that, we need the individual matrix elements. Using the chapter’s (x, y)
+basis,
+                               √ !                           √    !
+                          1       3                       1    3
+            (E)         −
+                        √2
+                             −   2        (E)   2
+                                                       −√2   2
+          D (r) =         3
+                                      , D      r =
+                         2    − 12                      − 23 − 12
+and
+                                                                        
+                                          (E)                 −1    0
+                                      D      (s1 ) =
+                                                              0     1
+                                              √ !                                          √      !
+              (E)
+                                     1
+                                     2√     − 23                  (E)
+                                                                                      1
+                                                                                     √2     2
+                                                                                             3
+          D         (s2 ) =                          ,        D         (s3 ) =
+                                − 23        − 21                                      2
+                                                                                       3
+                                                                                           − 12
+Using their 11 matrix elements,
+                                                                   
+              (E)   1         1                    1
+            P̂11 =      Ûe −    Ûr + Ûr2 − Ûs1 +    Ûs2 + Ûs3
+                    3         2                      2
+This satisfies
+                              (E)                   (E)                  (E)
+                          P̂11 x = x,             P̂11 y = 0,           P̂11 z = 0
+
+
+
+                                                       40
+Consequently,
+                                 (E)
+                             P̂11 (x + 2y + 3z) = x
+Similarly,
+                                 (E)
+                             P̂22 (x + 2y + 3z) = 2y
+Therefore
+                                  (E)           (E)
+                               P̂11 + P̂22 = P̂ (E)
+The left side separates the partners; the right side retains the whole E subspace.
+
+Generating the missing partner
+Suppose you somehow discovered that x is one E-type basis function, but you
+do not know its partner. Use the off-diagonal projector
+                            √ 
+                      (E)     3                          
+                    P̂21 =       Ûr − Ûr2 − Ûs2 + Ûs3 .
+                             6
+Then
+                                          (E)
+                                        P̂21 x = y.
+For example,
+                                  √                      √
+                            1       3              1       3
+                  Ûr x = − x +       y, Ûr2 x = − x −      y,
+                            2      2               2      2
+so the weighted combination cancels all the x ’s and adds the y ’s. This is
+precisely why knowing the full representation matrices is more powerful than
+knowing only the characters: - Characters extract the entire E subspace. -
+Matrix elements can extract or generate a particular partner.
+Strictly speaking, P̂21 is not an ordinary idempotent projector: it is a partner-
+transfer operator. The diagonal objects P̂11 and P̂22 are the actual projectors.
+
+G.2     Construct a symmetry allowed Hamiltonian
+Suppose you start with a completely general quadratic function
+
+                    q = ax2 + bxy + cy 2 + dz 2 + exz + f yz.
+You want to know: which part is invariant under D3 ? Apply the A1 projector:
+                                        a+c 2
+                        P̂ (A1 ) q =        x + y 2 + dz 2
+                                                   
+                                         2
+Everything else is eliminated:
+
+                            xy,        x2 − y 2 ,     xz,   yz
+
+
+                                             41
+all belong to E-type pairs rather than A1 . For example,
+                                            1 2
+                            P̂ (A1 ) x2 =     x + y2 ,
+                                                    
+                                            2
+while
+                                            1 2
+                             P̂ (E) x2 =      x − y2 .
+                                                    
+                                            2
+Thus
+                                1 2      1 2
+                        x2 =      x + y2 +   x − y2 .
+                                                   
+                               |2 {z    } |2 {z    }
+                                   A1              E
+
+This is enormously useful when constructing: - symmetry-allowed k · p Hamil-
+tonians, - crystal-field potentials, - Landau free energies, - strain couplings, -
+Raman tensors.
+Instead of guessing which terms are allowed, start with general terms and project
+onto the required irrep.
+
+
+
+
+                                            42
+

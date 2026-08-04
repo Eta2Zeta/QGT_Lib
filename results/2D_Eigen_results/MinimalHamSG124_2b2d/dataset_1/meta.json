@@ -1,0 +1,46 @@
+{
+  "angular_orientation": null,
+  "coordinate_labels": [
+    "kx",
+    "ky",
+    "kz"
+  ],
+  "coordinate_system": "cartesian",
+  "dki": 0.06325354336086875,
+  "dkj": 0.06325354336086875,
+  "hamiltonian_name": "MinimalHamSG124_2b2d",
+  "hamiltonian_params": {
+    "A0": 0.0,
+    "Jx": 0.0,
+    "Jy": 0.0,
+    "Jz": 0.2,
+    "analytic_magnus": false,
+    "lamb": 0.1,
+    "lamb_z": 0.1,
+    "magnus_order": 1,
+    "mu": 0.0,
+    "omega": 0.0,
+    "polarization": "left",
+    "t1": 0.3,
+    "t2": 0.3,
+    "t3": 0.3,
+    "t4": 0.3
+  },
+  "ki_range": [
+    -4.71238898038469,
+    4.71238898038469
+  ],
+  "kj_range": [
+    -4.71238898038469,
+    4.71238898038469
+  ],
+  "kk": 0.0,
+  "kvals_mode": "endpoints",
+  "mesh_spacing": 150,
+  "order": "xyz",
+  "phi_domain": null,
+  "phi_endpoint_included": null,
+  "phi_periodic": false,
+  "radial_reference_axis": null,
+  "rotation_axis": null
+}

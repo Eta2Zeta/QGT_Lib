@@ -1,0 +1,52 @@
+{
+    "hamiltonian_name": "THF_Hamiltonian",
+    "parameters": {
+        "A0": 0.1,
+        "K_plus": 1.703,
+        "M": 3.697,
+        "V": 0.0,
+        "a_M1": 134.21880627461354,
+        "analytic_magnus": false,
+        "eta": 1,
+        "gamma": -24.75,
+        "k_theta": 0.03120866830104321,
+        "lambda_": 45.29884711768207,
+        "lambda_factor": 0.3375,
+        "magnus_order": 1,
+        "omega": 5000,
+        "polarization": "right",
+        "theta_deg": 1.05,
+        "v_star": -4303.0,
+        "v_star_double_prime": -33.2,
+        "v_star_prime": 1623.0
+    },
+    "scan_ranges": {
+        "omega": {
+            "min": 5000.0,
+            "max": 100000.0
+        }
+    },
+    "scan_spacing": {
+        "omega": {
+            "count": 16,
+            "scale": "log"
+        }
+    },
+    "k_grid": {
+        "kx_min": -0.03120866830104321,
+        "kx_max": 0.03120866830104321,
+        "ky_min": -0.03120866830104321,
+        "ky_max": 0.03120866830104321,
+        "mesh": 150
+    },
+    "band_index": 2,
+    "floquet_diagnostic": {
+        "max_l": 10,
+        "band_basis": "zero_fourier_harmonic_energy_order",
+        "index_order": [
+            "coupled_band",
+            "photon_index_l"
+        ],
+        "includes_same_band": false
+    }
+}

@@ -13,7 +13,8 @@ def setup_2D_Eigen_results_directory(
     Sets up the results directory for 2D eigenvalue calculations using metadata matching.
     
     Returns:
-        file_paths (dict): Paths for eigenvalues, eigenfunctions, meta_json, meta_pkl.
+        file_paths (dict): Paths for eigenvalues, eigenfunctions, Floquet
+            diagnostic grids, meta_json, and meta_pkl.
         use_existing (bool): Whether an existing directory was reused.
         results_subdir (str): The path to the results directory.
         meta_target (dict): The metadata dictionary used for matching.
@@ -21,7 +22,14 @@ def setup_2D_Eigen_results_directory(
     Hamiltonian_name = meta_params["hamiltonian_name"]
     base_root = os.path.join(os.getcwd(), "results", "2D_Eigen_results", Hamiltonian_name)
 
-    required_files = ["eigenvalues.npy", "eigenfunctions.npy", "meta.json", "meta_info.pkl"]
+    required_files = [
+        "eigenvalues.npy",
+        "eigenfunctions.npy",
+        "floquet_max_ratio.npy",
+        "floquet_max_ratio_indices.npy",
+        "meta.json",
+        "meta_info.pkl",
+    ]
 
 
     dir_path, used = pick_or_create_result_dir_simple(
@@ -35,6 +43,11 @@ def setup_2D_Eigen_results_directory(
     file_paths = {
         "eigenvalues": os.path.join(dir_path, "eigenvalues.npy"),
         "eigenfunctions": os.path.join(dir_path, "eigenfunctions.npy"),
+        "floquet_max_ratio": os.path.join(dir_path, "floquet_max_ratio.npy"),
+        "floquet_max_ratio_indices": os.path.join(
+            dir_path,
+            "floquet_max_ratio_indices.npy",
+        ),
         "meta_json": os.path.join(dir_path, "meta.json"),
         "meta_pkl": os.path.join(dir_path, "meta_info.pkl"),
     }
@@ -55,7 +68,7 @@ def setup_2D_QGT_results_directory(
     
     Parameters:
     - hamiltonian: The Hamiltonian object.
-    - meta_params: Dictionary containing metadata fields (kz, kx_range, ky_range, mesh_spacing, method_name, include_endpoints).
+    - meta_params: Dictionary containing the calculation and grid metadata.
     - force_new: Whether to force creating a new directory.
     """
 
