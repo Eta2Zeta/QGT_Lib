@@ -1,0 +1,129 @@
+{
+    "hamiltonian_name": "gWaveAltermagnetHamiltonian",
+    "parameters": {
+        "omega": 0.0,
+        "A0": 0.0,
+        "polarization": "left",
+        "magnus_order": 1,
+        "analytic_magnus": false,
+        "mu": 0,
+        "Jx": 0.0,
+        "Jy": 0.0,
+        "Jz": 0.2,
+        "t1": 0.3,
+        "t2": 0.3,
+        "t3": 0.3,
+        "t4": 0.3,
+        "lamb": 0.1,
+        "lamb_z": 0.1
+    },
+    "scan_ranges": {
+        "lamb": {
+            "min": -0.5,
+            "max": 0.5
+        },
+        "lamb_z": {
+            "min": -0.5,
+            "max": 0.5
+        },
+        "t1": {
+            "min": -0.5,
+            "max": 0.5
+        },
+        "t2": {
+            "min": -0.5,
+            "max": 0.5
+        },
+        "t3": {
+            "min": -0.5,
+            "max": 0.5
+        },
+        "t4": {
+            "min": -0.5,
+            "max": 0.5
+        }
+    },
+    "scan_spacing": {
+        "lamb": {
+            "count": 3,
+            "scale": "linear"
+        },
+        "lamb_z": {
+            "count": 3,
+            "scale": "linear"
+        },
+        "t1": {
+            "count": 3,
+            "scale": "linear"
+        },
+        "t2": {
+            "count": 3,
+            "scale": "linear"
+        },
+        "t3": {
+            "count": 3,
+            "scale": "linear"
+        },
+        "t4": {
+            "count": 3,
+            "scale": "linear"
+        }
+    },
+    "k_grid": {
+        "coordinate_system": "cylindrical",
+        "coordinate_labels": [
+            "r",
+            "phi",
+            "kz"
+        ],
+        "radial_reference_axis": "x",
+        "rotation_axis": "z",
+        "angular_orientation": "right_handed",
+        "phi_periodic": true,
+        "order": "xpz",
+        "sampling": "radial_endpoints_periodic_phi",
+        "include_endpoints": true,
+        "ki_domain": [
+            0.0,
+            4.71238898038469
+        ],
+        "kj_domain": [
+            0.0,
+            6.283185307179586
+        ],
+        "ki_range": [
+            0.0,
+            4.71238898038469
+        ],
+        "kj_range": [
+            0.0,
+            6.241297405131722
+        ],
+        "dki": 0.03162677168043416,
+        "dkj": 0.041887902047863905,
+        "phi_domain": [
+            0.0,
+            6.283185307179586
+        ],
+        "phi_endpoint_included": false,
+        "kk": 0.0,
+        "kx_min": -4.71238898038469,
+        "kx_max": 4.71238898038469,
+        "ky_min": -4.711355475608335,
+        "ky_max": 4.711355475608335,
+        "kz_min": 0.0,
+        "kz_max": 0.0,
+        "mesh": 150,
+        "fixed_coordinate": 0.0
+    },
+    "band_index": 2,
+    "floquet_diagnostic": {
+        "max_l": 10,
+        "band_basis": "zero_fourier_harmonic_energy_order",
+        "index_order": [
+            "coupled_band",
+            "photon_index_l"
+        ],
+        "includes_same_band": false
+    }
+}

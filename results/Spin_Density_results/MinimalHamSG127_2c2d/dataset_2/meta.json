@@ -1,20 +1,6 @@
 {
-  "angular_orientation": null,
-  "coordinate_labels": [
-    "kx",
-    "ky",
-    "kz"
-  ],
-  "coordinate_system": "cartesian",
   "dki": 0.06325354336086875,
   "dkj": 0.06325354336086875,
-  "floquet_max_l": null,
-  "floquet_ratio_band_basis": "zero_fourier_harmonic_energy_order",
-  "floquet_ratio_includes_same_band": false,
-  "floquet_ratio_index_order": [
-    "coupled_band",
-    "photon_index_l"
-  ],
   "hamiltonian_name": "MinimalHamSG127_2c2d",
   "hamiltonian_params": {
     "A0": 0.0,
@@ -33,6 +19,7 @@
     "t3": 0.3,
     "t4": 0.3
   },
+  "include_endpoints": true,
   "ki_range": [
     -4.71238898038469,
     4.71238898038469
@@ -42,12 +29,7 @@
     4.71238898038469
   ],
   "kk": 0.01,
-  "kvals_mode": "endpoints",
   "mesh_spacing": 150,
-  "order": "xyz",
-  "phi_domain": null,
-  "phi_endpoint_included": null,
-  "phi_periodic": false,
-  "radial_reference_axis": null,
-  "rotation_axis": null
+  "n_bands": 4,
+  "order": "xyz"
 }

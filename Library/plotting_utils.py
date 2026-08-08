@@ -2,6 +2,142 @@ import os
 import pickle
 import numpy as np
 
+from Library.dimension_lib import cylindrical_order_axes, is_cylindrical_order
+
+
+def _fixed_axis_from_order(order):
+    if is_cylindrical_order(order):
+        return cylindrical_order_axes(order)[3]
+    return order[2]
+
+
+def symmetry_points_on_fixed_slice(
+    data,
+    order,
+    plane_axes,
+    *,
+    tolerance_fraction=0.01,
+):
+    """Return saved symmetry nodes lying on a fixed-coordinate slice."""
+    tolerance_fraction = float(tolerance_fraction)
+    if not 0.0 <= tolerance_fraction <= 1.0:
+        raise ValueError("symmetry_slice_tolerance must be between 0 and 1")
+    if "path_points" not in data.files or "path_labels" not in data.files:
+        return [], np.empty((0, 2), dtype=float), 0.0
+
+    path_points = np.asarray(data["path_points"], dtype=float)
+    if path_points.ndim != 2 or path_points.shape[1] not in (2, 3):
+        raise ValueError("path_points must have shape (number_of_nodes, 2 or 3)")
+    if path_points.shape[1] == 2:
+        path_points = np.column_stack(
+            (path_points, np.zeros(path_points.shape[0], dtype=float))
+        )
+
+    path_labels = [str(label) for label in np.asarray(data["path_labels"])]
+    if len(path_labels) != path_points.shape[0]:
+        raise ValueError("path_labels and path_points must have the same length")
+
+    fixed_axis = _fixed_axis_from_order(order)
+    fixed_axis_index = "xyz".index(fixed_axis)
+    plane_indices = ["xyz".index(axis) for axis in plane_axes]
+    fixed_coordinate = (
+        float(np.asarray(data["kk"]).item()) if "kk" in data.files else 0.0
+    )
+
+    fixed_values = path_points[:, fixed_axis_index]
+    reciprocal_boundary = float(np.max(np.abs(fixed_values)))
+    reciprocal_period = 2.0 * reciprocal_boundary
+    if reciprocal_period > 0.0:
+        tolerance = tolerance_fraction * reciprocal_period
+        separation = np.mod(
+            np.abs(fixed_values - fixed_coordinate),
+            reciprocal_period,
+        )
+        separation = np.minimum(separation, reciprocal_period - separation)
+    else:
+        tolerance = max(1e-12, tolerance_fraction * 2.0 * np.pi)
+        separation = np.abs(fixed_values - fixed_coordinate)
+
+    visible_labels = []
+    visible_points = []
+    seen_labels = set()
+    for label, point, distance in zip(path_labels, path_points, separation):
+        if distance > tolerance or label in seen_labels:
+            continue
+        seen_labels.add(label)
+        visible_labels.append(label)
+        visible_points.append(point[plane_indices])
+
+    if not visible_points:
+        return [], np.empty((0, 2), dtype=float), tolerance
+    return visible_labels, np.asarray(visible_points, dtype=float), tolerance
+
+
+def draw_symmetry_point_overlay(
+    axes,
+    labels,
+    points,
+    *,
+    marker_color="#ffd84d",
+):
+    """Draw labeled symmetry nodes without changing the map limits."""
+    if not labels:
+        return [], []
+
+    plot_axes = list(np.asarray(axes, dtype=object).reshape(-1))
+    scatter_artists = []
+    annotation_artists = []
+    for axis in plot_axes:
+        original_xlim = axis.get_xlim()
+        original_ylim = axis.get_ylim()
+        xmin, xmax = sorted(original_xlim)
+        ymin, ymax = sorted(original_ylim)
+        visible = (
+            (points[:, 0] >= xmin)
+            & (points[:, 0] <= xmax)
+            & (points[:, 1] >= ymin)
+            & (points[:, 1] <= ymax)
+        )
+        visible_points = points[visible]
+        visible_labels = [label for label, keep in zip(labels, visible) if keep]
+        if not visible_labels:
+            continue
+
+        scatter = axis.scatter(
+            visible_points[:, 0],
+            visible_points[:, 1],
+            s=52,
+            facecolor=marker_color,
+            edgecolor="#161616",
+            linewidth=0.8,
+            zorder=8,
+        )
+        scatter_artists.append(scatter)
+        for label, point in zip(visible_labels, visible_points):
+            display_label = r"$\Gamma$" if label in {"G", "Gamma", "Γ"} else label
+            annotation_artists.append(
+                axis.annotate(
+                    display_label,
+                    (point[0], point[1]),
+                    textcoords="offset points",
+                    xytext=(6, 6),
+                    color="#111111",
+                    fontsize=11,
+                    fontweight="bold",
+                    zorder=9,
+                    bbox={
+                        "boxstyle": "round,pad=0.12",
+                        "facecolor": "white",
+                        "edgecolor": "none",
+                        "alpha": 0.72,
+                    },
+                )
+            )
+        axis.set_xlim(original_xlim)
+        axis.set_ylim(original_ylim)
+
+    return scatter_artists, annotation_artists
+
 
 def overlay_hamiltonian_symmetry_path(
     axes,

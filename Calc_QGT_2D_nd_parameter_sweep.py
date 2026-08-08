@@ -1,5 +1,6 @@
 import sys
 import os
+import shutil
 import numpy as np
 import pickle
 from tqdm import tqdm
@@ -47,6 +48,30 @@ def _metric_trace_on_sampled_plane(g_xx, g_yy, g_zz, order):
     return diagonal[plane_axes[0]] + diagonal[plane_axes[1]]
 
 
+def _open_nd_output_memmap(memmap_dir, name, shape, dtype):
+    """Create one temporary disk-backed N-D output array."""
+    return np.lib.format.open_memmap(
+        os.path.join(memmap_dir, f"{name}.npy"),
+        mode="w+",
+        dtype=dtype,
+        shape=shape,
+    )
+
+
+def _flush_and_close_memmaps(memmaps):
+    for array in memmaps:
+        array.flush()
+        mmap = getattr(array, "_mmap", None)
+        if mmap is not None:
+            mmap.close()
+
+
+def _discard_nd_output_memmaps(memmaps, memmap_dir):
+    """Close temporary output arrays and remove their backing directory."""
+    _flush_and_close_memmaps(memmaps)
+    shutil.rmtree(memmap_dir, ignore_errors=True)
+
+
 # ---------- per-point worker ----------
 def _worker_qgt_point(
     arg,
@@ -75,12 +100,12 @@ def _worker_qgt_point(
     for k, v in param_values.items():
         setattr(H, k, v)
 
-    # Full k-grid eigenproblem + Hamiltonians
+    # Full k-grid eigenproblem. Matrix grids are not retained by N-D sweeps.
     (
         eigenvalues,
         eigenfunctions,
-        hamiltonian_array,
-        hamiltonian_prime_array,
+        _,
+        _,
         floquet_max_ratio_array,
         floquet_max_ratio_indices_array,
     ) = grid_eigenvalues_eigenfunctions(
@@ -92,6 +117,7 @@ def _worker_qgt_point(
         kk=kk,
         order=order,
         max_l=max_l,
+        store_hamiltonians=False,
     )
 
     # QGT fields
@@ -105,6 +131,7 @@ def _worker_qgt_point(
         kk=kk,
         order=order,
     )
+    del eigenfunctions
     trace = _metric_trace_on_sampled_plane(g_xx, g_yy, g_zz, order)
 
     # Chern number
@@ -152,8 +179,7 @@ def _worker_qgt_point(
         g_xz_r, g_xz_i,
         g_yz_r, g_yz_i,
         trace, float(chern), winding,
-        eigenvalues, eigenfunctions,
-        hamiltonian_array, hamiltonian_prime_array,
+        eigenvalues,
         floquet_max_ratio_array, floquet_max_ratio_indices_array,
         eigenvalues_sym,
     )
@@ -185,12 +211,14 @@ def compute_qgt_nd_parallel(
     ``order``. For example, ``order='xpz'`` means ``ki=r``, ``kj=phi``, and
     ``kk=kz``. All nine QGT components are retained.
 
-    The contiguous field arrays have shapes:
+    The disk-backed field arrays have shapes:
         QGT fields: (*param_shape, N_kj, N_ki)
         chern_grid shape: (*param_shape,)
         winding_grid shape: (*param_shape, N_ki), for full polar circles
         floquet_max_ratio_grid shape: (*param_shape, Ny, Nx, dim)
         floquet_max_ratio_indices_grid shape: (*param_shape, Ny, Nx, dim, 2)
+    Temporary .npy memmaps keep completed parameter points out of RAM. They
+    are packed into the existing .npz bundle and removed after completion.
     Saves a single .npz bundle + meta.pkl in a dedicated directory.
     Returns: (root_dir, npz_path)
     """
@@ -269,38 +297,6 @@ def compute_qgt_nd_parallel(
 
     points_labeled = [(d, idx, _label_for_idx(idx)) for (d, idx) in points_with_idx]
 
-    # Output arrays
-    out_shape_fields = tuple(shape) + (Ny, Nx)
-    g_xx_grid            = np.empty(out_shape_fields,              dtype=float_dtype)
-    g_yy_grid            = np.empty(out_shape_fields,              dtype=float_dtype)
-    g_zz_grid            = np.empty(out_shape_fields,              dtype=float_dtype)
-    g_xy_real_grid       = np.empty(out_shape_fields,              dtype=float_dtype)
-    g_xy_imag_grid       = np.empty(out_shape_fields,              dtype=float_dtype)
-    g_xz_real_grid       = np.empty(out_shape_fields,              dtype=float_dtype)
-    g_xz_imag_grid       = np.empty(out_shape_fields,              dtype=float_dtype)
-    g_yz_real_grid       = np.empty(out_shape_fields,              dtype=float_dtype)
-    g_yz_imag_grid       = np.empty(out_shape_fields,              dtype=float_dtype)
-    trace_grid           = np.empty(out_shape_fields,              dtype=float_dtype)
-    chern_grid           = np.empty(shape,                         dtype=float_dtype)
-    winding_grid = (
-        np.empty(tuple(shape) + (Nx,), dtype=float_dtype)
-        if is_cylindrical_order(order) and grid_info["phi_periodic"]
-        else None
-    )
-    eigenvalues_grid     = np.empty(out_shape_fields + (dim,),     dtype=float_dtype)
-    eigenfunctions_grid  = np.empty(out_shape_fields + (dim, dim), dtype=np.complex128)
-    hamiltonian_grid     = np.empty(out_shape_fields + (dim, dim), dtype=np.complex128)
-    hamiltonian_prime_grid = np.empty(out_shape_fields + (dim, dim), dtype=np.complex128)
-    floquet_max_ratio_grid = np.empty(
-        out_shape_fields + (dim,),
-        dtype=np.float64,
-    )
-    floquet_max_ratio_indices_grid = np.empty(
-        out_shape_fields + (dim, 2),
-        dtype=np.int32,
-    )
-    eigenvalues_sym_grid = np.empty(tuple(shape) + (num_k_points, dim), dtype=float_dtype)
-
     # Directory
     root, used = setup_qgt_nd_results_dir(
         H_template, param_ranges, parameter_spacing,
@@ -311,11 +307,110 @@ def compute_qgt_nd_parallel(
         force_new=force_new_dir,
     )
     bundle_path = os.path.join(root, "qgt_nd_bundle.npz")
-    meta_path   = os.path.join(root, "meta.pkl")
+    meta_path = os.path.join(root, "meta.pkl")
+    memmap_dir = os.path.join(root, ".qgt_nd_memmap")
 
     if (not force_new_dir) and os.path.exists(bundle_path):
+        if os.path.isdir(memmap_dir):
+            shutil.rmtree(memmap_dir)
         print(f"Bundle already exists: {bundle_path}")
         return root, bundle_path
+
+    if os.path.isdir(memmap_dir):
+        shutil.rmtree(memmap_dir)
+    os.makedirs(memmap_dir)
+
+    # Disk-backed output arrays
+    out_shape_fields = tuple(shape) + (Ny, Nx)
+    g_xx_grid = _open_nd_output_memmap(
+        memmap_dir, "g_xx_grid", out_shape_fields, float_dtype
+    )
+    g_yy_grid = _open_nd_output_memmap(
+        memmap_dir, "g_yy_grid", out_shape_fields, float_dtype
+    )
+    g_zz_grid = _open_nd_output_memmap(
+        memmap_dir, "g_zz_grid", out_shape_fields, float_dtype
+    )
+    g_xy_real_grid = _open_nd_output_memmap(
+        memmap_dir, "g_xy_real_grid", out_shape_fields, float_dtype
+    )
+    g_xy_imag_grid = _open_nd_output_memmap(
+        memmap_dir, "g_xy_imag_grid", out_shape_fields, float_dtype
+    )
+    g_xz_real_grid = _open_nd_output_memmap(
+        memmap_dir, "g_xz_real_grid", out_shape_fields, float_dtype
+    )
+    g_xz_imag_grid = _open_nd_output_memmap(
+        memmap_dir, "g_xz_imag_grid", out_shape_fields, float_dtype
+    )
+    g_yz_real_grid = _open_nd_output_memmap(
+        memmap_dir, "g_yz_real_grid", out_shape_fields, float_dtype
+    )
+    g_yz_imag_grid = _open_nd_output_memmap(
+        memmap_dir, "g_yz_imag_grid", out_shape_fields, float_dtype
+    )
+    trace_grid = _open_nd_output_memmap(
+        memmap_dir, "trace_grid", out_shape_fields, float_dtype
+    )
+    chern_grid = _open_nd_output_memmap(
+        memmap_dir, "chern_grid", tuple(shape), float_dtype
+    )
+    winding_grid = (
+        _open_nd_output_memmap(
+            memmap_dir,
+            "winding_grid",
+            tuple(shape) + (Nx,),
+            float_dtype,
+        )
+        if is_cylindrical_order(order) and grid_info["phi_periodic"]
+        else None
+    )
+    eigenvalues_grid = _open_nd_output_memmap(
+        memmap_dir,
+        "eigenvalues_grid",
+        out_shape_fields + (dim,),
+        float_dtype,
+    )
+    floquet_max_ratio_grid = _open_nd_output_memmap(
+        memmap_dir,
+        "floquet_max_ratio_grid",
+        out_shape_fields + (dim,),
+        np.float64,
+    )
+    floquet_max_ratio_indices_grid = _open_nd_output_memmap(
+        memmap_dir,
+        "floquet_max_ratio_indices_grid",
+        out_shape_fields + (dim, 2),
+        np.int32,
+    )
+    eigenvalues_sym_grid = _open_nd_output_memmap(
+        memmap_dir,
+        "eigenvalues_sym_grid",
+        tuple(shape) + (num_k_points, dim),
+        float_dtype,
+    )
+
+    output_memmaps = [
+        g_xx_grid,
+        g_yy_grid,
+        g_zz_grid,
+        g_xy_real_grid,
+        g_xy_imag_grid,
+        g_xz_real_grid,
+        g_xz_imag_grid,
+        g_yz_real_grid,
+        g_yz_imag_grid,
+        trace_grid,
+        chern_grid,
+        eigenvalues_grid,
+        floquet_max_ratio_grid,
+        floquet_max_ratio_indices_grid,
+        eigenvalues_sym_grid,
+    ]
+    if winding_grid is not None:
+        output_memmaps.append(winding_grid)
+
+    print(f"Writing sweep arrays incrementally to: {memmap_dir}")
 
     # Worker
     worker = partial(
@@ -341,8 +436,7 @@ def compute_qgt_nd_parallel(
          gxzr, gxzi,
          gyzr, gyzi,
          tr, ch, winding,
-         eigenvalues, eigenfunctions,
-         hamiltonian_array, hamiltonian_prime_array,
+         eigenvalues,
          floquet_max_ratio_array, floquet_max_ratio_indices_array,
          eigenvalues_sym) = result
 
@@ -360,36 +454,37 @@ def compute_qgt_nd_parallel(
         if winding_grid is not None:
             winding_grid[idx] = winding
         eigenvalues_grid[idx] = eigenvalues
-        eigenfunctions_grid[idx] = eigenfunctions
-        hamiltonian_grid[idx] = hamiltonian_array
-        hamiltonian_prime_grid[idx] = hamiltonian_prime_array
         floquet_max_ratio_grid[idx] = floquet_max_ratio_array
         floquet_max_ratio_indices_grid[idx] = floquet_max_ratio_indices_array
         eigenvalues_sym_grid[idx] = eigenvalues_sym
         return idx
 
-    if procs == 1:
-        result_iterator = map(worker, points_labeled)
-        with tqdm(
-            total=len(points_labeled),
-            desc="QGT per parameter point",
-            unit="pt",
-        ) as pbar:
-            for result in result_iterator:
-                idx = _store_result(result)
-                pbar.set_postfix_str(_label_for_idx(idx))
-                pbar.update(1)
-    else:
-        with Pool(processes=procs) as pool:
+    try:
+        if procs == 1:
+            result_iterator = map(worker, points_labeled)
             with tqdm(
                 total=len(points_labeled),
                 desc="QGT per parameter point",
                 unit="pt",
             ) as pbar:
-                for result in pool.imap(worker, points_labeled):
+                for result in result_iterator:
                     idx = _store_result(result)
                     pbar.set_postfix_str(_label_for_idx(idx))
                     pbar.update(1)
+        else:
+            with Pool(processes=procs) as pool:
+                with tqdm(
+                    total=len(points_labeled),
+                    desc="QGT per parameter point",
+                    unit="pt",
+                ) as pbar:
+                    for result in pool.imap(worker, points_labeled):
+                        idx = _store_result(result)
+                        pbar.set_postfix_str(_label_for_idx(idx))
+                        pbar.update(1)
+    except BaseException:
+        _discard_nd_output_memmaps(output_memmaps, memmap_dir)
+        raise
 
     # Save bundle
     bundle_data = dict(
@@ -422,9 +517,6 @@ def compute_qgt_nd_parallel(
         trace_grid=trace_grid,
         chern_grid=chern_grid,
         eigenvalues_grid=eigenvalues_grid,
-        eigenfunctions_grid=eigenfunctions_grid,
-        hamiltonian_grid=hamiltonian_grid,
-        hamiltonian_prime_grid=hamiltonian_prime_grid,
         floquet_max_l=np.int32(max_l),
         floquet_max_ratio_grid=floquet_max_ratio_grid,
         floquet_max_ratio_indices_grid=floquet_max_ratio_indices_grid,
@@ -441,7 +533,16 @@ def compute_qgt_nd_parallel(
     if winding_grid is not None:
         bundle_data["winding_radius"] = np.asarray(ki[0, :], dtype=float)
         bundle_data["winding_grid"] = winding_grid
-    np.savez_compressed(bundle_path, **bundle_data)
+    for array in output_memmaps:
+        array.flush()
+    try:
+        np.savez_compressed(bundle_path, **bundle_data)
+    except BaseException:
+        if os.path.exists(bundle_path):
+            os.remove(bundle_path)
+        raise
+    finally:
+        _discard_nd_output_memmaps(output_memmaps, memmap_dir)
 
     meta = {
         "Hamiltonian_Template": H_template,
@@ -472,35 +573,6 @@ def compute_qgt_nd_parallel(
 # Configuration — edit below to set up your sweep
 # =============================================================================
 
-# H_template = gWaveAltermagnetHamiltonian(
-#     t1=0.3, t2=0.3, t3=0.3, t4=0.3, mu=0,
-#     Jx=0.2, Jy=0.0, Jz=0.0, lamb=0.1, lamb_z=0.1,
-# )
-
-# param_ranges = {
-#     "Jx":     (0.0, 1),
-#     "Jy":     (0.0, 1),
-#     "Jz":     (0.0, 1),
-#     "lamb":   (0.0, 0.3),
-#     "lamb_z": (0.0, 0.3),
-#     "t1":     (0.0, 0.3),
-#     "t2":     (0.0, 0.3),
-#     "t3":     (0.0, 0.3),
-#     "t4":     (0.0, 0.3),
-# }
-
-# _n = 3
-# parameter_spacing = {
-#     "Jx":     {"n": 2 * _n, "scale": "linear"},
-#     "Jy":     {"n": 2 * _n, "scale": "linear"},
-#     "Jz":     {"n": 2 * _n, "scale": "linear"},
-#     "lamb":   {"n": _n,     "scale": "linear"},
-#     "lamb_z": {"n": _n,     "scale": "linear"},
-#     "t1":     {"n": _n,     "scale": "linear"},
-#     "t2":     {"n": _n,     "scale": "linear"},
-#     "t3":     {"n": _n,     "scale": "linear"},
-#     "t4":     {"n": _n,     "scale": "linear"},
-# }
 
 # H_template = SquareLatticeHamiltonian(A0=0.1, omega=5e0, t1=1, t2=1/np.sqrt(2), t5=0)
 # H_template.polarization = 'left'
@@ -594,22 +666,41 @@ def thf_flat_band_matching_omega(hamiltonian, potential_strength):
 THF_A0 = 0.10
 THF_V_MAX = 10.0  # meV; deliberately smaller than |gamma| = 24.75 meV
 
-H_template = THF_Hamiltonian(
-    A0=THF_A0,
-    V=0.0,
-    omega=1.0,  # Replaced below by the analytically matched sweep endpoint.
-    polarization="right",
-    magnus_order=1,
-    analytic_magnus=False,
+# H_template = THF_Hamiltonian(
+#     A0=THF_A0,
+#     V=0.0,
+#     omega=1.0,  # Replaced below by the analytically matched sweep endpoint.
+#     polarization="right",
+#     magnus_order=1,
+#     analytic_magnus=False,
+# )
+
+# if not THF_V_MAX < abs(H_template.gamma):
+#     raise ValueError("THF_V_MAX must be smaller than |gamma|")
+
+# # THF_OMEGA_MIN = thf_flat_band_matching_omega(H_template, THF_V_MAX)
+# THF_OMEGA_MIN = 5000
+# THF_OMEGA_MAX = 100000
+# H_template.omega = THF_OMEGA_MIN
+
+
+H_template = gWaveAltermagnetHamiltonian(
+    t1=0.3, t2=0.3, t3=0.3, t4=0.3, mu=0,
+    Jx=0.0, Jy=0.0, Jz=0.2, lamb=0.1, lamb_z=0.1,
 )
 
-if not THF_V_MAX < abs(H_template.gamma):
-    raise ValueError("THF_V_MAX must be smaller than |gamma|")
+param_ranges = {
+    "t3": (-0.5, 0.5),
+    "t4": (-0.5, 0.5),
+    "lamb_z":   (-0.5, 0.5),
+}
 
-# THF_OMEGA_MIN = thf_flat_band_matching_omega(H_template, THF_V_MAX)
-THF_OMEGA_MIN = 5000
-THF_OMEGA_MAX = 100000
-H_template.omega = THF_OMEGA_MIN
+_n = 30
+parameter_spacing = {
+    "t3": {"n": _n,     "scale": "log"},
+    "t4": {"n": 2,     "scale": "linear"},
+    "lamb_z": {"n": _n,     "scale": "linear"}
+}
 
 # param_ranges = {
 #     "V": (0.0, THF_V_MAX),
@@ -621,25 +712,18 @@ H_template.omega = THF_OMEGA_MIN
 #     "omega": {"n": 16, "scale": "log"},
 # }
 
-param_ranges = {
-    "omega": (THF_OMEGA_MIN, THF_OMEGA_MAX),
-}
 
-parameter_spacing = {
-    "omega": {"n": 16, "scale": "log"},
-}
-
-order = "xyz"
+# order = "xyz"
 kk = 0.0
 include_endpoints = True
-ki_range = (-H_template.k_theta, H_template.k_theta)
-kj_range = (-H_template.k_theta, H_template.k_theta)
+# ki_range = (-H_template.k_theta, H_template.k_theta)
+# kj_range = (-H_template.k_theta, H_template.k_theta)
 
 # Polar example for any supported cylindrical order:
-# order = "xpz"  # Also: ypz, xpy, zpy, ypx, zpx
-# ki_range = (0.0, H_template.k_theta)  # radius
-# kj_range = (0.0, 2.0 * np.pi)        # phi
-mesh_spacing = 150
+order = "xpz"  # Also: ypz, xpy, zpy, ypx, zpx
+ki_range = (0.0, 1.5 * np.pi) # radius
+kj_range = (0.0, 2.0 * np.pi)        # phi
+mesh_spacing = 100
 flat_band_index = 2
 num_points_per_segment = 100
 sweep_processes = 10
@@ -647,12 +731,6 @@ floquet_max_l = 10
 
 
 def main():
-    print(
-        "THF sweep scales: "
-        f"V_max={THF_V_MAX:.6g} meV, "
-        f"omega_min={THF_OMEGA_MIN:.6g} meV, "
-        f"omega_max={THF_OMEGA_MAX:.6g} meV"
-    )
     root, bundle_path = compute_qgt_nd_parallel(
         hamiltonian_template=H_template,
         param_ranges=param_ranges,
