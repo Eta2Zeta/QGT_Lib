@@ -63,3 +63,4 @@ def test_nd_worker_evaluates_and_returns_polar_qgt_data():
         [-expected_energy, expected_energy],
         atol=1e-10,
     )
+    assert len(result) == 17

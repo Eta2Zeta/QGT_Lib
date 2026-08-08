@@ -7,6 +7,31 @@ from typing import Tuple, Dict, Any, List, Optional
 from Library.data_management_utils_common import pick_or_create_result_dir_simple, dump_metadata
 
 
+_SYMMETRIC_LOG_DECADES = 3.0
+
+
+def _symmetric_logspace(limit, count):
+    """Return a zero-centered logarithmic axis spanning ``[-limit, limit]``."""
+    limit = float(limit)
+    count = int(count)
+    side_count = count // 2
+    if side_count == 0:
+        return np.array([0.0], dtype=float)
+
+    if side_count == 1:
+        positive = np.array([limit], dtype=float)
+    else:
+        positive = np.geomspace(
+            limit * 10.0 ** (-_SYMMETRIC_LOG_DECADES),
+            limit,
+            side_count,
+            dtype=float,
+        )
+
+    center = np.array([0.0], dtype=float) if count % 2 else np.empty(0)
+    return np.concatenate((-positive[::-1], center, positive))
+
+
 def build_parameter_points(
     param_ranges,
     parameter_spacing,
@@ -72,8 +97,13 @@ def build_parameter_points(
         if scale == "linear":
             return np.linspace(a, b, count, dtype=float)
         if scale == "log":
+            if a < 0.0 < b and np.isclose(a, -b, rtol=1e-12, atol=0.0):
+                return _symmetric_logspace(b, count)
             if a <= 0 or b <= 0:
-                raise ValueError(f"log spacing requires positive endpoints; got [{a}, {b}]")
+                raise ValueError(
+                    "log spacing requires positive endpoints or a symmetric "
+                    f"zero-centered range; got [{a}, {b}]"
+                )
             return np.logspace(np.log10(a), np.log10(b), count, dtype=float)
         raise ValueError("scale must be 'linear' or 'log'")
 

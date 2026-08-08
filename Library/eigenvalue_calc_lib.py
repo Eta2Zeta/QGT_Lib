@@ -375,6 +375,7 @@ def grid_eigenvalues_eigenfunctions(
     order="xyz",
     show_progress=True,
     max_l=10,
+    store_hamiltonians=True,
 ):
     """Diagonalize a 2D grid expressed in any supported coordinate order.
 
@@ -385,10 +386,12 @@ def grid_eigenvalues_eigenfunctions(
 
     When ``Hamiltonian.A0`` is nonzero, the routine also checks photon sectors
     ``l=-max_l,...,-1,1,...,max_l``.  The Fourier-zero eigenbasis defines the
-    band axis of the two diagnostic outputs.  The six returned arrays are
+    band axis of the two diagnostic outputs. The six returned values are
     ``eigenvalues``, ``eigenfunctions``, ``H_array``, ``H_prime_array``,
     ``floquet_max_ratio_grid``, and ``floquet_max_ratio_indices_grid``.  The
-    last axis of the index grid stores ``(coupled_band, l)``.
+    last axis of the index grid stores ``(coupled_band, l)``. When
+    ``store_hamiltonians=False``, the two Hamiltonian-array entries are
+    returned as ``None`` and are never allocated.
     """
     ki = np.asarray(ki)
     kj = np.asarray(kj)
@@ -420,8 +423,16 @@ def grid_eigenvalues_eigenfunctions(
     grid_shape = ki.shape
     eigenfunctions = np.zeros(grid_shape + (dim, dim), dtype=complex)
     eigenvalues = np.zeros(grid_shape + (dim,), dtype=float)
-    H_array = np.zeros(grid_shape + (dim, dim), dtype=complex)
-    H_prime_array = np.zeros(grid_shape + (dim, dim), dtype=complex)
+    H_array = (
+        np.zeros(grid_shape + (dim, dim), dtype=complex)
+        if store_hamiltonians
+        else None
+    )
+    H_prime_array = (
+        np.zeros(grid_shape + (dim, dim), dtype=complex)
+        if store_hamiltonians
+        else None
+    )
     floquet_max_ratio_grid = np.zeros(grid_shape + (dim,), dtype=float)
     floquet_max_ratio_indices_grid = np.empty(
         grid_shape + (dim, 2),
@@ -509,8 +520,9 @@ def grid_eigenvalues_eigenfunctions(
         # Store results
         eigenfunctions[i, j] = vecs
         eigenvalues[i, j]    = np.real(vals)
-        H_array[i, j]        = H
-        H_prime_array[i, j]  = H_prime
+        if store_hamiltonians:
+            H_array[i, j] = H
+            H_prime_array[i, j] = H_prime
 
     return (
         eigenvalues,

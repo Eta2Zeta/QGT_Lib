@@ -35,7 +35,12 @@ class CircularTwoBandHamiltonian(hamiltonian):
         return super().fourier_components_fft(ns, kx, ky, kz=kz, M=M)
 
 
-def _single_point_grid(hamiltonian_object, *, max_l=2):
+def _single_point_grid(
+    hamiltonian_object,
+    *,
+    max_l=2,
+    store_hamiltonians=True,
+):
     ki = np.zeros((1, 1), dtype=float)
     kj = np.zeros((1, 1), dtype=float)
     return grid_eigenvalues_eigenfunctions(
@@ -46,6 +51,7 @@ def _single_point_grid(hamiltonian_object, *, max_l=2):
         dim=2,
         show_progress=False,
         max_l=max_l,
+        store_hamiltonians=store_hamiltonians,
     )
 
 
@@ -88,3 +94,14 @@ def test_magnus_terms_reuse_the_ratio_fft():
     _single_point_grid(hamiltonian_object)
 
     assert hamiltonian_object.fft_calls == 1
+
+
+def test_hamiltonian_grids_can_be_omitted_without_removing_eigenfunctions():
+    outputs = _single_point_grid(
+        CircularTwoBandHamiltonian(A0=0.0),
+        store_hamiltonians=False,
+    )
+
+    assert outputs[1].shape == (1, 1, 2, 2)
+    assert outputs[2] is None
+    assert outputs[3] is None
