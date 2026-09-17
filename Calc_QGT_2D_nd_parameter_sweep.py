@@ -13,7 +13,7 @@ from Library.Hamiltonian.Hamiltonian import *
 from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
 from Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected import ChiralHamiltonianChiralBasisProjected
 from Library.Hamiltonian.SquareLatticeHamiltonian import SquareLatticeHamiltonian
-from Library.Hamiltonian.gWaveAltermagnetHamiltonian import gWaveAltermagnetHamiltonian
+from Library.Hamiltonian.MinimalHamSG127_2a2b import MinimalHamSG127_2a2b
 from Library.Hamiltonian.THF_Hamiltonian import THF_Hamiltonian
 from Library.eigenvalue_calc_lib import *
 from Library.QGT_lib import *
@@ -684,22 +684,28 @@ THF_V_MAX = 10.0  # meV; deliberately smaller than |gamma| = 24.75 meV
 # H_template.omega = THF_OMEGA_MIN
 
 
-H_template = gWaveAltermagnetHamiltonian(
+H_template = MinimalHamSG127_2a2b(
     t1=0.3, t2=0.3, t3=0.3, t4=0.3, mu=0,
     Jx=0.0, Jy=0.0, Jz=0.2, lamb=0.1, lamb_z=0.1,
 )
 
 param_ranges = {
+    "t1": (-0.5, 0.5),
+    "t2": (-0.5, 0.5),
     "t3": (-0.5, 0.5),
     "t4": (-0.5, 0.5),
-    "lamb_z":   (-0.5, 0.5),
+    "lamb": (-0.5, 0.5),
+    "lamb_z": (-0.5, 0.5),
 }
 
-_n = 30
+_n = 5
 parameter_spacing = {
-    "t3": {"n": _n,     "scale": "log"},
-    "t4": {"n": 2,     "scale": "linear"},
-    "lamb_z": {"n": _n,     "scale": "linear"}
+    "t1": {"n": _n, "scale": "linear"},
+    "t2": {"n": _n, "scale": "linear"},
+    "t3": {"n": _n, "scale": "linear"},
+    "t4": {"n": _n, "scale": "linear"},
+    "lamb": {"n": _n, "scale": "linear"},
+    "lamb_z": {"n": _n, "scale": "linear"},
 }
 
 # param_ranges = {
@@ -724,7 +730,7 @@ order = "xpz"  # Also: ypz, xpy, zpy, ypx, zpx
 ki_range = (0.0, 1.5 * np.pi) # radius
 kj_range = (0.0, 2.0 * np.pi)        # phi
 mesh_spacing = 100
-flat_band_index = 2
+band_index = 2
 num_points_per_segment = 100
 sweep_processes = 10
 floquet_max_l = 10
@@ -738,7 +744,7 @@ def main():
         ki_range=ki_range,
         kj_range=kj_range,
         mesh_spacing=mesh_spacing,
-        band=flat_band_index,
+        band=band_index,
         num_points_per_segment=num_points_per_segment,
         processes=sweep_processes,
         force_new_dir=False,

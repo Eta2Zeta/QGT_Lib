@@ -15,7 +15,7 @@ from Library.QGT_Calc_3d_lib import *
 from Library.topology import *
 from Library.utilities import *
 from Library.Hamiltonian.RuO2Hamiltonian import *
-from Library.Hamiltonian.gWaveAltermagnetHamiltonian import *
+from Library.Hamiltonian.MinimalHamSG194_2a import *
 from Library.data_management_utils_3d import setup_3D_QGT_results_directory
 from Library.output_utils import print_calculation_complete
 

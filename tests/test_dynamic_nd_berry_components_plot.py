@@ -5,6 +5,7 @@ import re
 import numpy as np
 import pytest
 
+from Library.plotting_utils import symmetry_path_chains_on_slice
 from Plot_QGT_2D_Dynamic_ND_sweep_matplotlib import (
     dynamic_nd_field_with_bands_matplotlib,
     plot_berry_components_nd_matplotlib,
@@ -90,6 +91,13 @@ def _write_bundle(root: Path, *, polar: bool, include_winding: bool = True):
         k_dist=k_dist,
         node_indices=np.array([0, 1, 2], dtype=int),
         path_labels=np.array(["G", "M", "K"], dtype=object),
+        k_path=np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [0.5, 0.0, 0.03],
+                [0.5, 0.5, np.pi],
+            ]
+        ),
         path_points=np.array(
             [
                 [0.0, 0.0, 0.0],
@@ -134,6 +142,40 @@ def _write_bundle(root: Path, *, polar: bool, include_winding: bool = True):
         )
 
     return omega_x, omega_y, omega_z
+
+
+def test_symmetry_plane_segments_stitch_only_at_shared_endpoints():
+    labels = ["P", "K", "D", "G", "M", "K", "G", "D", "X", "Y"]
+    points = np.array(
+        [
+            [-1.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, np.pi],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, np.pi],
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 0.0, np.pi],
+            [2.0, 0.0, 0.0],
+            [3.0, 0.0, 0.0],
+        ]
+    )
+
+    chains, tolerance = symmetry_path_chains_on_slice(
+        points,
+        labels,
+        np.arange(len(points)),
+        points,
+        axis="z",
+        value=0.0,
+        tolerance_fraction=0.01,
+    )
+
+    assert tolerance == pytest.approx(0.02 * np.pi)
+    assert [chain["labels"] for chain in chains] == [
+        ["P", "K", "G"],
+        ["X", "Y"],
+    ]
 
 
 def test_berry_component_conversion_uses_pseudovector_convention(tmp_path):
@@ -181,7 +223,7 @@ def test_cartesian_berry_components_have_bands_and_three_maps(tmp_path):
     plot_berry_components_nd_html(
         tmp_path,
         output_html=output,
-        berry_zlim_percentile=100.0,
+        berry_lim_percentile=100.0,
     )
     html = output.read_text(encoding="utf-8")
 
@@ -200,7 +242,7 @@ def test_polar_berry_components_add_ring_cuts_winding_and_magnitude(tmp_path):
     plot_berry_components_nd_html(
         tmp_path,
         output_html=output,
-        berry_zlim_percentile=100.0,
+        berry_lim_percentile=100.0,
         cartesian_resolution=9,
     )
     html = output.read_text(encoding="utf-8")
@@ -258,7 +300,7 @@ def test_cartesian_matplotlib_viewer_updates_maps_and_bands(tmp_path):
     figure = plot_berry_components_nd_matplotlib(
         tmp_path,
         bands_to_plot=[0, 1],
-        berry_zlim_percentile=100.0,
+        berry_lim_percentile=100.0,
         show=False,
     )
     viewer = figure.qgt_viewer
@@ -267,6 +309,20 @@ def test_cartesian_matplotlib_viewer_updates_maps_and_bands(tmp_path):
     assert len(viewer["map_images"]) == 3
     assert len(viewer["band_lines"]) == 2
     assert viewer["radius_slider"] is None
+    assert viewer["band_panel"]["plane_axis"] == "z"
+    assert viewer["band_panel"]["plane_value"] == 0.0
+    assert viewer["band_panel"]["path_labels"] == ["G", "M"]
+    assert len(viewer["band_lines"][0].get_xdata()) == 2
+    for column, axis in enumerate(viewer["map_axes"]):
+        subplot = axis.get_subplotspec().get_topmost_subplotspec()
+        assert (subplot.rowspan.start, subplot.rowspan.stop) == (0, 1)
+        assert (subplot.colspan.start, subplot.colspan.stop) == (
+            column,
+            column + 1,
+        )
+    band_subplot = viewer["band_axis"].get_subplotspec()
+    assert (band_subplot.rowspan.start, band_subplot.rowspan.stop) == (0, 1)
+    assert (band_subplot.colspan.start, band_subplot.colspan.stop) == (3, 5)
 
     initial_map = np.asarray(viewer["map_images"][0].get_array()).copy()
     initial_band = np.asarray(viewer["band_lines"][0].get_ydata()).copy()
@@ -281,12 +337,30 @@ def test_cartesian_matplotlib_viewer_updates_maps_and_bands(tmp_path):
     plt.close(figure)
 
 
+def test_matplotlib_band_plane_filter_can_be_disabled(tmp_path):
+    _write_bundle(tmp_path, polar=False)
+    figure = dynamic_nd_field_with_bands_matplotlib(
+        tmp_path,
+        quantity="trace",
+        symmetry_band_plane_axis=None,
+        show=False,
+    )
+    viewer = figure.qgt_viewer
+
+    assert "plane_axis" not in viewer["band_panel"]
+    assert len(viewer["band_lines"][0].get_xdata()) == 3
+
+    import matplotlib.pyplot as plt
+
+    plt.close(figure)
+
+
 def test_polar_matplotlib_viewer_updates_radius_diagnostics(tmp_path):
     _write_bundle(tmp_path, polar=True)
     figure = plot_berry_components_nd_matplotlib(
         tmp_path,
         bands_to_plot=[0, 1],
-        berry_zlim_percentile=100.0,
+        berry_lim_percentile=100.0,
         cartesian_resolution=9,
         show=False,
     )
@@ -304,6 +378,33 @@ def test_polar_matplotlib_viewer_updates_radius_diagnostics(tmp_path):
     for artist in viewer["symmetry_point_artists"]:
         assert artist.get_offsets().shape == (2, 2)
     assert viewer["symmetry_slice_width"] == pytest.approx(0.02 * np.pi)
+    for column, axis in enumerate(viewer["map_axes"]):
+        subplot = axis.get_subplotspec().get_topmost_subplotspec()
+        assert (subplot.rowspan.start, subplot.rowspan.stop) == (0, 1)
+        assert (subplot.colspan.start, subplot.colspan.stop) == (
+            column,
+            column + 1,
+        )
+    band_subplot = viewer["band_axis"].get_subplotspec()
+    assert (band_subplot.rowspan.start, band_subplot.rowspan.stop) == (0, 1)
+    assert (band_subplot.colspan.start, band_subplot.colspan.stop) == (3, 5)
+    for column, axis in enumerate(viewer["cut_axes"]):
+        subplot = axis.get_subplotspec()
+        assert (subplot.rowspan.start, subplot.rowspan.stop) == (1, 2)
+        assert (subplot.colspan.start, subplot.colspan.stop) == (
+            column,
+            column + 1,
+        )
+    winding_subplot = viewer["winding_axis"].get_subplotspec()
+    magnitude_subplot = viewer["magnitude_axis"].get_subplotspec()
+    assert (winding_subplot.rowspan.start, winding_subplot.colspan.start) == (
+        1,
+        3,
+    )
+    assert (magnitude_subplot.rowspan.start, magnitude_subplot.colspan.start) == (
+        1,
+        4,
+    )
 
     initial_ring_x = np.asarray(viewer["ring_lines"][0].get_xdata()).copy()
     initial_cut = np.asarray(
@@ -331,7 +432,7 @@ def test_polar_matplotlib_ring_limits_match_percentile_clipped_maps(tmp_path):
     percentile = 60.0
     figure = plot_berry_components_nd_matplotlib(
         tmp_path,
-        berry_zlim_percentile=percentile,
+        berry_lim_percentile=percentile,
         cartesian_resolution=9,
         show=False,
     )

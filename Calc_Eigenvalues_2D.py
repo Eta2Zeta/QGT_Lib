@@ -261,7 +261,7 @@ def main():
     #     order=coordinate_order,
     # )
 
-    # Hamiltonian_Obj = gWaveAltermagnetHamiltonian(
+    # Hamiltonian_Obj = MinimalHamSG194_2a(
     #     Jx=0.0,
     #     Jy=0.0,
     #     Jz=0.2,       # Jz turned on
@@ -275,18 +275,31 @@ def main():
     #     t4=0.3
     # )
 
-    Hamiltonian_Obj = MinimalHamSG127_2c2d(
-        Jx = 0.0,
-        Jy = 0.0,
-        Jz = 0.2,
-        lamb = 0.1,
-        lamb_z = 0.1,
-        A0 = 0.0,
-        t1 = 0.3,
-        t2 = 0.3,
-        t3 = 0.3,
-        t4 = 0.3
+    Hamiltonian_Obj = MinimalHamSG127_2a2b(
+        Jx=0.0,
+        Jy=0.0,
+        Jz=0.2,
+        lamb=0.1,
+        lamb_z=0.1,
+        A0=0.0,
+        t1=0.8,
+        t2=0.2,
+        t3=0.3,
+        t4=0.3,
     )
+
+    # Hamiltonian_Obj = MinimalHamSG127_2c2d(
+    #     Jx=0.0,
+    #     Jy=0.0,
+    #     Jz=0.2,
+    #     lamb=0.1,
+    #     lamb_z=0.1,
+    #     A0=0.0,
+    #     t1=0.3,
+    #     t2=0.3,
+    #     t3=0.3,
+    #     t4=0.3,
+    # )
 
     # Hamiltonian_Obj = MinimalHamSG124_2b2d(
     #     Jx=0.0,
@@ -304,9 +317,11 @@ def main():
     calculation_2d(
         Hamiltonian_Obj,
         force_new=True,
-        kk=0.01,
+        include_end_points=False,
+        kk=0.01 * np.pi,
         order="xyz",
-        k_max=1.5 * np.pi,
+        mesh_spacing=150,
+        k_max=1.02 * np.pi,
     )
 
 

@@ -20,7 +20,7 @@ from .MinimalHamSG124_2b2d import MinimalHamSG124_2b2d
 from .MinimalHamSG127_2a2b import MinimalHamSG127_2a2b
 from .MinimalHamSG127_2c2d import MinimalHamSG127_2c2d
 from .MinimalHamSG192_2b import MinimalHamSG192_2b
-from .gWaveAltermagnetHamiltonian import gWaveAltermagnetHamiltonian
+from .MinimalHamSG194_2a import MinimalHamSG194_2a
 
 __all__ = [
     "hamiltonian",
@@ -44,5 +44,5 @@ __all__ = [
     "MinimalHamSG127_2a2b",
     "MinimalHamSG127_2c2d",
     "MinimalHamSG192_2b",
-    "gWaveAltermagnetHamiltonian",
+    "MinimalHamSG194_2a",
 ]

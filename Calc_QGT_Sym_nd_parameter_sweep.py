@@ -10,7 +10,7 @@ from functools import partial
 
 from Library.Hamiltonian.Hamiltonian import *
 from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
-from Library.Hamiltonian.gWaveAltermagnetHamiltonian import gWaveAltermagnetHamiltonian
+from Library.Hamiltonian.MinimalHamSG194_2a import MinimalHamSG194_2a
 from Library.utilities import generate_3d_sym_lines
 from Library.Hamiltonian_helper import get_Hamiltonian
 from Library.data_management_utils_nd import build_parameter_points
@@ -141,7 +141,7 @@ def compute_sym_nd_parallel(
 # Configuration — edit below to set up your sweep
 # =============================================================================
 
-H_template = gWaveAltermagnetHamiltonian(
+H_template = MinimalHamSG194_2a(
     t1=0.3, t2=0.3, t3=0.3, t4=0.3, mu=0,
     Jx=0.2, Jy=0.0, Jz=0.0, lamb=0.1, lamb_z=0.1,
 )

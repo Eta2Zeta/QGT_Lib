@@ -1,13 +1,28 @@
 """Plot a Hamiltonian's high-symmetry path in interactive 3D k-space."""
 
 import inspect
+import json
 import re
 from pathlib import Path
 
 import numpy as np
 import plotly.graph_objects as go
 
-from Library.Hamiltonian import gWaveAltermagnetHamiltonian
+from Library.Hamiltonian import MinimalHamSG194_2a
+
+
+SEGMENT_COLOR_PALETTE = (
+    ("Navy", "#1f4e79"),
+    ("Red", "#d62728"),
+    ("Orange", "#ff7f0e"),
+    ("Green", "#2ca02c"),
+    ("Purple", "#9467bd"),
+    ("Cyan", "#17becf"),
+    ("Pink", "#e377c2"),
+    ("Brown", "#8c564b"),
+    ("Gold", "#bc8c00"),
+    ("Charcoal", "#222222"),
+)
 
 
 def _display_symmetry_label(label):
@@ -66,17 +81,12 @@ def _resolve_symmetry_path(hamiltonian, path=None):
     return path_labels, np.asarray(path_points, dtype=float)
 
 
-def _interpolate_path(path_points, num_points_per_segment):
-    num_points_per_segment = int(num_points_per_segment)
-    if num_points_per_segment < 2:
-        raise ValueError("num_points_per_segment must be at least 2")
-
-    segments = []
-    for start, end in zip(path_points[:-1], path_points[1:]):
-        segments.append(
-            np.linspace(start, end, num_points_per_segment, endpoint=True)
-        )
-    return segments
+def _path_line_segments(path_points):
+    """Return each symmetry-path edge as one two-endpoint line segment."""
+    return [
+        np.vstack((start, end))
+        for start, end in zip(path_points[:-1], path_points[1:])
+    ]
 
 
 def _unique_path_nodes(path_labels, path_points):
@@ -112,11 +122,156 @@ def _scene_aspect(path_points):
     }
 
 
+def _segment_color_sidebar_script(palette=SEGMENT_COLOR_PALETTE):
+    """Return a browser-side color selector for every path segment."""
+    palette_data = [
+        {"name": str(name), "color": str(color)} for name, color in palette
+    ]
+    script = r"""
+(function () {
+    const plot = document.getElementById('{plot_id}');
+    if (!plot || plot.dataset.segmentColorSidebarReady === 'true') {
+        return;
+    }
+    plot.dataset.segmentColorSidebarReady = 'true';
+
+    const colors = __SEGMENT_COLORS__;
+    const segmentTraces = plot.data
+        .map((trace, traceIndex) => ({trace, traceIndex}))
+        .filter(({trace}) => (
+            trace.meta && trace.meta.symmetrySegment === true
+        ));
+    if (segmentTraces.length === 0) {
+        return;
+    }
+
+    document.documentElement.style.width = '100%';
+    document.documentElement.style.height = '100%';
+    Object.assign(document.body.style, {
+        width: '100%',
+        height: '100%',
+        margin: '0',
+        overflow: 'hidden'
+    });
+
+    const container = plot.parentElement;
+    Object.assign(container.style, {
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) 280px',
+        width: '100vw',
+        height: '100vh',
+        minWidth: '0',
+        overflow: 'hidden'
+    });
+    Object.assign(plot.style, {
+        width: '100%',
+        height: '100%',
+        minWidth: '0'
+    });
+
+    const sidebar = document.createElement('aside');
+    sidebar.id = plot.id + '-segment-color-sidebar';
+    sidebar.setAttribute('aria-label', 'Symmetry-segment colors');
+    Object.assign(sidebar.style, {
+        boxSizing: 'border-box',
+        height: '100vh',
+        overflowY: 'auto',
+        padding: '18px 14px',
+        background: '#f7f9fc',
+        borderLeft: '1px solid #c8ced8',
+        fontFamily: 'Arial, sans-serif'
+    });
+
+    const heading = document.createElement('h2');
+    heading.textContent = 'Segment colors';
+    Object.assign(heading.style, {
+        margin: '0 0 14px',
+        color: '#172033',
+        fontSize: '18px',
+        fontWeight: '700'
+    });
+    sidebar.appendChild(heading);
+
+    segmentTraces.forEach(({trace, traceIndex}, segmentIndex) => {
+        const row = document.createElement('div');
+        Object.assign(row.style, {
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) 112px',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 0',
+            borderBottom: '1px solid #e0e5ed'
+        });
+
+        const label = document.createElement('label');
+        const labelNumber = String(segmentIndex + 1).padStart(2, '0');
+        label.textContent = `${labelNumber}. ${trace.meta.segmentLabel}`;
+        Object.assign(label.style, {
+            color: '#27344a',
+            fontSize: '12px',
+            fontWeight: '600',
+            lineHeight: '1.25'
+        });
+        row.appendChild(label);
+
+        const select = document.createElement('select');
+        select.className = 'symmetry-segment-color-select';
+        select.setAttribute(
+            'aria-label',
+            `Color for ${trace.meta.segmentLabel}`
+        );
+
+        const initialColor = trace.line.color;
+        if (!colors.some((entry) => entry.color === initialColor)) {
+            const currentOption = document.createElement('option');
+            currentOption.value = initialColor;
+            currentOption.textContent = 'Current';
+            select.appendChild(currentOption);
+        }
+        colors.forEach((entry) => {
+            const option = document.createElement('option');
+            option.value = entry.color;
+            option.textContent = entry.name;
+            select.appendChild(option);
+        });
+        select.value = initialColor;
+        Object.assign(select.style, {
+            width: '100%',
+            minHeight: '32px',
+            padding: '4px 6px',
+            color: '#172033',
+            background: '#ffffff',
+            border: '1px solid #aeb7c5',
+            borderLeft: `10px solid ${initialColor}`,
+            borderRadius: '4px',
+            cursor: 'pointer'
+        });
+        select.addEventListener('change', () => {
+            const selectedColor = select.value;
+            select.style.borderLeftColor = selectedColor;
+            Plotly.restyle(
+                plot,
+                {'line.color': selectedColor},
+                [traceIndex]
+            );
+        });
+        row.appendChild(select);
+        sidebar.appendChild(row);
+    });
+
+    container.insertBefore(sidebar, plot.nextSibling);
+    window.requestAnimationFrame(() => {
+        Plotly.Plots.resize(plot);
+    });
+}());
+"""
+    return script.replace("__SEGMENT_COLORS__", json.dumps(palette_data))
+
+
 def build_symmetry_path_3d_figure(
     hamiltonian,
     *,
     path=None,
-    num_points_per_segment=40,
     line_color="#1f4e79",
     line_opacity=0.45,
     node_color="#d1495b",
@@ -124,7 +279,7 @@ def build_symmetry_path_3d_figure(
 ):
     """Build an interactive Plotly figure from ``hamiltonian.get_sym_path()``."""
     path_labels, path_points = _resolve_symmetry_path(hamiltonian, path=path)
-    path_segments = _interpolate_path(path_points, num_points_per_segment)
+    path_segments = _path_line_segments(path_points)
 
     figure = go.Figure()
     for segment_index, segment in enumerate(path_segments):
@@ -142,13 +297,14 @@ def build_symmetry_path_3d_figure(
                 showlegend=segment_index == 0,
                 line={"color": line_color, "width": 7},
                 opacity=float(line_opacity),
-                customdata=np.full(segment.shape[0], segment_label),
-                hovertemplate=(
-                    "%{customdata}<br>"
-                    "k<sub>x</sub> = %{x:.6g}<br>"
-                    "k<sub>y</sub> = %{y:.6g}<br>"
-                    "k<sub>z</sub> = %{z:.6g}<extra></extra>"
-                ),
+                meta={
+                    "symmetrySegment": True,
+                    "segmentIndex": segment_index,
+                    "segmentLabel": segment_label,
+                    "startPoint": segment[0].tolist(),
+                    "endPoint": segment[1].tolist(),
+                },
+                hovertemplate=f"{segment_label}<extra></extra>",
             )
         )
 
@@ -197,6 +353,9 @@ def build_symmetry_path_3d_figure(
             "xanchor": "center",
         },
         template="plotly_white",
+        clickmode="event",
+        hovermode="closest",
+        uirevision="symmetry-path-segment-colors",
         scene={
             "xaxis_title": "k<sub>x</sub>",
             "yaxis_title": "k<sub>y</sub>",
@@ -205,6 +364,7 @@ def build_symmetry_path_3d_figure(
             "aspectratio": _scene_aspect(path_points),
             "camera": {"eye": {"x": 1.55, "y": 1.55, "z": 1.15}},
             "dragmode": "orbit",
+            "uirevision": "symmetry-path-segment-colors",
         },
         legend={
             "orientation": "h",
@@ -258,14 +418,12 @@ def plot_symmetry_path_3d(
     *,
     path=None,
     output_html=None,
-    num_points_per_segment=40,
     include_plotlyjs=True,
 ):
     """Save a Hamiltonian's interactive 3D symmetry path and return its path."""
     figure = build_symmetry_path_3d_figure(
         hamiltonian,
         path=path,
-        num_points_per_segment=num_points_per_segment,
     )
     output_path = (
         Path(output_html).expanduser().resolve()
@@ -278,13 +436,14 @@ def plot_symmetry_path_3d(
         include_plotlyjs=include_plotlyjs,
         full_html=True,
         auto_open=False,
+        post_script=_segment_color_sidebar_script(),
     )
     print(f"Saved interactive 3D symmetry path to:\n > {output_path}")
     return str(output_path)
 
 
 # Edit this Hamiltonian or pass a custom path below when needed.
-Hamiltonian_Obj = gWaveAltermagnetHamiltonian()
+Hamiltonian_Obj = MinimalHamSG194_2a()
 custom_path = None
 
 

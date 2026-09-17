@@ -16,6 +16,7 @@ from Library.plotting_utils import (
     bz_wigner_seitz_from_bvecs,
     draw_symmetry_point_overlay,
     get_bvecs_from_meta,
+    symmetry_path_chains_on_slice,
     symmetry_points_on_fixed_slice,
 )
 from Plot_QGT_2D_Dynamic_ND_sweep import (
@@ -82,8 +83,140 @@ def _parameter_title(base_title, names, axes, indices, radius=None):
     return title
 
 
+def _project_band_frame(band_panel, eigenvalue_frame):
+    plot_indices = band_panel.get("plot_indices")
+    if plot_indices is None:
+        return eigenvalue_frame
+
+    projected = np.full(
+        (len(plot_indices), eigenvalue_frame.shape[-1]),
+        np.nan,
+        dtype=float,
+    )
+    valid = plot_indices >= 0
+    projected[valid] = eigenvalue_frame[plot_indices[valid]]
+    return projected
+
+
+def _band_panel_frame(band_panel, parameter_index):
+    eigenvalue_frame = band_panel["eigenvalues"][
+        parameter_index + (slice(None), slice(None))
+    ]
+    return _project_band_frame(band_panel, eigenvalue_frame)
+
+
+def _filter_band_panel_to_plane(
+    data,
+    band_panel,
+    initial_parameter_index,
+    *,
+    axis="z",
+    value=0.0,
+    tolerance_fraction=0.01,
+):
+    if axis is None or not band_panel["available"]:
+        return band_panel
+
+    required = ("k_path", "path_points", "path_labels", "node_indices")
+    if not all(key in data.files for key in required):
+        return band_panel
+
+    chains, tolerance = symmetry_path_chains_on_slice(
+        data["path_points"],
+        data["path_labels"],
+        data["node_indices"],
+        data["k_path"],
+        axis=axis,
+        value=value,
+        tolerance_fraction=tolerance_fraction,
+    )
+    plane_name = f"k_{axis}={float(value):.6g}"
+    if not chains:
+        return {
+            **band_panel,
+            "available": False,
+            "initial": None,
+            "message": f"No symmetry-path segments near {plane_name}",
+            "plane_axis": axis,
+            "plane_value": float(value),
+            "plane_tolerance": tolerance,
+            "chains": [],
+        }
+
+    local_distances = []
+    total_length = 0.0
+    for chain in chains:
+        differences = np.diff(chain["k_path"], axis=0)
+        distances = np.linalg.norm(differences, axis=1)
+        local_distance = np.concatenate(([0.0], np.cumsum(distances)))
+        local_distances.append(local_distance)
+        total_length += float(local_distance[-1])
+
+    gap = 0.04 * total_length if total_length > 0.0 else 1.0
+    plot_indices = []
+    plot_distance = []
+    plot_node_indices = []
+    plot_labels = []
+    offset = 0.0
+    for chain_index, (chain, local_distance) in enumerate(
+        zip(chains, local_distances)
+    ):
+        if chain_index:
+            plot_indices.append(-1)
+            plot_distance.append(offset + 0.5 * gap)
+            offset += gap
+
+        output_start = len(plot_indices)
+        chain_distance = offset + local_distance
+        plot_indices.extend(chain["sample_indices"].tolist())
+        plot_distance.extend(chain_distance.tolist())
+        plot_node_indices.extend(
+            (output_start + chain["node_positions"]).tolist()
+        )
+        plot_labels.extend(chain["labels"])
+        offset = float(chain_distance[-1])
+
+    plot_indices = np.asarray(plot_indices, dtype=int)
+    plot_distance = np.asarray(plot_distance, dtype=float)
+    plot_node_indices = np.asarray(plot_node_indices, dtype=int)
+    valid_indices = plot_indices[plot_indices >= 0]
+    selected_path = np.take(
+        band_panel["eigenvalues"],
+        np.unique(valid_indices),
+        axis=-2,
+    )
+    selected = selected_path[..., band_panel["bands"]]
+    finite = selected[np.isfinite(selected)]
+    if finite.size:
+        minimum = float(np.min(finite))
+        maximum = float(np.max(finite))
+        padding = 0.05 * (maximum - minimum) if maximum > minimum else 1.0
+        energy_range = (minimum - padding, maximum + padding)
+    else:
+        energy_range = (-1.0, 1.0)
+
+    filtered_panel = {
+        **band_panel,
+        "k_dist": plot_distance,
+        "node_indices": plot_node_indices,
+        "path_labels": plot_labels,
+        "range": energy_range,
+        "plot_indices": plot_indices,
+        "title": f"Symmetry-line eigenvalues ({plane_name})",
+        "plane_axis": axis,
+        "plane_value": float(value),
+        "plane_tolerance": tolerance,
+        "chains": chains,
+    }
+    filtered_panel["initial"] = _band_panel_frame(
+        filtered_panel,
+        initial_parameter_index,
+    )
+    return filtered_panel
+
+
 def _draw_band_panel(axis, band_panel):
-    axis.set_title("Symmetry-line eigenvalues")
+    axis.set_title(band_panel.get("title", "Symmetry-line eigenvalues"))
     axis.set_xlabel("k path")
     axis.set_ylabel("Eigenvalue")
     axis.set_ylim(*band_panel["range"])
@@ -93,7 +226,10 @@ def _draw_band_panel(axis, band_panel):
         axis.text(
             0.5,
             0.5,
-            "Symmetry-line eigenvalues unavailable",
+            band_panel.get(
+                "message",
+                "Symmetry-line eigenvalues unavailable",
+            ),
             ha="center",
             va="center",
             transform=axis.transAxes,
@@ -222,10 +358,13 @@ def plot_berry_components_nd_matplotlib(
     *,
     bands_to_plot=None,
     title=None,
-    berry_zlim=None,
-    berry_zlim_percentile=99.0,
+    berry_lim=None,
+    berry_lim_percentile=99.0,
     cartesian_resolution=None,
     cmap="RdBu_r",
+    symmetry_band_plane_axis="z",
+    symmetry_band_plane_value=0.0,
+    symmetry_band_plane_tolerance=0.01,
     show_symmetry_points=True,
     symmetry_slice_tolerance=0.01,
     show=True,
@@ -237,6 +376,9 @@ def plot_berry_components_nd_matplotlib(
     three angular cuts, winding versus radius, and in-plane magnitude. One
     integer slider is created for every sweep parameter; polar data receives
     a shared radius slider and play/pause button.
+
+    The symmetry-band panel defaults to segments near ``kz=0``. Set
+    ``symmetry_band_plane_axis=None`` to display the original full path.
 
     The returned figure stores the widgets and artists in ``figure.qgt_viewer``
     so they remain alive and can also be controlled programmatically.
@@ -282,11 +424,19 @@ def plot_berry_components_nd_matplotlib(
     initial_indices = tuple(axis.size // 2 for axis in axes)
     current_indices = list(initial_indices)
     band_panel = _prepare_nd_band_panel(data, initial_indices, bands_to_plot)
+    band_panel = _filter_band_panel_to_plane(
+        data,
+        band_panel,
+        initial_indices,
+        axis=symmetry_band_plane_axis,
+        value=symmetry_band_plane_value,
+        tolerance_fraction=symmetry_band_plane_tolerance,
+    )
     component_limits = [
         _berry_component_plot_limits(
             component,
-            berry_zlim,
-            berry_zlim_percentile,
+            berry_lim,
+            berry_lim_percentile,
         )
         for component in components
     ]
@@ -367,48 +517,47 @@ def plot_berry_components_nd_matplotlib(
     base_title = title or "Berry Curvature Components"
 
     if is_polar:
-        figure = plt.figure(figsize=(16, 14.5))
+        figure = plt.figure(figsize=(21, 9.5))
         grid = figure.add_gridspec(
-            4,
-            6,
-            height_ratios=(0.70, 1.45, 0.90, 0.90),
+            2,
+            5,
+            height_ratios=(1.05, 0.88),
         )
-        band_axis = figure.add_subplot(grid[0, :])
         map_axes = [
-            figure.add_subplot(grid[1, 0:2]),
-            figure.add_subplot(grid[1, 2:4]),
-            figure.add_subplot(grid[1, 4:6]),
+            figure.add_subplot(grid[0, 0]),
+            figure.add_subplot(grid[0, 1]),
+            figure.add_subplot(grid[0, 2]),
         ]
+        band_axis = figure.add_subplot(grid[0, 3:5])
         cut_axes = [
-            figure.add_subplot(grid[2, 0:2]),
-            figure.add_subplot(grid[2, 2:4]),
-            figure.add_subplot(grid[2, 4:6]),
+            figure.add_subplot(grid[1, 0]),
+            figure.add_subplot(grid[1, 1]),
+            figure.add_subplot(grid[1, 2]),
         ]
-        winding_axis = figure.add_subplot(grid[3, 0:3])
-        magnitude_axis = figure.add_subplot(grid[3, 3:6])
+        winding_axis = figure.add_subplot(grid[1, 3])
+        magnitude_axis = figure.add_subplot(grid[1, 4])
         figure.subplots_adjust(
-            left=0.065,
-            right=0.965,
-            top=0.93,
+            left=0.045,
+            right=0.975,
+            top=0.91,
             bottom=bottom_margin,
-            hspace=0.62,
-            wspace=0.60,
+            hspace=0.48,
+            wspace=0.62,
         )
     else:
-        figure = plt.figure(figsize=(16, 9.5))
-        grid = figure.add_gridspec(2, 3, height_ratios=(0.78, 1.50))
-        band_axis = figure.add_subplot(grid[0, :])
-        map_axes = [figure.add_subplot(grid[1, index]) for index in range(3)]
+        figure = plt.figure(figsize=(21, 5.8))
+        grid = figure.add_gridspec(1, 5)
+        map_axes = [figure.add_subplot(grid[0, index]) for index in range(3)]
+        band_axis = figure.add_subplot(grid[0, 3:5])
         cut_axes = []
         winding_axis = None
         magnitude_axis = None
         figure.subplots_adjust(
-            left=0.065,
-            right=0.965,
-            top=0.91,
+            left=0.045,
+            right=0.975,
+            top=0.86,
             bottom=bottom_margin,
-            hspace=0.42,
-            wspace=0.58,
+            wspace=0.62,
         )
 
     band_lines = _draw_band_panel(band_axis, band_panel)
@@ -639,9 +788,7 @@ def plot_berry_components_nd_matplotlib(
             image.set_data(map_data[(component_index,) + parameter_index])
 
         if band_panel["available"]:
-            eigenvalues = band_panel["eigenvalues"][
-                parameter_index + (slice(None), slice(None))
-            ]
+            eigenvalues = _band_panel_frame(band_panel, parameter_index)
             for line, band in zip(band_lines, band_panel["bands"]):
                 line.set_ydata(eigenvalues[:, band])
 
@@ -749,6 +896,12 @@ def plot_berry_components_nd_matplotlib(
         "current_indices": current_indices,
         "radius_position": radius_position,
         "map_images": map_images,
+        "map_axes": map_axes,
+        "band_axis": band_axis,
+        "cut_axes": cut_axes,
+        "winding_axis": winding_axis,
+        "magnitude_axis": magnitude_axis,
+        "band_panel": band_panel,
         "band_lines": band_lines,
         "ring_lines": ring_lines,
         "component_cut_lines": component_cut_lines,
@@ -780,12 +933,15 @@ def dynamic_nd_field_with_bands_matplotlib(
     title=None,
     show_integral=True,
     trace_zmax_percentile=99.0,
-    berry_zlim=None,
-    berry_zlim_percentile=99.0,
+    berry_lim=None,
+    berry_lim_percentile=99.0,
     ratio_zmax=None,
     ratio_zmax_percentile=99.0,
     berry_component_cmap="RdBu_r",
     cartesian_resolution=None,
+    symmetry_band_plane_axis="z",
+    symmetry_band_plane_value=0.0,
+    symmetry_band_plane_tolerance=0.01,
     show_symmetry_points=True,
     symmetry_slice_tolerance=0.01,
     show=True,
@@ -795,7 +951,8 @@ def dynamic_nd_field_with_bands_matplotlib(
     The arguments mirror :func:`dynamic_nd_field_with_bands_html`, except
     that no output path is needed. ``quantity='berry_components'`` dispatches
     to :func:`plot_berry_components_nd_matplotlib`; scalar quantities use a
-    symmetry-line band panel above one two-dimensional field map.
+    symmetry-line band panel above one two-dimensional field map. The band
+    panel defaults to connected symmetry segments near ``kz=0``.
     """
     normalized_quantity = quantity.lower()
     if normalized_quantity in BERRY_COMPONENT_QUANTITIES:
@@ -803,10 +960,13 @@ def dynamic_nd_field_with_bands_matplotlib(
             root_dir,
             bands_to_plot=bands_to_plot,
             title=title,
-            berry_zlim=berry_zlim,
-            berry_zlim_percentile=berry_zlim_percentile,
+            berry_lim=berry_lim,
+            berry_lim_percentile=berry_lim_percentile,
             cartesian_resolution=cartesian_resolution,
             cmap=berry_component_cmap,
+            symmetry_band_plane_axis=symmetry_band_plane_axis,
+            symmetry_band_plane_value=symmetry_band_plane_value,
+            symmetry_band_plane_tolerance=symmetry_band_plane_tolerance,
             show_symmetry_points=show_symmetry_points,
             symmetry_slice_tolerance=symmetry_slice_tolerance,
             show=show,
@@ -899,8 +1059,8 @@ def dynamic_nd_field_with_bands_matplotlib(
     if normalized_quantity in berry_quantities:
         symmetric_limits = _berry_component_plot_limits(
             finite,
-            berry_zlim,
-            berry_zlim_percentile,
+            berry_lim,
+            berry_lim_percentile,
         )
         if symmetric_cbar:
             vmin, vmax = symmetric_limits
@@ -955,6 +1115,14 @@ def dynamic_nd_field_with_bands_matplotlib(
     initial_indices = tuple(axis.size // 2 for axis in axes)
     current_indices = list(initial_indices)
     band_panel = _prepare_nd_band_panel(data, initial_indices, bands_to_plot)
+    band_panel = _filter_band_panel_to_plane(
+        data,
+        band_panel,
+        initial_indices,
+        axis=symmetry_band_plane_axis,
+        value=symmetry_band_plane_value,
+        tolerance_fraction=symmetry_band_plane_tolerance,
+    )
     bottom_margin = min(0.38, 0.055 + 0.036 * len(names))
 
     figure = plt.figure(figsize=(10.5, 10.0))
@@ -1093,9 +1261,7 @@ def dynamic_nd_field_with_bands_matplotlib(
         index = current_parameter_index()
         image.set_data(map_data[index])
         if band_panel["available"]:
-            eigenvalues = band_panel["eigenvalues"][
-                index + (slice(None), slice(None))
-            ]
+            eigenvalues = _band_panel_frame(band_panel, index)
             for line, band in zip(band_lines, band_panel["bands"]):
                 line.set_ydata(eigenvalues[:, band])
         figure.suptitle(title_for_current_state(), fontsize=13)
@@ -1141,6 +1307,7 @@ def dynamic_nd_field_with_bands_matplotlib(
         "play_button": None,
         "current_indices": current_indices,
         "map_images": [image],
+        "band_panel": band_panel,
         "band_lines": band_lines,
         "symmetry_point_labels": symmetry_point_labels,
         "symmetry_point_coordinates": symmetry_point_coordinates,
@@ -1167,6 +1334,7 @@ if __name__ == "__main__":
     dynamic_nd_field_with_bands_matplotlib(
         dataset_dir,
         quantity="berry_components",
-        berry_zlim_percentile=90.0,
+        berry_lim_percentile=90.0,
         bands_to_plot=[0, 1, 2, 3],
+        # symmetry_band_plane_axis=None
     )

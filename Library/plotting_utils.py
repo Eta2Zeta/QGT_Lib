@@ -11,6 +11,174 @@ def _fixed_axis_from_order(order):
     return order[2]
 
 
+def _symmetry_points_3d(path_points):
+    path_points = np.asarray(path_points, dtype=float)
+    if path_points.ndim != 2 or path_points.shape[1] not in (2, 3):
+        raise ValueError("path_points must have shape (number_of_nodes, 2 or 3)")
+    if path_points.shape[1] == 2:
+        path_points = np.column_stack(
+            (path_points, np.zeros(path_points.shape[0], dtype=float))
+        )
+    return path_points
+
+
+def points_near_symmetry_slice(
+    path_points,
+    *,
+    axis="z",
+    value=0.0,
+    tolerance_fraction=0.01,
+):
+    """Return a mask for symmetry points near a periodic coordinate slice."""
+    if axis not in {"x", "y", "z"}:
+        raise ValueError("axis must be 'x', 'y', or 'z'")
+    value = float(value)
+    tolerance_fraction = float(tolerance_fraction)
+    if not 0.0 <= tolerance_fraction <= 1.0:
+        raise ValueError("tolerance_fraction must be between 0 and 1")
+
+    path_points = _symmetry_points_3d(path_points)
+    fixed_values = path_points[:, "xyz".index(axis)]
+    reciprocal_boundary = float(np.max(np.abs(fixed_values)))
+    reciprocal_period = 2.0 * reciprocal_boundary
+    if reciprocal_period > 0.0:
+        tolerance = tolerance_fraction * reciprocal_period
+        separation = np.mod(
+            np.abs(fixed_values - value),
+            reciprocal_period,
+        )
+        separation = np.minimum(separation, reciprocal_period - separation)
+    else:
+        tolerance = max(1e-12, tolerance_fraction * 2.0 * np.pi)
+        separation = np.abs(fixed_values - value)
+
+    return separation <= tolerance, tolerance
+
+
+def symmetry_path_chains_on_slice(
+    path_points,
+    path_labels,
+    node_indices,
+    k_path,
+    *,
+    axis="z",
+    value=0.0,
+    tolerance_fraction=0.01,
+):
+    """Return connected in-plane symmetry-path chains.
+
+    A segment is retained only when both endpoint nodes lie near the requested
+    coordinate slice. Retained segments that share an endpoint are stitched,
+    even when they were separated by off-plane segments in the saved path.
+    """
+    path_points = _symmetry_points_3d(path_points)
+    path_labels = [str(label) for label in np.asarray(path_labels)]
+    node_indices = np.asarray(node_indices, dtype=int)
+    k_path = _symmetry_points_3d(k_path)
+    number_of_nodes = path_points.shape[0]
+
+    if len(path_labels) != number_of_nodes:
+        raise ValueError("path_labels and path_points must have the same length")
+    if node_indices.shape != (number_of_nodes,):
+        raise ValueError("node_indices must contain one index per path point")
+    if np.any(node_indices < 0) or np.any(node_indices >= len(k_path)):
+        raise IndexError("node_indices contains an index outside k_path")
+    if np.any(np.diff(node_indices) < 0):
+        raise ValueError("node_indices must be nondecreasing")
+
+    node_mask, tolerance = points_near_symmetry_slice(
+        path_points,
+        axis=axis,
+        value=value,
+        tolerance_fraction=tolerance_fraction,
+    )
+
+    chains = []
+    for segment_index in range(number_of_nodes - 1):
+        if not (node_mask[segment_index] and node_mask[segment_index + 1]):
+            continue
+
+        start_index = int(node_indices[segment_index])
+        stop_index = int(node_indices[segment_index + 1])
+        sample_indices = np.arange(start_index, stop_index + 1, dtype=int)
+        chains.append(
+            {
+                "sample_indices": sample_indices,
+                "node_positions": np.array(
+                    [0, len(sample_indices) - 1],
+                    dtype=int,
+                ),
+                "labels": [
+                    path_labels[segment_index],
+                    path_labels[segment_index + 1],
+                ],
+                "points": np.vstack(
+                    (path_points[segment_index], path_points[segment_index + 1])
+                ),
+            }
+        )
+
+    def same_point(first, second):
+        return np.allclose(first, second, rtol=1e-10, atol=1e-10)
+
+    def reverse_chain(chain):
+        number_of_samples = len(chain["sample_indices"])
+        return {
+            "sample_indices": chain["sample_indices"][::-1],
+            "node_positions": (
+                number_of_samples - 1 - chain["node_positions"][::-1]
+            ),
+            "labels": chain["labels"][::-1],
+            "points": chain["points"][::-1],
+        }
+
+    def join_chains(first, second):
+        sample_offset = len(first["sample_indices"]) - 1
+        return {
+            "sample_indices": np.concatenate(
+                (first["sample_indices"], second["sample_indices"][1:])
+            ),
+            "node_positions": np.concatenate(
+                (
+                    first["node_positions"],
+                    second["node_positions"][1:] + sample_offset,
+                )
+            ),
+            "labels": first["labels"] + second["labels"][1:],
+            "points": np.vstack((first["points"], second["points"][1:])),
+        }
+
+    merged = True
+    while merged:
+        merged = False
+        for first_index in range(len(chains)):
+            for second_index in range(first_index + 1, len(chains)):
+                first = chains[first_index]
+                second = chains[second_index]
+                combined = None
+                if same_point(first["points"][-1], second["points"][0]):
+                    combined = join_chains(first, second)
+                elif same_point(first["points"][-1], second["points"][-1]):
+                    combined = join_chains(first, reverse_chain(second))
+                elif same_point(first["points"][0], second["points"][-1]):
+                    combined = join_chains(second, first)
+                elif same_point(first["points"][0], second["points"][0]):
+                    combined = join_chains(reverse_chain(second), first)
+
+                if combined is None:
+                    continue
+                chains[first_index] = combined
+                del chains[second_index]
+                merged = True
+                break
+            if merged:
+                break
+
+    for chain in chains:
+        chain["k_path"] = k_path[chain["sample_indices"]]
+    return chains, tolerance
+
+
 def symmetry_points_on_fixed_slice(
     data,
     order,
@@ -25,44 +193,30 @@ def symmetry_points_on_fixed_slice(
     if "path_points" not in data.files or "path_labels" not in data.files:
         return [], np.empty((0, 2), dtype=float), 0.0
 
-    path_points = np.asarray(data["path_points"], dtype=float)
-    if path_points.ndim != 2 or path_points.shape[1] not in (2, 3):
-        raise ValueError("path_points must have shape (number_of_nodes, 2 or 3)")
-    if path_points.shape[1] == 2:
-        path_points = np.column_stack(
-            (path_points, np.zeros(path_points.shape[0], dtype=float))
-        )
+    path_points = _symmetry_points_3d(data["path_points"])
 
     path_labels = [str(label) for label in np.asarray(data["path_labels"])]
     if len(path_labels) != path_points.shape[0]:
         raise ValueError("path_labels and path_points must have the same length")
 
     fixed_axis = _fixed_axis_from_order(order)
-    fixed_axis_index = "xyz".index(fixed_axis)
     plane_indices = ["xyz".index(axis) for axis in plane_axes]
     fixed_coordinate = (
         float(np.asarray(data["kk"]).item()) if "kk" in data.files else 0.0
     )
 
-    fixed_values = path_points[:, fixed_axis_index]
-    reciprocal_boundary = float(np.max(np.abs(fixed_values)))
-    reciprocal_period = 2.0 * reciprocal_boundary
-    if reciprocal_period > 0.0:
-        tolerance = tolerance_fraction * reciprocal_period
-        separation = np.mod(
-            np.abs(fixed_values - fixed_coordinate),
-            reciprocal_period,
-        )
-        separation = np.minimum(separation, reciprocal_period - separation)
-    else:
-        tolerance = max(1e-12, tolerance_fraction * 2.0 * np.pi)
-        separation = np.abs(fixed_values - fixed_coordinate)
+    visible_mask, tolerance = points_near_symmetry_slice(
+        path_points,
+        axis=fixed_axis,
+        value=fixed_coordinate,
+        tolerance_fraction=tolerance_fraction,
+    )
 
     visible_labels = []
     visible_points = []
     seen_labels = set()
-    for label, point, distance in zip(path_labels, path_points, separation):
-        if distance > tolerance or label in seen_labels:
+    for label, point, is_visible in zip(path_labels, path_points, visible_mask):
+        if not is_visible or label in seen_labels:
             continue
         seen_labels.add(label)
         visible_labels.append(label)

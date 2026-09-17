@@ -149,8 +149,8 @@ def _load_saved_winding_grid(data, parameter_shape, radius_values):
     return winding_grid
 
 
-def _berry_component_plot_limits(component, zlim, percentile):
-    limits = get_symmetric_plot_limits(component, zlim, percentile)
+def _berry_component_plot_limits(component, limit, percentile):
+    limits = get_symmetric_plot_limits(component, limit, percentile)
     return (-1.0, 1.0) if limits is None else tuple(float(v) for v in limits)
 
 
@@ -513,8 +513,8 @@ def _dynamic_nd_berry_components_html(
     bands_to_plot=None,
     title=None,
     output_html=None,
-    berry_zlim=None,
-    berry_zlim_percentile=99.0,
+    berry_lim=None,
+    berry_lim_percentile=99.0,
     cartesian_resolution=None,
     cmap="RdBu_r",
 ):
@@ -562,7 +562,7 @@ def _dynamic_nd_berry_components_html(
     ]
     component_colors = ["#d62728", "#1f77b4", "#2ca02c"]
     component_limits = [
-        _berry_component_plot_limits(component, berry_zlim, berry_zlim_percentile)
+        _berry_component_plot_limits(component, berry_lim, berry_lim_percentile)
         for component in components
     ]
     component_line_limits = []
@@ -1445,8 +1445,8 @@ def dynamic_nd_field_with_bands_html(
     show_integral=True,
     output_html=None,
     trace_zmax_percentile=99.0,
-    berry_zlim=None,
-    berry_zlim_percentile=99.0,
+    berry_lim=None,
+    berry_lim_percentile=99.0,
     ratio_zmax=None,
     ratio_zmax_percentile=99.0,
     berry_component_cmap="RdBu_r",
@@ -1476,8 +1476,8 @@ def dynamic_nd_field_with_bands_html(
             bands_to_plot=bands_to_plot,
             title=title,
             output_html=output_html,
-            berry_zlim=berry_zlim,
-            berry_zlim_percentile=berry_zlim_percentile,
+            berry_lim=berry_lim,
+            berry_lim_percentile=berry_lim_percentile,
             cartesian_resolution=cartesian_resolution,
             cmap=berry_component_cmap,
         )
@@ -1582,8 +1582,8 @@ def dynamic_nd_field_with_bands_html(
     if q in berry_quantities:
         symmetric_limits = get_symmetric_plot_limits(
             finite,
-            berry_zlim,
-            berry_zlim_percentile,
+            berry_lim,
+            berry_lim_percentile,
         )
         if symmetric_cbar:
             vmin, vmax = symmetric_limits

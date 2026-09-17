@@ -848,8 +848,8 @@ def dynamic_2d_qgt_vs_omega_jointed_html(
     drop_overlap=True,
     tol=1e-9,
     cmap="inferno",
-    berry_zlim=None,
-    berry_zlim_percentile=99.0,
+    berry_lim=None,
+    berry_lim_percentile=99.0,
     label_left="left",
     label_right="right",
     output_html=None,
@@ -984,8 +984,8 @@ def dynamic_2d_qgt_vs_omega_jointed_html(
     if q == "berry":
         symmetric_limits = get_symmetric_plot_limits(
             finite,
-            berry_zlim,
-            berry_zlim_percentile,
+            berry_lim,
+            berry_lim_percentile,
         )
         if symmetric_cbar:
             vmin, vmax = symmetric_limits

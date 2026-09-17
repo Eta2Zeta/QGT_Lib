@@ -11,7 +11,7 @@ from Library.GroupTheory import (
     D3dPointGroup,
     calculate_numerical_qgt_group_orbit,
 )
-from Library.Hamiltonian import gWaveAltermagnetHamiltonian
+from Library.Hamiltonian import MinimalHamSG194_2a
 from Library.data_management_utils_common import (
     dump_metadata,
     pick_or_create_result_dir_simple,
@@ -403,7 +403,7 @@ def calculate_d3d_all_irrep_berry_projections(
 
 
 def main():
-    Hamiltonian_Obj = gWaveAltermagnetHamiltonian(
+    Hamiltonian_Obj = MinimalHamSG194_2a(
         Jx=0.0,
         Jy=0.0,
         Jz=0.2,
