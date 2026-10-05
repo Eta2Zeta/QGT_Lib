@@ -275,13 +275,19 @@ def main():
     #     t4=0.3
     # )
 
+    # Match results/2D_QGT_results/MinimalHamSG1272a2b/dataset_3.
     Hamiltonian_Obj = MinimalHamSG127_2a2b(
         Jx=0.0,
         Jy=0.0,
         Jz=0.2,
         lamb=0.1,
         lamb_z=0.1,
+        mu=0.0,
+        omega=0.0,
         A0=0.0,
+        polarization="left",
+        magnus_order=1,
+        analytic_magnus=False,
         t1=0.8,
         t2=0.2,
         t3=0.3,
@@ -321,7 +327,7 @@ def main():
         kk=0.01 * np.pi,
         order="xyz",
         mesh_spacing=150,
-        k_max=1.02 * np.pi,
+        k_max=1.02 * np.pi,  # Interior samples reach +/-3.162, beyond BZ edges +/-pi.
     )
 
 
