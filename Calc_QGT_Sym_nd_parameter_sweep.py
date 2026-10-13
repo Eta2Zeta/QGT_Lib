@@ -10,7 +10,7 @@ from functools import partial
 
 from Library.Hamiltonian.Hamiltonian import *
 from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
-from Library.Hamiltonian.MinimalHamSG194_2a import MinimalHamSG194_2a
+from Library.Hamiltonian.MinimalModels import MinimalHamSG194_2a
 from Library.utilities import generate_3d_sym_lines
 from Library.Hamiltonian_helper import get_Hamiltonian
 from Library.data_management_utils_nd import build_parameter_points

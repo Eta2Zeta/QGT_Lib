@@ -11,7 +11,7 @@ from Library.GroupTheory import (
     D3dPointGroup,
     calculate_numerical_qgt_group_orbit,
 )
-from Library.Hamiltonian import MinimalHamSG194_2a
+from Library.Hamiltonian.MinimalModels import MinimalHamSG194_2a
 from Library.data_management_utils_common import (
     dump_metadata,
     pick_or_create_result_dir_simple,

@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from Library.Hamiltonian import MinimalHamSG124_2b2d
+from Library.Hamiltonian.MinimalModels import MinimalHamSG124_2b2d
 
 
 class TestMinimalHamSG124(unittest.TestCase):

@@ -30,6 +30,15 @@ linear means we are plotting the omega values seperated linearly
 
 
 
+## Minimal altermagnet models
+
+All 27 explicit Hamiltonian families from Tables III-IV of *Minimal models for
+altermagnetism* are collected in `Library/Hamiltonian/MinimalModels`. They use
+the existing Hamiltonian, eigenvalue, QGT, and numerical Floquet interfaces.
+See the [model catalog and examples](Library/Hamiltonian/MinimalModels/README.md)
+for classes, parameter conventions, and source coverage. Import minimal models
+directly from `Library.Hamiltonian.MinimalModels`.
+
 ## To Do Next
 Berry Curvature Calculation -> Chern Number
 Polarization changing Asinwt to -Asinwt

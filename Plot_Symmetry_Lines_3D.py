@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import plotly.graph_objects as go
 
-from Library.Hamiltonian import MinimalHamSG194_2a
+from Library.Hamiltonian.MinimalModels import MinimalHamSG194_2a
 
 
 SEGMENT_COLOR_PALETTE = (

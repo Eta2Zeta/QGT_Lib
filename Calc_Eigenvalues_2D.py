@@ -7,7 +7,13 @@ import shutil
 
 import numpy as np
 
-from Library.Hamiltonian import *
+from Library.Hamiltonian import THF_Hamiltonian
+from Library.Hamiltonian.MinimalModels import (
+    MinimalHamSG124_2b2d,
+    MinimalHamSG127_2a2b,
+    MinimalHamSG127_2c2d,
+    MinimalHamSG194_2a,
+)
 from Library.data_management_utils_2d import setup_2D_Eigen_results_directory
 from Library.dimension_lib import (
     create_2d_coordinate_grid,

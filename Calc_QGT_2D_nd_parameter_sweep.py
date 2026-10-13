@@ -13,7 +13,7 @@ from Library.Hamiltonian.Hamiltonian import *
 from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
 from Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected import ChiralHamiltonianChiralBasisProjected
 from Library.Hamiltonian.SquareLatticeHamiltonian import SquareLatticeHamiltonian
-from Library.Hamiltonian.MinimalHamSG127_2a2b import MinimalHamSG127_2a2b
+from Library.Hamiltonian.MinimalModels import MinimalHamSG127_2a2b
 from Library.Hamiltonian.THF_Hamiltonian import THF_Hamiltonian
 from Library.eigenvalue_calc_lib import *
 from Library.QGT_lib import *

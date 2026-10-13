@@ -29,7 +29,7 @@ from Library.plotting_qgt_polar import (
     plot_berry_winding_vs_radius,
 )
 from Library.Hamiltonian.RuO2Hamiltonian import *
-from Library.Hamiltonian.MinimalHamSG194_2a import *
+from Library.Hamiltonian.MinimalModels import MinimalHamSG194_2a
 from Library.data_management_utils_2d import setup_2D_QGT_results_directory
 from Library.output_utils import print_calculation_complete
 
