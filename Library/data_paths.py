@@ -21,3 +21,18 @@ def data_root():
 def legacy_dir(*parts):
     """Return a path inside the former ``results/`` tree, e.g. ``legacy_dir("2D_QGT_ND", name)``."""
     return os.path.join(data_root(), "legacy", *parts)
+
+
+_OLD_RESULTS_SEGMENT = os.sep + os.path.join("QGT_Lib", "results") + os.sep
+
+
+def relocate_legacy_path(path):
+    """Map a path recorded inside the former ``QGT_Lib/results/`` to its location under ``legacy/``.
+
+    Older metadata (e.g. ``dataset_dir`` in MinimalModels manifests) stores absolute paths into
+    the repository's old results folder. Other paths are returned unchanged.
+    """
+    path = os.fspath(path)
+    if _OLD_RESULTS_SEGMENT in path:
+        return legacy_dir(path.split(_OLD_RESULTS_SEGMENT, 1)[1])
+    return path

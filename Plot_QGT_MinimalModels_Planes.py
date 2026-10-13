@@ -41,7 +41,7 @@ from Library.plotting_qgt_2d import (
     plot_qgt_eigenvalue_berry_trace_heatmaps,
     plot_qgt_eigenvalue_berry_trace_surfaces,
 )
-from Library.data_paths import legacy_dir
+from Library.data_paths import legacy_dir, relocate_legacy_path
 
 
 ROOT = Path(__file__).resolve().parent
@@ -125,7 +125,7 @@ def plot_dataset(dataset_dir, force=False):
     exact Hamiltonian used for symmetry-path overlays. ``plots.json`` is
     written only after every expected figure exists and is nonempty.
     """
-    dataset_dir = Path(dataset_dir).resolve()
+    dataset_dir = Path(relocate_legacy_path(dataset_dir)).resolve()
     meta = json.loads((dataset_dir / "meta.json").read_text())
     summary = json.loads((dataset_dir / "summary.json").read_text())
     n_bands = int(meta["n_bands"])
@@ -456,7 +456,7 @@ def write_gallery(output_root, results):
     navigation = []
     band_count = 0
     for position, result in enumerate(results):
-        dataset_dir = Path(result["dataset_dir"])
+        dataset_dir = Path(relocate_legacy_path(result["dataset_dir"]))
         marker = dataset_dir / "plots.json"
         if not marker.exists():
             continue
