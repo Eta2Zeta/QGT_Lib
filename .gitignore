@@ -1,11 +1,18 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Calculation output and scratch
+results/
+temp/
+tmp/
 *.npy
 *.npz
 *.html
-.DS_Store
-**/.DS_Store
-<<<<<<< Updated upstream
-__pycache__/
-**/__pycache__/
-*.py[cod]
-=======
->>>>>>> Stashed changes

@@ -7,7 +7,7 @@ from tqdm import tqdm  # Import tqdm for progress bar
 
 # from Library import * 
 from Library.Hamiltonian_v1 import *
-from Hamiltonian.Hamiltonian_v2 import * 
+from Library.Hamiltonian import *
 from Library.eigenvalue_calc_lib import *
 from Library.QGT_lib import *
 from Library.topology import *
