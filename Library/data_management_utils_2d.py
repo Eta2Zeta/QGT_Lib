@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 from typing import Tuple, Dict, Any, List, Optional
 from Library.data_management_utils_common import pick_or_create_result_dir_simple, meta_matcher_all_fields, dump_metadata
+from Library.data_paths import legacy_dir
 
 def setup_2D_Eigen_results_directory(
     meta_params: Dict[str, Any],
@@ -20,7 +21,7 @@ def setup_2D_Eigen_results_directory(
         meta_target (dict): The metadata dictionary used for matching.
     """
     Hamiltonian_name = meta_params["hamiltonian_name"]
-    base_root = os.path.join(os.getcwd(), "results", "2D_Eigen_results", Hamiltonian_name)
+    base_root = legacy_dir("2D_Eigen_results", Hamiltonian_name)
 
     required_files = [
         "eigenvalues.npy",
@@ -74,7 +75,7 @@ def setup_2D_QGT_results_directory(
 
     # Define base_root using hamiltonian_name
     Hamiltonian_name = meta_params.get("hamiltonian_name", "Unknown_Hamiltonian")
-    base_root = os.path.join(os.getcwd(), "results", "2D_QGT_results", Hamiltonian_name)
+    base_root = legacy_dir("2D_QGT_results", Hamiltonian_name)
     
     json_meta = {k: v for k, v in meta_params.items() if not k.endswith("_Obj")}
 
@@ -136,7 +137,7 @@ def setup_Spin_Density_results_directory(
     Sets up the results directory for computationally extracted Spin Density using metadata matching.
     """
     Hamiltonian_name = meta_params.get("hamiltonian_name", "Unknown_Hamiltonian")
-    base_root = os.path.join(os.getcwd(), "results", "Spin_Density_results", Hamiltonian_name)
+    base_root = legacy_dir("Spin_Density_results", Hamiltonian_name)
 
     json_meta = {k: v for k, v in meta_params.items() if not k.endswith("_Obj")}
     if "hamiltonian_params" not in json_meta:

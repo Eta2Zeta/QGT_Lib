@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 
 from Library.dimension_lib import cylindrical_order_axes, is_cylindrical_order
+from Library.data_paths import legacy_dir
 
 
 def _fixed_axis_from_order(order):
@@ -434,7 +435,7 @@ def overlay_hamiltonian_symmetry_path(
 
 def load_qgt(folder_name):
     """Load QGT entries (np object array) and meta dict from a sweep folder."""
-    base = os.path.join(os.getcwd(), "results", "2D_QGT_omega_sweep", folder_name)
+    base = legacy_dir("2D_QGT_omega_sweep", folder_name)
     qgt_path  = os.path.join(base, "QGT_2D.npy")
     meta_path = os.path.join(base, "meta_info.pkl")
     if not os.path.exists(qgt_path):

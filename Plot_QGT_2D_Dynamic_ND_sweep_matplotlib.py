@@ -1,6 +1,5 @@
 """Interactive Matplotlib viewer for N-D Berry-curvature component sweeps."""
 
-import os
 
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button, Slider
@@ -19,6 +18,7 @@ from Library.plotting_utils import (
     symmetry_path_chains_on_slice,
     symmetry_points_on_fixed_slice,
 )
+from Library.data_paths import legacy_dir
 from Plot_QGT_2D_Dynamic_ND_sweep import (
     BERRY_COMPONENT_QUANTITIES,
     FLOQUET_RATIO_QUANTITIES,
@@ -1325,8 +1325,7 @@ def dynamic_nd_field_with_bands_matplotlib(
 
 
 if __name__ == "__main__":
-    dataset_dir = os.path.join(
-        "results",
+    dataset_dir = legacy_dir(
         "2D_QGT_ND",
         "gWaveAltermagnetHamiltonian",
         "dataset7",

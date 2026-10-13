@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import sys
 import os
 
-# Add parent directory to path to allow importing from Library
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+# Add the repository root to the path to allow importing from Library
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
 from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
 from Library.Hamiltonian.ChiralHamiltonianEffective import ChiralHamiltonianEffective

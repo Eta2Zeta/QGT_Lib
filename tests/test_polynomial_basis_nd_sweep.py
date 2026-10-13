@@ -8,8 +8,8 @@ import pytest
 
 SCRIPT_PATH = (
     Path(__file__).resolve().parents[1]
-    / "results"
-    / "Plot_Specific"
+    / "scripts"
+    / "figures"
     / "Polynomial_Basis_ND_Sweep"
     / "Polynomial_Basis_ND_Sweep.py"
 )

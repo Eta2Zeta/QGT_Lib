@@ -27,6 +27,7 @@ from Library.plotting_utils import bz_wigner_seitz_from_bvecs, get_bvecs_from_me
 from Library.topology import (
     berry_curvature_components_from_qgt,
 )
+from Library.data_paths import legacy_dir
 
 
 FLOQUET_RATIO_QUANTITIES = frozenset(
@@ -2140,7 +2141,7 @@ def plot_berry_components_nd_html(root_dir, **kwargs):
 
 
 if __name__ == "__main__":
-    dataset_dir = "results/2D_QGT_ND/gWaveAltermagnetHamiltonian/dataset5"
+    dataset_dir = legacy_dir("2D_QGT_ND/gWaveAltermagnetHamiltonian/dataset5")
 
     dynamic_nd_field_with_bands_html(
         dataset_dir,

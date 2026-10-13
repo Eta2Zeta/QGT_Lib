@@ -3,11 +3,12 @@ import matplotlib.pyplot as plt
 import sys
 import os
 
-# Add parent directory to path to allow importing from Library
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+# Add the repository root to the path to allow importing from Library
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
 from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
 from Library.Hamiltonian.ChiralHamiltonian_SW_Projected import ChiralHamiltonianSWProjected
+from Library.data_paths import legacy_dir
 
 
 def compute_results(n, vF, t1, A0, omega, V_vals, kx_vals, ky=0.0):
@@ -143,7 +144,7 @@ def main():
 
     print("Calculation done. Plotting...")
 
-    here = os.path.dirname(__file__)
+    here = legacy_dir("Plot_Specific", "Chiral_Rhombohedral_Graphen_Projections")
 
     # Single overlay plot
     plot_overlay(

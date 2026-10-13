@@ -10,6 +10,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
 
 from Library.plotting_lib_3d import plot_volumetric_cloud, plot_arbitrary_slice_no_interp
+from Library.data_paths import legacy_dir
 
 def plot_3d_energy(results_dir, band_idx=2, cloud_opacity=0.2, cloud_stride=2, slice_stride=2, levels=[0]):
     """
@@ -80,7 +81,7 @@ if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
     # Change the target Hamiltonian name below if you switch models.
-    base_results_path = os.path.join(current_dir, "results/3D_Eigen_results/gWaveAltermagnetHamiltonian")
+    base_results_path = legacy_dir("3D_Eigen_results/gWaveAltermagnetHamiltonian")
     
     # Specify specific dataset number (e.g., 15) or None for latest
     target_dataset = None  

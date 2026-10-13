@@ -15,6 +15,7 @@ from Library.utilities import generate_3d_sym_lines
 from Library.Hamiltonian_helper import get_Hamiltonian
 from Library.data_management_utils_nd import build_parameter_points
 from Library.output_utils import print_calculation_complete
+from Library.data_paths import legacy_dir
 
 
 # ---------- per-point worker ----------
@@ -87,7 +88,7 @@ def compute_sym_nd_parallel(
     eigenvalues_grid = np.empty(out_shape, dtype=float_dtype)
 
     # Result directory
-    base = os.path.join(os.getcwd(), "results", "Sym_Phase_Diagram")
+    base = legacy_dir("Sym_Phase_Diagram")
     name = (
         f"{getattr(H_template, 'name', 'Model')}_Sym"
         + "".join([f"_{k}_{v[0]}to{v[1]}" for k, v in param_ranges.items()])

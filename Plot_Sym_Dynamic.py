@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
+from Library.data_paths import legacy_dir
 
 def dynamic_sym_nd(bundle_path, bands=None):
     if not os.path.exists(bundle_path):
@@ -166,7 +167,7 @@ if __name__ == "__main__":
         bundle_path = sys.argv[1]
     else:
         # Default placeholder pointing to the latest calculation
-        base = os.path.join(os.getcwd(), "results", "Sym_Energy_ND")
+        base = legacy_dir("Sym_Energy_ND")
         # bundle_path = os.path.join(base, "gWaveAltermagnetHamiltonian_Sym_Jx_0.0to1_Jy_0.0to1_Jz_0.0to1_lamb_0.0to0.3_lamb_z_0.0to0.3_1", "sym_nd_bundle.npz")
         bundle_path = os.path.join(base, "gWaveAltermagnetHamiltonian_Sym_Jx_0.0to1_Jy_0.0to1_Jz_0.0to1_lamb_0.0to0.3_lamb_z_0.0to0.3_t1_0.0to0.3_t2_0.0to0.3_t3_0.0to0.3_t4_0.0to0.3", "sym_nd_bundle.npz")
     dynamic_sym_nd(bundle_path)

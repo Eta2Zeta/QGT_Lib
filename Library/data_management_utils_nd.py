@@ -5,6 +5,7 @@ import pickle
 import numpy as np
 from typing import Tuple, Dict, Any, List, Optional
 from Library.data_management_utils_common import pick_or_create_result_dir_simple, dump_metadata
+from Library.data_paths import legacy_dir
 
 
 _SYMMETRIC_LOG_DECADES = 3.0
@@ -144,7 +145,7 @@ def setup_phase_diagram_results_general(
     force_new_range=False
 ):
     Hname = getattr(hamiltonian_template, "name", "Hamiltonian")
-    base_root = os.path.join(os.getcwd(), "results", "phase_diagram", re.sub(r'[^\w.-]','_',Hname))
+    base_root = legacy_dir("phase_diagram", re.sub(r'[^\w.-]','_',Hname))
 
     meta_target = {
         "hamiltonian_name": Hname,
@@ -214,7 +215,7 @@ def setup_qgt_nd_results_dir(
     def _sanitize(name: str) -> str:
         return re.sub(r"[^\w.\-]", "_", str(name))
         
-    base_root = os.path.join(os.getcwd(), "results", "2D_QGT_ND", _sanitize(Hname))
+    base_root = legacy_dir("2D_QGT_ND", _sanitize(Hname))
     
     # 1. Normalize ranges → dict {name: {"min": ..., "max": ...}}
     def _norm_ranges_dict(ranges):

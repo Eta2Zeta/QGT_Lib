@@ -2,13 +2,17 @@
 
 from pathlib import Path
 import json
+import sys
 
 import matplotlib.pyplot as plt
 from matplotlib.widgets import CheckButtons, RadioButtons, Slider
 import numpy as np
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from Library.data_paths import legacy_dir
 
-OUTPUT_DIR = Path(__file__).resolve().parent
+
+OUTPUT_DIR = Path(legacy_dir("Plot_Specific", "Polynomial_Basis_ND_Sweep"))
 
 # Coefficient defaults. Parameters without a range remain fixed at these values.
 COEFFICIENT_DEFAULTS = {

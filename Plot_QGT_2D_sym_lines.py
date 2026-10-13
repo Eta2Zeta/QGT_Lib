@@ -3,6 +3,7 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+from Library.data_paths import legacy_dir
 
 
 def _load_npz_dict(path):
@@ -207,8 +208,8 @@ def plot_two_qgt_sym_lines(
 
 if __name__ == "__main__":
     plot_two_qgt_sym_lines(
-        "results/2D_QGT_results/ChiralHamiltonian/dataset_1",
-        "results/2D_QGT_results/ChiralHamiltonianChiralBasisProjected/dataset_2",
+        legacy_dir("2D_QGT_results/ChiralHamiltonian/dataset_1"),
+        legacy_dir("2D_QGT_results/ChiralHamiltonianChiralBasisProjected/dataset_2"),
         quantity="berry",
         left_band=4,
         right_band=0,

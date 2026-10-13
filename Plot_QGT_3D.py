@@ -11,6 +11,7 @@ import matplotlib.colors as mcolors
 from matplotlib.colorbar import ColorbarBase
 from skimage.measure import marching_cubes
 from Library.plotting_lib_3d import plot_volumetric_cloud
+from Library.data_paths import legacy_dir
 
 def plot_3d_qgt_slices(results_dir, quantity, component="xy", slice_plane="xy",
                        n_slices=1, include_endpoints=True):
@@ -788,7 +789,7 @@ if __name__ == "__main__":
     
     # Using the latest result directory found
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    base_results_path = os.path.join(current_dir, "results/3D_QGT_results/gWaveAltermagnetHamiltonian")
+    base_results_path = legacy_dir("3D_QGT_results/gWaveAltermagnetHamiltonian")
     
     # Placeholder for the specific dataset, using one found in list_dir
     latest_dataset = "data_set_6"

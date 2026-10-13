@@ -17,6 +17,7 @@ from Library.data_management_utils_common import (
     pick_or_create_result_dir_simple,
 )
 from Library.dimension_lib import create_2d_coordinate_grid, map_k_by_order
+from Library.data_paths import legacy_dir
 
 
 BUNDLE_FILENAME = "qgt_d3d_all_irrep_projection_bundle.npz"
@@ -226,9 +227,7 @@ def calculate_d3d_all_irrep_berry_projections(
     }
 
     if results_root is None:
-        results_root = os.path.join(
-            os.getcwd(),
-            "results",
+        results_root = legacy_dir(
             "2D_QGT_Projection_results",
             Hamiltonian_Obj.name,
         )

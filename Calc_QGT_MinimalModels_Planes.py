@@ -49,10 +49,11 @@ from Library.data_management_utils_common import dump_metadata, pick_or_create_r
 from Library.dimension_lib import create_2d_coordinate_grid_from_ranges
 from Library.eigenvalue_calc_lib import grid_eigenvalues_eigenfunctions
 from Library.topology import berry_curvature_components_from_qgt
+from Library.data_paths import legacy_dir
 
 
 ROOT = Path(__file__).resolve().parent
-DEFAULT_OUTPUT = ROOT / "results" / "MinimalModels_QGT_planes"
+DEFAULT_OUTPUT = Path(legacy_dir("MinimalModels_QGT_planes"))
 LEGACY_MODELS = frozenset({
     "MinimalHamSG124_2b2d", "MinimalHamSG127_2a2b", "MinimalHamSG127_2c2d",
     "MinimalHamSG192_2b", "MinimalHamSG194_2a",

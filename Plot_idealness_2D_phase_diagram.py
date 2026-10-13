@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from Library.topology import compute_chern_number
+from Library.data_paths import legacy_dir
 import Library.Hamiltonian.Hamiltonian
 import Library.Hamiltonian.ChiralHamiltonian
 import sys
@@ -587,8 +588,8 @@ def plot_slices_qgt_std_param2d_signed_invomega_joined(
         plt.close(fig)
 
 #! Full Rhombohedral Graphene Hamiltonian
-full_Chiral_Hamiltonian_left_drive_dir = "results/2D_QGT_ND/LegacyWithN>1D/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
-full_Chiral_Hamiltonian_right_drive_dir = "results/2D_QGT_ND/LegacyWithN>1D/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
+full_Chiral_Hamiltonian_left_drive_dir = legacy_dir("2D_QGT_ND/LegacyWithN>1D/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1")
+full_Chiral_Hamiltonian_right_drive_dir = legacy_dir("2D_QGT_ND/LegacyWithN>1D/ChiralHamiltonian/A0_0.10-a_1.00-analytic_magnus_False-eta_1.00-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_50.000_5000.000_-SPACING_V_48_linear-omega_32_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1")
 
 plot_qgt_std_param2d_signed_invomega_joined(
     left_result_dir  = full_Chiral_Hamiltonian_left_drive_dir,
@@ -627,8 +628,8 @@ plot_qgt_std_param2d_signed_invomega_joined(
 # )
 
 #! Chiral Projected Hamiltonian 
-right_drive_strong = "results/QGT_ND/RhombohedralGrapheneHamiltonian/A0_0.10-V_30-analytic_magnus_False-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_20.000_5000.000_-SPACING_V_32_linear-omega_48_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
-left_drive_strong = "results/QGT_ND/RhombohedralGrapheneHamiltonian/A0_0.10-V_30-analytic_magnus_False-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_20.000_5000.000_-SPACING_V_32_linear-omega_48_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1"
+right_drive_strong = legacy_dir("QGT_ND/RhombohedralGrapheneHamiltonian/A0_0.10-V_30-analytic_magnus_False-magnus_order_1-n_5-omega_6.28-polarization_right-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_20.000_5000.000_-SPACING_V_32_linear-omega_48_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1")
+left_drive_strong = legacy_dir("QGT_ND/RhombohedralGrapheneHamiltonian/A0_0.10-V_30-analytic_magnus_False-magnus_order_1-n_5-omega_6.28-polarization_left-t1_355.16-vF_542.10-RANGES_V_-10.000_50.000-omega_20.000_5000.000_-SPACING_V_32_linear-omega_48_linear_-kx-0.90_0.90__ky-0.90_0.90__mesh100_data_set1")
 
 # plot_qgt_std_param2d_signed_invomega_joined(
 #     left_result_dir  = left_drive_strong,
@@ -666,6 +667,6 @@ left_drive_strong = "results/QGT_ND/RhombohedralGrapheneHamiltonian/A0_0.10-V_30
 #     slice_omega_val=100.0,
 #     y_param="V",
 #     quantity="berry",
-#     export_slice_path="results/1d_idealness_resutls/slice_data_export.npz",
+#     export_slice_path=legacy_dir("1D_idealness_resutls/slice_data_export.npz"),
 #     show=False
 # )

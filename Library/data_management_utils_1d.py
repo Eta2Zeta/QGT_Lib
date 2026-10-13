@@ -5,10 +5,11 @@ import pickle
 import numpy as np
 from typing import Tuple, Dict, Any, List, Optional
 from Library.data_management_utils_common import pick_or_create_result_dir_simple, dump_metadata
+from Library.data_paths import legacy_dir
 
 def setup_results_directory_1d(hamiltonian, k_angle, kx_shift, ky_shift, num_points, k_max, *, force_new=False):
     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
-    base_root = os.path.join(os.getcwd(), "results", "1D_Eigen_results", Hamiltonian_name)
+    base_root = legacy_dir("1D_Eigen_results", Hamiltonian_name)
     
     if hasattr(hamiltonian, "get_parameters_dict"):
         ham_params = hamiltonian.get_parameters_dict(parameter="1D")
@@ -58,7 +59,7 @@ def setup_QGT_results_directory_1D(
     force_new=False,
 ):
     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
-    base_root = os.path.join(os.getcwd(), "results", "1D_QGT_results", Hamiltonian_name)
+    base_root = legacy_dir("1D_QGT_results", Hamiltonian_name)
 
     if hasattr(hamiltonian, "get_parameters_dict"):
         ham_params = hamiltonian.get_parameters_dict(parameter="1D")
@@ -122,7 +123,7 @@ def setup_QGT_results_directory_1D_single_param(
     def _sanitize(name: str) -> str:
         return re.sub(r"[^\w.\-]", "_", str(name))
         
-    base_root = os.path.join(os.getcwd(), "results", "1D_QGT_results", _sanitize(Hname))
+    base_root = legacy_dir("1D_QGT_results", _sanitize(Hname))
     os.makedirs(base_root, exist_ok=True)
 
     if hasattr(hamiltonian, "get_parameters_dict"):
@@ -173,7 +174,7 @@ def setup_sym_points_results_directory(
     Works for both 2D and 3D paths — the dimensionality is inferred from path_points.
     """
     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
-    base_root = os.path.join(os.getcwd(), "results", "Sym_Points_results", Hamiltonian_name)
+    base_root = legacy_dir("Sym_Points_results", Hamiltonian_name)
 
     path_points_list = [np.array(p).tolist() for p in path_points]
 
@@ -221,7 +222,7 @@ def setup_1D_angles_results_directory(
     lives under 1D_Angles_results.
     """
     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
-    base_root = os.path.join(os.getcwd(), "results", "1D_Angles_results", Hamiltonian_name)
+    base_root = legacy_dir("1D_Angles_results", Hamiltonian_name)
 
     if hasattr(hamiltonian, "get_parameters_dict"):
         ham_params = hamiltonian.get_parameters_dict(parameter="1D_Angles")

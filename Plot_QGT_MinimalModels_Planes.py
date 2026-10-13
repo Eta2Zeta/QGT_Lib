@@ -41,10 +41,11 @@ from Library.plotting_qgt_2d import (
     plot_qgt_eigenvalue_berry_trace_heatmaps,
     plot_qgt_eigenvalue_berry_trace_surfaces,
 )
+from Library.data_paths import legacy_dir
 
 
 ROOT = Path(__file__).resolve().parent
-DEFAULT_OUTPUT = ROOT / "results" / "MinimalModels_QGT_planes"
+DEFAULT_OUTPUT = Path(legacy_dir("MinimalModels_QGT_planes"))
 SETTINGS = {
     "schema": 1,
     "energy_z_limit": 1000,

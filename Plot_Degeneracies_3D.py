@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 import plotly.graph_objects as go
 from Library.utilities import generate_3d_sym_lines
+from Library.data_paths import legacy_dir
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
@@ -175,7 +176,7 @@ if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
     # Change the target Hamiltonian name below if you switch models.
-    base_results_path = os.path.join(current_dir, "results/3D_Eigen_results/gWaveAltermagnetHamiltonian")
+    base_results_path = legacy_dir("3D_Eigen_results/gWaveAltermagnetHamiltonian")
     
     # Specify specific dataset number (e.g., 15) or None for latest
     target_dataset_num = None

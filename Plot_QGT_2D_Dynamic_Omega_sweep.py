@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from Library.plotting_qgt_2d import get_symmetric_plot_limits
+from Library.data_paths import legacy_dir
 import json
 
 
@@ -1224,13 +1225,13 @@ def dynamic_2d_qgt_vs_omega_jointed_html(
 #! V = 30
 # New 2D_QGT_ND structure:
 # dynamic_2d_trace_hprime_eigs_vs_omega_nd(
-#     "results/2D_QGT_ND/ChiralHamiltonianChiralBasisProjected/dataset1"
+#     legacy_dir("2D_QGT_ND/ChiralHamiltonianChiralBasisProjected/dataset1")
 # )
 
 #@ Full ChiralHamiltonian left/right joint omega HTML plot
 dynamic_2d_qgt_vs_omega_jointed_html(
-    "results/2D_QGT_ND/ChiralHamiltonian/dataset1",
-    "results/2D_QGT_ND/ChiralHamiltonian/dataset3",
+    legacy_dir("2D_QGT_ND/ChiralHamiltonian/dataset1"),
+    legacy_dir("2D_QGT_ND/ChiralHamiltonian/dataset3"),
     quantity="trace",
     omega_min_left=50,
     omega_min_right=30,
@@ -1241,8 +1242,8 @@ dynamic_2d_qgt_vs_omega_jointed_html(
 
 #@ New ND dual HTML: most recent ChiralBasisProjected omega sweeps
 # dynamic_2d_trace_hprime_eigs_vs_omega_dual(
-#     "results/2D_QGT_ND/ChiralHamiltonianChiralBasisProjected/dataset3",
-#     "results/2D_QGT_ND/ChiralHamiltonianChiralBasisProjected/dataset5",
+#     legacy_dir("2D_QGT_ND/ChiralHamiltonianChiralBasisProjected/dataset3"),
+#     legacy_dir("2D_QGT_ND/ChiralHamiltonianChiralBasisProjected/dataset5"),
 #     label_left="Numerical Direct Drive",
 #     label_right="Analytic Direct Drive",
 # )

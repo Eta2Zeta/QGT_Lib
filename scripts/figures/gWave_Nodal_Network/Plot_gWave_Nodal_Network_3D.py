@@ -33,6 +33,7 @@ from scipy.optimize import root
 REPO_ROOT = Path(os.environ.get("QGT_LIB_ROOT", Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(REPO_ROOT))
 from Library.Hamiltonian.gWaveAltermagnetHamiltonian import gWaveAltermagnetHamiltonian
+from Library.data_paths import legacy_dir
 
 
 # Edit these defaults or override them on the command line.
@@ -273,7 +274,7 @@ def main(argv=None):
     for key in ("t1","t2","t3","t4","mu","Jz","lamb","lamb_z"):
         parser.add_argument("--"+key.replace("_","-"),type=float,default=PARAMETERS[key],dest=key)
     parser.add_argument("--grid",type=int,default=501)
-    parser.add_argument("--output",type=Path,default=Path(__file__).resolve().parent/"gWave_nodal_network_3d.html")
+    parser.add_argument("--output",type=Path,default=Path(legacy_dir("Plot_Specific","gWave_Nodal_Network","gWave_nodal_network_3d.html")))
     args = parser.parse_args(argv)
     params = dict(PARAMETERS, **{k:getattr(args,k) for k in PARAMETERS if hasattr(args,k)})
     if not all(np.isfinite(v) for v in params.values()):

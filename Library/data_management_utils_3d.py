@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 from typing import Tuple, Dict, Any, List, Optional
 from Library.data_management_utils_common import pick_or_create_result_dir_simple, meta_matcher_all_fields, dump_metadata
+from Library.data_paths import legacy_dir
 
 def setup_3D_Eigen_results_directory(
     hamiltonian, kx_range, ky_range, kz_range,
@@ -11,7 +12,7 @@ def setup_3D_Eigen_results_directory(
     kvals_mode="endpoints",
 ):
     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
-    base_root = os.path.join(os.getcwd(), "results", "3D_Eigen_results", Hamiltonian_name)
+    base_root = legacy_dir("3D_Eigen_results", Hamiltonian_name)
 
     nx, ny, nz = mesh_shape
     
@@ -87,7 +88,7 @@ def setup_3D_QGT_results_directory(
     nx, ny, nz = map(int, mesh_shape)
 
     Hamiltonian_name = getattr(hamiltonian, "name", "Hamiltonian")
-    base_root = os.path.join(os.getcwd(), "results", "3D_QGT_results", Hamiltonian_name)
+    base_root = legacy_dir("3D_QGT_results", Hamiltonian_name)
 
     # Get Hamiltonian parameters natively as a dictionary
     if hasattr(hamiltonian, "get_parameters_dict"):

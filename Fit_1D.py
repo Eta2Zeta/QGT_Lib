@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from scipy.optimize import curve_fit
+from Library.data_paths import legacy_dir
 
 def power_law(x, a, b, c, d):
     # y = a * (x - c)^b + d
@@ -239,10 +240,10 @@ def process_slice_data(
 if __name__ == "__main__":
     # --- Configuration ---
     # Path to where Plot_idealness.py exported the data
-    input_data_path = "results/1d_idealness_resutls/slice_data_export.npz" 
+    input_data_path = legacy_dir("1D_idealness_resutls/slice_data_export.npz") 
     
     # Where to save fit results
-    fit_results_dir = "results/1d_idealness_resutls"
+    fit_results_dir = legacy_dir("1D_idealness_resutls")
 
     # Truncation settings (adjust as needed)
     # E.g. for horizontal (1/omega), maybe we only care about the small 1/omega region (high omega)

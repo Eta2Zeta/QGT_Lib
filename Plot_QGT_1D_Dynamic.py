@@ -9,6 +9,7 @@ import pickle
 import sys
 import Library.Hamiltonian.Hamiltonian
 import Library.Hamiltonian.ChiralHamiltonian
+from Library.data_paths import legacy_dir
 
 # Patch for unpickling old data that references Library.Hamiltonian_v2 (direct module)
 sys.modules["Library.Hamiltonian_v2"] = Library.Hamiltonian.Hamiltonian
@@ -142,7 +143,7 @@ def dynamic_with_eigenvalues_single_param(result_dir, band_index1=0, band_index2
     if os.path.isdir(result_dir):
         folder_path = result_dir
     else:
-        folder_path = os.path.join(os.getcwd(), "results", "1D_QGT_results", result_dir)
+        folder_path = legacy_dir("1D_QGT_results", result_dir)
 
     g_results_path = os.path.join(folder_path, "QGT_1D.npy")
     meta_path      = os.path.join(folder_path, "parameters.json")

@@ -9,6 +9,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from Library.Hamiltonian.MinimalModels import MinimalHamSG194_2a
+from Library.data_paths import legacy_dir
 
 
 SEGMENT_COLOR_PALETTE = (
@@ -404,13 +405,7 @@ def _default_output_path(hamiltonian):
         hamiltonian.__class__.__name__,
     )
     safe_name = re.sub(r"[^A-Za-z0-9_.-]", "_", str(hamiltonian_name))
-    return (
-        Path.cwd()
-        / "results"
-        / "Symmetry_Path_Plots"
-        / safe_name
-        / "symmetry_path_3d.html"
-    )
+    return Path(legacy_dir("Symmetry_Path_Plots", safe_name, "symmetry_path_3d.html"))
 
 
 def plot_symmetry_path_3d(

@@ -18,6 +18,7 @@ from Library.plotting_qgt_2d import (
     get_coordinate_axis_labels,
     get_symmetric_plot_limits,
 )
+from Library.data_paths import legacy_dir
 
 def plot_qgt_from_directory(
     target_dir,
@@ -670,18 +671,18 @@ if __name__ == "__main__":
     import os
 
     plot_qgt_2d_comparison_with_energies(
-        "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonianChiralBasisProjected/dataset_1",
-        "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonianChiralBasisProjected/dataset_2",
+        legacy_dir("2D_QGT_results/ChiralHamiltonianChiralBasisProjected/dataset_1"),
+        legacy_dir("2D_QGT_results/ChiralHamiltonianChiralBasisProjected/dataset_2"),
         quantity="berry",
         left_band=0,
         right_band=0,
         labels=("Chiral-basis Projected Naive Numerical", "Chiral-basis Projected Analytical"),
-        output_path="/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/ChiralHamiltonian/chiral_basis_projected_naive_numerical_vs_chiral_basis_projected_analytical.png",
+        output_path=legacy_dir("2D_QGT_results/ChiralHamiltonian/chiral_basis_projected_naive_numerical_vs_chiral_basis_projected_analytical.png"),
     )
 
-    # base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/gWaveAltermagnetHamiltonian"
-    # base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/THF_Hamiltonian"
-    # base_dir = "/Users/home/Documents/Quantum_Geometric_Tensor/QGT_Lib/results/2D_QGT_results/TwoOrbitalUnspinfulHamiltonian"
+    # base_dir = legacy_dir("2D_QGT_results/gWaveAltermagnetHamiltonian")
+    # base_dir = legacy_dir("2D_QGT_results/THF_Hamiltonian")
+    # base_dir = legacy_dir("2D_QGT_results/TwoOrbitalUnspinfulHamiltonian")
     #
     # for subdir in os.listdir(base_dir):
     #     target_dir = os.path.join(base_dir, subdir)
