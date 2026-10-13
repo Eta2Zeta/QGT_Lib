@@ -32,7 +32,7 @@ from scipy.optimize import root
 
 REPO_ROOT = Path(os.environ.get("QGT_LIB_ROOT", Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(REPO_ROOT))
-from Library.Hamiltonian.gWaveAltermagnetHamiltonian import gWaveAltermagnetHamiltonian
+from Library.Hamiltonian.MinimalModels import MinimalHamSG194_2a as gWaveAltermagnetHamiltonian
 from Library.data_paths import legacy_dir
 
 

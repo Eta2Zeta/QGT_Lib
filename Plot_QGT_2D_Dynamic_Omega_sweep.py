@@ -5,12 +5,6 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 import pickle
 from Library.plotting_utils import load_qgt, filter_entries_by_omega
-import sys
-import Library.Hamiltonian.Hamiltonian
-from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
-from Library.Hamiltonian.SquareLatticeHamiltonian import SquareLatticeHamiltonian
-import Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected
-from Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected import ChiralHamiltonianChiralBasisProjected
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -18,16 +12,6 @@ from Library.plotting_qgt_2d import get_symmetric_plot_limits
 from Library.data_paths import legacy_dir
 import json
 
-
-sys.modules["Library.Hamiltonian_v2"] = Library.Hamiltonian.Hamiltonian
-sys.modules["Library.Hamiltonian.Chiral_Hamiltonian_Projected"] = Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected
-
-Library.Hamiltonian.Hamiltonian.ChiralHamiltonian = ChiralHamiltonian
-Library.Hamiltonian.Hamiltonian.SquareLatticeHamiltonian = SquareLatticeHamiltonian
-Library.Hamiltonian.Hamiltonian.RhombohedralGrapheneHamiltonian = ChiralHamiltonianChiralBasisProjected
-Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected.ChiralHamiltonianProjected = ChiralHamiltonianChiralBasisProjected
-Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected.Chiral_Hamiltonian_Projected = ChiralHamiltonianChiralBasisProjected
-Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected.RhombohedralGrapheneHamiltonian = ChiralHamiltonianChiralBasisProjected
 
 mpl.rcParams.update({
     "font.size": 8,        # base font size

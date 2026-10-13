@@ -3,19 +3,7 @@ import matplotlib.pyplot as plt
 import os
 from Library.topology import compute_chern_number
 from Library.data_paths import legacy_dir
-import Library.Hamiltonian.Hamiltonian
-import Library.Hamiltonian.ChiralHamiltonian
-import sys
 import pickle
-# Patch for unpickling old data that references Library.Hamiltonian_v2 (direct module)
-sys.modules["Library.Hamiltonian_v2"] = Library.Hamiltonian.Hamiltonian
-
-# Also ensure ChiralHamiltonian is available in Hamiltonian_v2 for unpickling
-try:
-    Library.Hamiltonian.Hamiltonian.ChiralHamiltonian = Library.Hamiltonian.ChiralHamiltonian.ChiralHamiltonian
-except AttributeError:
-    pass
-
 # 2D, single data set not joined
 def plot_trace_std_param2d_inverse_omega(result_dir,
                                          *,

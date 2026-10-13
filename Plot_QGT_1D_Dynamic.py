@@ -6,19 +6,7 @@ import plotly.graph_objects as go
 import plotly.offline as pyo
 import json
 import pickle
-import sys
-import Library.Hamiltonian.Hamiltonian
-import Library.Hamiltonian.ChiralHamiltonian
 from Library.data_paths import legacy_dir
-
-# Patch for unpickling old data that references Library.Hamiltonian_v2 (direct module)
-sys.modules["Library.Hamiltonian_v2"] = Library.Hamiltonian.Hamiltonian
-
-# Also ensure ChiralHamiltonian is available in Hamiltonian_v2 for unpickling
-try:
-    Library.Hamiltonian.Hamiltonian.ChiralHamiltonian = Library.Hamiltonian.ChiralHamiltonian.ChiralHamiltonian
-except AttributeError:
-    pass
 
 
 def _save_dynamic_qgt_plotly(

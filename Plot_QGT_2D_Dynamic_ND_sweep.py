@@ -1,17 +1,11 @@
 import json
 import os
 import pickle
-import sys
 
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-import Library.Hamiltonian.Hamiltonian
-from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
-from Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected import (
-    ChiralHamiltonianChiralBasisProjected,
-)
 from Library.dimension_lib import (
     cylindrical_order_axes,
     is_cylindrical_order,
@@ -49,13 +43,6 @@ BERRY_COMPONENT_QUANTITIES = frozenset(
     }
 )
 
-
-# Backward compatibility for old pickled Hamiltonians.
-sys.modules["Library.Hamiltonian_v2"] = Library.Hamiltonian.Hamiltonian
-Library.Hamiltonian.Hamiltonian.ChiralHamiltonian = ChiralHamiltonian
-Library.Hamiltonian.Hamiltonian.RhombohedralGrapheneHamiltonian = (
-    ChiralHamiltonianChiralBasisProjected
-)
 
 
 def _resolve_path(path):
