@@ -99,6 +99,41 @@ def test_zero_exchange_and_in_plane_exchange():
                    for i in range(len(points)))
 
 
+def test_crossings_in_the_planes_of_the_minimal_model_runs():
+    # SG127: tz = t4 sin kx sin ky (cos kx - cos ky); lambda_x, lambda_y carry sin kz.
+    # On kz = 0 only tz = 0 remains (lines); on kz = 2 pi/100 lambda_x = lambda_y = 0 too (points).
+    model = MinimalHamSG127_2a2b()
+    flat = cr.find_band_crossings(model, kz=0.0)
+    assert {(sp.sstr(c.fixed), sp.sstr(c.relations)) for c in flat} == {
+        ("{x: 0, z: 0}", "{}"), ("{x: pi, z: 0}", "{}"), ("{y: 0, z: 0}", "{}"), ("{y: pi, z: 0}", "{}"),
+        ("{z: 0}", "{y: k_x}"), ("{z: 0}", "{y: -k_x}")}
+    tilted = cr.find_band_crossings(model, kz=2 * np.pi / 100)
+    assert {(sp.sstr(c.fixed["x"]), sp.sstr(c.fixed["y"])) for c in tilted} == {("0", "0"), ("pi", "pi")}
+    assert all(c.dimension == 0 and c.exact and c.fixed["z"] == sp.pi / 50 for c in tilted)
+    # SG11: 5 sin kx + 3 sin kz = 0 at ky = pi crosses kz = 2 pi/100 at two exact points
+    points = cr.find_band_crossings(MINIMAL_MODELS["MinimalHamSG11_2a2b2c2d"](), kz="2*pi/100")
+    assert len(points) == 2 and all(c.exact and c.max_gap < 1e-12 for c in points)
+    values = sorted(float(c.fixed["x"]) % (2 * np.pi) for c in points)
+    expected = sorted(v % (2 * np.pi) for v in (-np.arcsin(0.6 * np.sin(np.pi / 50)),
+                                                  np.pi + np.arcsin(0.6 * np.sin(np.pi / 50))))
+    assert np.allclose(values, expected, atol=1e-12)
+
+
+@pytest.mark.parametrize("name", ["MinimalHamSG163_2b", "MinimalHamSG192_2b", "MinimalHamSG223_2a"])
+def test_plane_crossings_agree_with_the_full_zone(name):
+    model = MINIMAL_MODELS[name]()
+    full = cr.find_band_crossings(model)
+    for kz in (0.0, 2 * np.pi / 100):
+        for component in cr.find_band_crossings(model, kz=kz):
+            assert component.max_gap < 1e-10
+            assert np.allclose(component.samples[:, 2], kz)
+            others = [c for c in full if c.pair == component.pair]
+            on = np.zeros(len(component.samples), bool)
+            for other in others:
+                on |= other.contains(component.samples, tol=1e-5)
+            assert on.all(), component.describe()
+
+
 def test_wrap_to_bz_keeps_points_equivalent():
     k = np.random.default_rng(0).uniform(-9, 9, (500, 3))
     for hexagonal in (False, True):

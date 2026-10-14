@@ -240,11 +240,17 @@ equations (`equations`), which are sampled numerically. Each `Crossing` has
 model (`max_gap`, about 1e-15). `crossing_conditions(model)` returns the raw
 conditions.
 
+`find_band_crossings(model, kz=0)` (or `kz="2*pi/100"`) returns only the
+crossings in one plane, e.g. the two planes of the batch calculation above. On a
+symmetric plane such as kz = 0 these include whole lines; on a generic plane the
+crossing lines and curves of the full zone only pass through it, at isolated points.
+
 To save the results with a 3D view, run
 
 ```sh
 python scripts/compute/band_crossings.py                                   # configs/compute/band_crossings.toml
 python scripts/compute/band_crossings.py configs/compute/band_crossings_all.toml  # all 27 models
+python scripts/compute/band_crossings.py configs/compute/band_crossings_planes.toml  # all 27, kz = 0 and 2 pi/100
 ```
 
 Each model gets a `band_crossings` run with `crossings.json`, `summary.txt` and

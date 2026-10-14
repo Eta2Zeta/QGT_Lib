@@ -1,0 +1,12 @@
+# Exact band crossings of all 27 minimal models in the two planes of the
+# MinimalModels QGT calculations (scripts/compute/minimal_planes.py): k_z = 0 and
+# k_z = 2 pi/100. Writes one band_crossings run per model and plane.
+# Run: python scripts/compute/band_crossings.py configs/compute/band_crossings_planes.toml
+# Calls qgt.workflows.band_crossings.band_crossings_all(**arguments).
+function = "band_crossings_all"
+
+[arguments]
+models = "all"
+kz = ["0", "2*pi/100"]
+pairs = ["2-3", "1-2,3-4"]
+resolution = 64

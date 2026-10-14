@@ -24,3 +24,4 @@ lamb_z = 0.5
 [arguments]
 pairs = ["2-3", "1-2,3-4"]  # "1-2,3-4": bands 1-2 and 3-4, which always touch together
 resolution = 64             # seed grid per angle for components sampled from their equations
+# kz = "0"                  # optional: only the crossings in the plane k_z = kz (e.g. "2*pi/100")

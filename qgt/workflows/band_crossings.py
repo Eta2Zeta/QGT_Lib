@@ -13,18 +13,21 @@ import os
 import sympy as sp
 
 from qgt.hamiltonians.minimal_models import MINIMAL_MODELS
-from qgt.hamiltonians.minimal_models.crossings import PAIRS, crossing_conditions, find_band_crossings, summarize
+from qgt.hamiltonians.minimal_models.crossings import (PAIRS, crossing_conditions, exact_momentum,
+                                                       find_band_crossings, summarize)
 from qgt.io import runs
 
 
-def band_crossings(model, *, pairs=PAIRS, resolution=64, tag=None, plot=True):
-    """Find the crossings of one model and save them as a band_crossings run; return the run folder."""
+def band_crossings(model, *, pairs=PAIRS, kz=None, resolution=64, tag=None, plot=True):
+    """Find the crossings of one model (in the whole zone, or in the plane k_z = kz) and save
+    them as a band_crossings run; return the run folder."""
     pairs = tuple(pairs)
-    crossings = find_band_crossings(model, pairs, resolution=resolution)
+    crossings = find_band_crossings(model, pairs, kz=kz, resolution=resolution)
     name = type(model).__name__
     meta = {"model": name, "crystal_system": model.crystal_system,
             "hamiltonian_params": model.get_parameters_dict(parameter="2D"),
-            "pairs": list(pairs), "resolution": resolution}
+            "pairs": list(pairs), "kz": None if kz is None else sp.sstr(exact_momentum(kz)),
+            "resolution": resolution}
     run_dir, _ = runs.new_run("band_crossings", name, None, force_new=True, tag=tag)
     with open(os.path.join(run_dir, "meta.json"), "w") as handle:
         json.dump(meta, handle, indent=2, default=str)
@@ -34,6 +37,8 @@ def band_crossings(model, *, pairs=PAIRS, resolution=64, tag=None, plot=True):
         json.dump({**meta, "conditions": conditions, "components": [c.to_dict() for c in crossings]},
                   handle, indent=1, default=str)
     text = summarize(model, crossings, pairs)
+    if kz is not None:
+        text = text.replace("\n", f"  in the plane k_z = {meta['kz']}\n", 1)
     with open(os.path.join(run_dir, "summary.txt"), "w") as handle:
         handle.write(text + "\n")
     if plot:
@@ -44,9 +49,12 @@ def band_crossings(model, *, pairs=PAIRS, resolution=64, tag=None, plot=True):
     return run_dir
 
 
-def band_crossings_all(*, models="all", params=None, pairs=PAIRS, resolution=64, tag=None, plot=True):
+def band_crossings_all(*, models="all", params=None, pairs=PAIRS, kz=None, resolution=64, tag=None, plot=True):
     """band_crossings for several minimal models (by class name, or "all"), each with its
-    default parameters updated by params."""
+    default parameters updated by params. kz may be a list of planes: one run per plane."""
     names = list(MINIMAL_MODELS) if models == "all" else list(models)
-    return [band_crossings(MINIMAL_MODELS[name](**(params or {})), pairs=pairs, resolution=resolution,
-                           tag=tag, plot=plot) for name in names]
+    planes = kz if isinstance(kz, (list, tuple)) else [kz]
+    return [band_crossings(MINIMAL_MODELS[name](**(params or {})), pairs=pairs, kz=plane, resolution=resolution,
+                           tag=tag if plane is None else (tag or f"kz_{plane}").replace("*", "").replace("/", "_"),
+                           plot=plot)
+            for name in names for plane in planes]

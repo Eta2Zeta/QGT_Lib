@@ -56,9 +56,37 @@ _HEXAGONAL = ("trigonal", "hexagonal")
 _TEST_ANGLES = ((0.3711, 1.9137, -2.4311), (2.7183, -0.8309, 0.5923), (-1.2917, 2.3305, 1.1731))
 
 
+# Symbols standing for exact constants: R = sqrt(3), and cos/sin of a plane's half angle
+# (see _plane_point). Factoring treats them as variables; evaluation substitutes them.
+_VALUES = {R: sp.sqrt(3)}
+_ANGLES = {}  # cos symbol -> its exact angle
+
+
 def _real(expr):
-    """Replace the symbol R by sqrt(3)."""
+    """Replace the constant symbols by their exact values."""
+    return expr.xreplace(_VALUES) if isinstance(expr, sp.Basic) else expr
+
+
+def _reduced(expr):
+    """Replace R by sqrt(3) only (so sqrt(3)^2 = 3 is applied); other constant symbols stay."""
     return expr.xreplace({R: sp.sqrt(3)}) if isinstance(expr, sp.Basic) else expr
+
+
+def _constants(expr):
+    return sorted((x for x in expr.free_symbols if x in _VALUES), key=str)
+
+
+def _plane_point(kz):
+    """(cos, sin) of the half angle k_z/2 for a fixed plane: exact numbers when they are
+    algebraic in closed form, else symbols registered in _VALUES."""
+    theta = kz / 2
+    c, s = sp.cos(theta), sp.sin(theta)
+    if not (c.has(sp.cos, sp.sin) or s.has(sp.cos, sp.sin)):
+        return c, s
+    symbols = sp.Symbol(f"cos({sp.sstr(theta)})", real=True), sp.Symbol(f"sin({sp.sstr(theta)})", real=True)
+    _VALUES.update(zip(symbols, (c, s)))
+    _ANGLES[symbols[0]] = theta
+    return symbols
 
 
 # --------------------------------------------------------------------------- exact form factors
@@ -189,7 +217,7 @@ def _factor_over_q(poly, gens):
     surds = _surds(poly)
     aux = sp.symbols(f"r0:{len(surds)}")
     replaced = poly.xreplace(dict(zip(surds, aux)))
-    variables = [*gens, *aux] + ([R] if replaced.has(R) else [])
+    variables = [*gens, *aux, *_constants(replaced)]
     try:
         if sp.Poly(replaced, *variables).domain not in (sp.ZZ, sp.QQ):
             return None
@@ -210,7 +238,7 @@ def _factors(poly):
     gens = _gens(poly)
     if not gens:
         return (poly,)
-    for form in dict.fromkeys([sp.expand(_real(poly)), poly]):
+    for form in dict.fromkeys([sp.expand(_reduced(poly)), poly]):
         found = [f for f in _factor_over_q(form, gens) or [] if _axes_of(f)]
         if len(found) > 1:
             return tuple(found)
@@ -222,14 +250,16 @@ def _divides(a, b):
     a = 0 implies b = 0 (surds enter as symbols r with r^2 = n)."""
     if not set(_gens(a)) <= set(_gens(b)):
         return False
-    a, b = sp.expand(_real(a)), sp.expand(_real(b))
+    a, b = sp.expand(_reduced(a)), sp.expand(_reduced(b))
     surds = sorted(set(_surds(a)) | set(_surds(b)), key=sp.default_sort_key)
     aux = sp.symbols(f"r0:{len(surds)}")
     a, b = (e.xreplace(dict(zip(surds, aux))) for e in (a, b))
     axes = sorted(set(_axes_of(a)) | set(_axes_of(b)))
     relations = [C[i]**2 + S[i]**2 - 1 for i in axes] + [r**2 - s**2 for r, s in zip(aux, surds)]
+    constants = sorted(set(_constants(a)) | set(_constants(b)), key=str)
     try:
-        basis = sp.groebner([a, *relations], *[g for i in axes for g in (C[i], S[i])], *aux, order="grevlex")
+        basis = sp.groebner([a, *relations], *[g for i in axes for g in (C[i], S[i])], *aux, *constants,
+                            order="grevlex")
         return basis.reduce(b)[1] == 0
     except (sp.PolynomialError, sp.CoercionFailed, NotImplementedError):
         return False
@@ -253,11 +283,21 @@ def _rationalized(expr):
 
 
 def _real_roots(expr, var):
-    """Distinct exact real roots of a polynomial in var (surd coefficients are allowed)."""
+    """Distinct exact real roots of a polynomial in var. Surd coefficients are allowed; with
+    other coefficients (a plane's cos and sin) only quadratics, in var or in var^2, are solved."""
     poly = sp.Poly(_rationalized(expr), var)
-    if poly.domain not in (sp.ZZ, sp.QQ):
+    if poly.domain in (sp.ZZ, sp.QQ):
+        return list(dict.fromkeys(poly.real_roots()))
+    poly = sp.Poly(sp.expand(_real(expr)), var)
+    if poly.degree() <= 2:
+        candidates = list(sp.roots(poly))
+    elif poly.degree() == 4 and all(not c for (n,), c in poly.terms() if n % 2):
+        u = sp.Dummy("u")
+        squares = sp.roots(sp.Poly(sum(c * u**(n // 2) for (n,), c in poly.terms()), u))
+        candidates = [sign * sp.sqrt(r) for r in squares if complex(sp.N(r, 50)).real >= 0 for sign in (1, -1)]
+    else:
         return None
-    return list(dict.fromkeys(poly.real_roots()))
+    return [r for r in candidates if abs(complex(sp.N(r, 50)).imag) < 1e-40]
 
 
 def _circle_roots(factor, i):
@@ -316,11 +356,14 @@ def _unit_circle_roots(q, w):
     """Exact roots of q(w) with |w| = 1, as (cos, sin) of their arguments."""
     q = sp.expand(_real(q))
     rational = sp.Poly(_rationalized(q), w)
-    if rational.domain not in (sp.ZZ, sp.QQ):
+    if rational.domain in (sp.ZZ, sp.QQ):
+        candidates = sp.roots(rational)
+        if sum(candidates.values()) != rational.degree():
+            candidates = dict.fromkeys(rational.all_roots())
+    elif sp.Poly(q, w).degree() == 1:
+        candidates = sp.roots(sp.Poly(q, w))
+    else:
         return []
-    candidates = sp.roots(rational)
-    if sum(candidates.values()) != rational.degree():
-        candidates = dict.fromkeys(rational.all_roots())
     roots, seen = [], set()
     for root in candidates:
         value = complex(sp.N(root, 50))
@@ -344,7 +387,7 @@ def _monomial_lines(poly):
     if len(axes) < 2:
         return (), False
     zs = [Z[i] for i in axes]
-    factors = _factor_over_q(_laurent(sp.expand(_real(poly))), zs)
+    factors = _factor_over_q(_laurent(sp.expand(_reduced(poly))), zs)
     if factors is None:
         return (), False
     relations, complete = [], True
@@ -534,7 +577,7 @@ def _lattice_shifts(hexagonal):
 
 
 def _angle(pair):
-    return math.atan2(float(pair[1]), float(pair[0]))
+    return math.atan2(float(_real(pair[1])), float(_real(pair[0])))
 
 
 def _link_mismatch(theta, dep, coeffs, constant):
@@ -738,7 +781,7 @@ def _wrap_exact(value, period):
 def _exact_momenta(fixed, links, hexagonal):
     """Exact fixed momenta and relations of a branch, reduced into the first zone where possible."""
     a = _scales(hexagonal)
-    theta = {i: sp.atan2(s, c) for i, (c, s) in fixed.items()}
+    theta = {i: _ANGLES[c] if c in _ANGLES else sp.atan2(s, c) for i, (c, s) in fixed.items()}
     relations = {}
     for dep, (coeffs, constant) in links.items():
         value = sum(n * theta.get(r, a[r] * K[r] / 2) for r, n in coeffs) + sp.atan2(constant[1], constant[0])
@@ -844,20 +887,30 @@ def _branch_key(pair, fixed, links, remaining, hexagonal):
     return pair, fixed_key, links_key, equations
 
 
-def find_band_crossings(model, pairs=PAIRS, *, resolution=64, line_samples=64, plane_samples=24):
+def exact_momentum(value):
+    """An exact sympy number for a momentum: floats are matched to rational multiples of pi."""
+    if isinstance(value, (float, np.floating)):
+        return sp.nsimplify(float(value), [sp.pi], tolerance=1e-12)
+    return sp.sympify(value)
+
+
+def find_band_crossings(model, pairs=PAIRS, *, kz=None, resolution=64, line_samples=64, plane_samples=24):
     """All band crossings of a minimal model, as a list of Crossing components.
 
     pairs: any of "2-3" and "1-2,3-4" (bands 1-2 and 3-4 always touch together).
+    kz: if given, only the crossings in the plane k_z = kz (a number, or an exact
+        expression such as "2*pi/100"; floats are matched to multiples of pi).
     resolution: seed grid per angle (over two zone periods) for components sampled
         from their equations; components with three free directions use 40.
     line_samples, plane_samples: samples per zone period along exact lines and planes.
     """
     hexagonal = _hexagonal(model)
     conditions = _conditions(model)
+    plane = {} if kz is None else {2: _plane_point(exact_momentum(kz))}
     found = []
     for pair in pairs:
         branches = []
-        _split([_to_polynomial(e, hexagonal) for e in conditions[pair]], {}, {}, [], frozenset(), branches)
+        _split([_to_polynomial(e, hexagonal) for e in conditions[pair]], plane, {}, [], frozenset(), branches)
         seen = set()
         for fixed, links, remaining, excluded in branches:
             key = _branch_key(pair, fixed, links, remaining, hexagonal)
