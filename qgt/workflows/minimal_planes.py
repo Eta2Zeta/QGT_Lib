@@ -136,16 +136,20 @@ def source_hashes(model_name):
 def run_plane(
     model_name, plane_name, bz_fraction, *, output_root=DEFAULT_OUTPUT,
     mesh_spacing=150, delta_k=1e-5, gap_tolerance=1e-6, force_new=False,
-    overwrite=False, make_plots=True,
+    overwrite=False, make_plots=True, params=None, variant=None,
 ):
-    """Save bands first, then the full Cartesian QGT on one fixed-kz slice."""
+    """Save bands first, then the full Cartesian QGT on one fixed-kz slice.
+
+    params: constructor arguments that differ from the model's defaults; variant: a name
+    for such a parameter set, kept in the manifest next to the default calculation.
+    """
     if mesh_spacing < 2 or not np.isfinite(delta_k) or delta_k <= 0:
         raise ValueError("mesh_spacing >= 2 and finite delta_k > 0 are required")
     if not np.isfinite(gap_tolerance) or gap_tolerance < 1e-6:
         raise ValueError("gap_tolerance must be at least the library's 1e-6 block tolerance")
     if overwrite and force_new:
         raise ValueError("overwrite and force_new cannot be combined")
-    model = MINIMAL_MODELS[model_name]()
+    model = MINIMAL_MODELS[model_name](**(params or {}))
     kz = float(2 * np.pi * bz_fraction)
     ki, kj, bz_mask, grid_info = make_grid(model, mesh_spacing)
     meta = {
@@ -169,6 +173,8 @@ def run_plane(
                       ("hexagonal", "trigonal") else "[-pi, pi]^2 reciprocal phase box"),
         "source_sha256": source_hashes(model_name),
     }
+    if variant:
+        meta["variant"] = variant
     base_root = Path(output_root).resolve() / model_name / plane_name
     if overwrite:
         existing = [path for path in base_root.glob("dataset_*") if path.is_dir()]
@@ -252,6 +258,8 @@ def run_plane(
         "analytic_eigenvalue_max_error": analytic_error,
         "elapsed_seconds": time.monotonic() - started,
     }
+    if variant:
+        summary["variant"] = variant
     # Written last: only fully written datasets can be reused.
     dump_metadata(summary, str(result_dir / "summary.json"))
     if make_plots:
@@ -299,7 +307,13 @@ def main(argv=None):
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--all-models", action="store_true")
     group.add_argument("--models", nargs="+", choices=list(MINIMAL_MODELS))
+    parser.add_argument("--params", type=json.loads, default=None,
+                        help='JSON dict of model parameters, e.g. \'{"t3_add": 0}\' (needs --models and --variant)')
+    parser.add_argument("--variant", default=None,
+                        help="name of this parameter set; kept in the manifest next to the default run")
     args = parser.parse_args(argv)
+    if (args.params is not None or args.variant) and not (args.models and args.variant):
+        parser.error("--params needs --models and --variant")
     if args.workers < 1 or args.mesh_spacing < 2:
         parser.error("workers must be >= 1 and mesh-spacing must be >= 2")
     if not np.isfinite(args.delta_k) or args.delta_k <= 0:
@@ -320,6 +334,8 @@ def main(argv=None):
                 "delta_k": args.delta_k, "gap_tolerance": args.gap_tolerance,
                 "force_new": args.force_new, "overwrite": args.overwrite,
                 "make_plots": not args.no_plots}
+    if args.variant:
+        settings.update(params=args.params or {}, variant=args.variant)
     manifest = output_root / "manifest.json"
     run_settings = {**settings, "models": models, "workers": args.workers}
     results, failures = [], []
@@ -349,7 +365,8 @@ def main(argv=None):
                 completed = future.result()
                 # Publish the new selection only after both planes have completed.
                 # An interrupted or failed subset run keeps its prior datasets.
-                results = [result for result in results if result["model"] != name]
+                results = [result for result in results
+                           if (result["model"], result.get("variant")) != (name, args.variant)]
                 results.extend(completed)
                 refreshed += len(completed)
                 print(f"Completed {refreshed}/{2 * len(models)} requested calculations; "

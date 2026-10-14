@@ -169,7 +169,8 @@ def plot_dataset(dataset_dir, force=False):
     order = meta["order"]
     kk = meta["kk"]
     x_label, y_label = meta["coordinate_labels"][:2]
-    label = f"{summary['model']} | kz = {kk:.8g} ({summary['plane']})"
+    variant = f" ({summary['variant']})" if summary.get("variant") else ""
+    label = f"{summary['model']}{variant} | kz = {kk:.8g} ({summary['plane']})"
     common = {"results_dir": str(dataset_dir), "save_fig": True}
     overlay = {"hamiltonian": hamiltonian if order == "xyz" else None,
                "kk": kk, "order": order}
@@ -342,7 +343,8 @@ def plot_dataset_crossings(dataset_dir, force=False, output_dir=None):
     eigenvalues = capping_eigenvalues(saved_eigenvalues.copy(), z_limit=1000)
     eigenvalues[~bz_mask] = np.nan
     qgt = {key: np.load(dataset_dir / (key + ".npy")) for key in ("g_xy_imag", "g_xz_imag", "g_yz_imag")}
-    label = f"{summary['model']} | kz = {kk:.8g} ({summary['plane']})"
+    variant = f" ({summary['variant']})" if summary.get("variant") else ""
+    label = f"{summary['model']}{variant} | kz = {kk:.8g} ({summary['plane']})"
     try:
         for band in range(n_bands):
             with warnings.catch_warnings():
@@ -559,56 +561,34 @@ def _sg11_added_terms_html(params):
             '<div class="added-hamiltonian">' + ''.join(rows) + '</div>')
 
 
-# SG11 parameter sets of the batch: Set 1 is the original minimal model, Sets 2-4 add
-# the symmetry-allowed terms of Note 3-3 with the coefficients below.
+# SG11 is calculated as the original minimal model and as the default with the three
+# symmetry-allowed terms of Note 3-3 added.
 _SG11_ADDED = ("t3_add", "lamb_z_add", "lamb_z_xz_add")
-_SG11_SETS = {(0.0, 0.0, 0.0): 1, (0.08, 0.06, 0.0): 2, (0.8, 0.3, 0.0): 3, (0.8, 0.3, 0.3): 4}
 
 
-def _sg11_set(params):
-    """The SG11 set number for saved parameters, or None."""
-    return _SG11_SETS.get(tuple(round(float(params.get(name) or 0), 12) for name in _SG11_ADDED))
+def _sg11_variant(params):
+    """(order, label) of an SG11 parameter set: the original model first, then added terms."""
+    added = [float(params.get(name) or 0) for name in _SG11_ADDED]
+    if not any(added):
+        return 0, "original minimal model"
+    if all(added):
+        return 1, "added terms (default)"
+    return 2, "some added terms"
 
 
-def _set_order(item):
+def _variant_order(item):
     if item["model"] != "MinimalHamSG11_2a2b2c2d":
         return 0
     dataset_dir = Path(relocate_legacy_path(item["dataset_dir"]))
-    params = json.loads((dataset_dir / "meta.json").read_text()).get("hamiltonian_params", {})
-    return _sg11_set(params) or 99
-
-
-def other_parameter_sets(results, output_root, root=None):
-    """Saved datasets of the same models and planes with other parameters, kept in
-    Results/legacy (e.g. SG11 without or with smaller added terms). Their crossing
-    figures go to <output_root>/<model>/legacy_sets/<plane>/<dataset>, so the legacy
-    folders stay unchanged."""
-    root = Path(root or legacy_dir("MinimalModels_QGT_planes"))
-    known = {}
-    for item in results:
-        meta = json.loads((Path(relocate_legacy_path(item["dataset_dir"])) / "meta.json").read_text())
-        known.setdefault((item["model"], item["plane"]), []).append(meta.get("hamiltonian_params"))
-    found = []
-    for meta_path in sorted(root.glob("*/*/dataset_*/meta.json")):
-        dataset_dir = meta_path.parent
-        if not ((dataset_dir / "summary.json").is_file() and (dataset_dir / "plots.json").is_file()):
-            continue
-        summary = json.loads((dataset_dir / "summary.json").read_text())
-        meta = json.loads(meta_path.read_text())
-        key = (summary["model"], summary["plane"])
-        if key not in known or meta.get("hamiltonian_params") in known[key]:
-            continue
-        found.append({"model": key[0], "plane": key[1], "kz": meta["kk"], "dataset_dir": str(dataset_dir),
-                      "output_dir": str(Path(output_root) / key[0] / "legacy_sets" / key[1] / dataset_dir.name)})
-    return found
+    return _sg11_variant(json.loads((dataset_dir / "meta.json").read_text()).get("hamiltonian_params", {}))[0]
 
 
 def gallery_order(results):
-    """Models in their first-seen order; within a model, parameter sets, then planes."""
+    """Models in their first-seen order; within a model, the original first, then planes."""
     first = {}
     for position, item in enumerate(results):
         first.setdefault(item["model"], position)
-    return sorted(results, key=lambda item: (first[item["model"]], _set_order(item), item["kz"]))
+    return sorted(results, key=lambda item: (first[item["model"]], _variant_order(item), item["kz"]))
 
 
 def _crossings_html(dataset_dir, link):
@@ -647,7 +627,7 @@ def write_gallery(output_root, results, *, crossings=False):
     sections = []
     navigation = []
     band_count = 0
-    for position, result in enumerate(results):
+    for position, result in enumerate(gallery_order(results)):
         dataset_dir = Path(relocate_legacy_path(result["dataset_dir"]))
         marker = dataset_dir / "plots.json"
         if not marker.exists():
@@ -659,8 +639,7 @@ def write_gallery(output_root, results, *, crossings=False):
         added_terms = ""
         if model == "MinimalHamSG11_2a2b2c2d":
             meta = json.loads((dataset_dir / "meta.json").read_text())
-            set_number = _sg11_set(meta["hamiltonian_params"]) or int(dataset_dir.name.removeprefix("dataset_"))
-            label += f" · Set {set_number}" + (" · original minimal model" if set_number == 1 else " · added terms")
+            label += " · " + _sg11_variant(meta["hamiltonian_params"])[1]
             added_terms = (_sg11_added_terms_html(meta["hamiltonian_params"])
                            or '<p class="added-terms">Original minimal model: no added terms.</p>')
         anchor = f"dataset-{position}"
@@ -779,9 +758,8 @@ CROSSINGS_INTRO = (
     "bands 3–4); on the band 2 and band 3 figures, magenta marks bands 2–3. White is the "
     "high-symmetry path, as before. Each crossing was checked by diagonalizing the model "
     "(gap below 1e-12).</p>"
-    "<p>SG11 is shown for every saved parameter set: Set 1 is the original minimal model, "
-    "Sets 2–4 add the symmetry-allowed terms of Note 3–3 with the coefficients listed "
-    "(Set 4 is the current default).</p>"
+    "<p>SG11 is shown twice: the original minimal model, and the default with the three "
+    "symmetry-allowed terms of Note 3–3 added.</p>"
 )
 
 
@@ -789,8 +767,7 @@ def plot_crossings_batch(output_root=DEFAULT_OUTPUT, *, workers=2, force=False, 
     """plot_dataset_crossings for every dataset of a manifest, then index_crossings.html."""
     output_root = Path(output_root).resolve()
     manifest = json.loads((output_root / "manifest.json").read_text())
-    others = other_parameter_sets(manifest["results"], output_root)
-    selected = [item for item in manifest["results"] + others
+    selected = [item for item in manifest["results"]
                 if model_names is None or item["model"] in model_names]
     results, failures = [], []
     with ProcessPoolExecutor(max_workers=workers) as pool:
@@ -808,7 +785,7 @@ def plot_crossings_batch(output_root=DEFAULT_OUTPUT, *, workers=2, force=False, 
     results.sort(key=lambda item: (item["model"], item["kz"]))
     report = {"expected_datasets": len(selected), "completed_datasets": len(results),
               "results": results, "failures": failures,
-              "gallery": write_gallery(output_root, gallery_order(manifest["results"] + others), crossings=True)}
+              "gallery": write_gallery(output_root, manifest["results"], crossings=True)}
     _write_json(output_root / "crossings_manifest.json", report)
     return report
 
