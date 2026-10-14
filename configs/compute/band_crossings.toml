@@ -1,0 +1,26 @@
+# Exact band crossings of one minimal model. Writes a band_crossings run with
+# crossings.json, summary.txt and crossings.html.
+# Run: python scripts/compute/band_crossings.py [config]
+# Calls qgt.workflows.band_crossings.band_crossings(model, **arguments).
+function = "band_crossings"
+
+# The g-wave model with t3 = 0, where the middle bands cross on a nodal network
+# (compare scripts/figures/gWave_Nodal_Network).
+[model]
+class = "MinimalHamSG194_2a"
+
+[model.params]
+Jx = 0.0
+Jy = 0.0
+Jz = 0.2
+t1 = 0.3
+t2 = 0.3
+t3 = 0.0
+t4 = 0.3
+mu = 0.0
+lamb = 0.1
+lamb_z = 0.5
+
+[arguments]
+pairs = ["2-3", "1-2,3-4"]  # "1-2,3-4": bands 1-2 and 3-4, which always touch together
+resolution = 64             # seed grid per angle for components sampled from their equations

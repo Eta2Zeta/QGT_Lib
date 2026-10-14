@@ -1,0 +1,14 @@
+# Exact band crossings of all 27 minimal models with their default parameters.
+# Writes one band_crossings run per model.
+# Run: python scripts/compute/band_crossings.py configs/compute/band_crossings_all.toml
+# Calls qgt.workflows.band_crossings.band_crossings_all(**arguments).
+function = "band_crossings_all"
+
+[arguments]
+models = "all"              # or a list of class names, e.g. ["MinimalHamSG127_2a2b"]
+pairs = ["2-3", "1-2,3-4"]
+resolution = 64
+
+# Optional: the same parameter changes for every model, e.g.
+# [arguments.params]
+# Jz = 0.3

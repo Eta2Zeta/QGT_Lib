@@ -203,10 +203,54 @@ is also marked NaN, matching the near-degenerate block scale in the existing
 phase-correction routine. `band_gap.npy` and `qgt_valid_mask.npy` record this
 explicitly, both with shape (4, N, N). No finite QGT values are clipped.
 
-In particular, default SG163 and SG165 have two degenerate doublets everywhere
-on kz=0. Those plane datasets contain valid bands and gaps, but no defined
-isolated-band QGT. A degenerate-subspace calculation would require a separate
-method; the runner does not alter model parameters to lift the degeneracies.
+With the current defaults no model is degenerate on a whole kz plane that the
+runner computes (the 2026-10-14 rerun has no degenerate points for SG163 or
+SG165, which an earlier version of this note described as degenerate on kz=0).
+Where bands do touch, see the exact crossings below; a degenerate-subspace QGT
+would need a separate method.
+
+## Exact band crossings
+
+`crossings.find_band_crossings(model)` returns every place where bands 2-3, or
+bands 1-2 and 3-4 (which always touch together), cross, solved from the model's
+form factors instead of a k-grid:
+
+```python
+from qgt.hamiltonians.minimal_models import MinimalHamSG194_2a
+from qgt.hamiltonians.minimal_models.crossings import find_band_crossings, summarize
+
+model = MinimalHamSG194_2a(t3=0.0, lamb_z=0.5)
+crossings = find_band_crossings(model)
+print(summarize(model, crossings))
+```
+
+The model form gives the conditions exactly. With
+X = tx^2 + tz^2 + |lambda|^2 + |J|^2 and Y^2 = tz^2 |J|^2 + |lambda x J|^2, the
+bands are eps0 -/+ sqrt(X +/- 2Y), and X^2 - 4Y^2 is a sum of squares, so
+
+- bands 2-3 touch where tx = 0, lambda . J = 0 and tz^2 + |lambda|^2 = |J|^2;
+- bands 1-2 and 3-4 touch where tz = 0 and lambda x J = 0
+  (for J = 0 they are degenerate everywhere).
+
+These are written in the half angles of each axis and split into components:
+planes and lines at exact momenta (`fixed`, e.g. `k_z = pi`), exact linear
+relations (`relations`, e.g. `k_y = sqrt(3)*k_x`), and whatever is left as exact
+equations (`equations`), which are sampled numerically. Each `Crossing` has
+`samples` in the first Brillouin zone and the gap there from diagonalizing the
+model (`max_gap`, about 1e-15). `crossing_conditions(model)` returns the raw
+conditions.
+
+To save the results with a 3D view, run
+
+```sh
+python scripts/compute/band_crossings.py                                   # configs/compute/band_crossings.toml
+python scripts/compute/band_crossings.py configs/compute/band_crossings_all.toml  # all 27 models
+```
+
+Each model gets a `band_crossings` run with `crossings.json`, `summary.txt` and
+`crossings.html`. `tests/test_crossings.py` checks all 27 models against an
+independent root search of the unfactored conditions and against the g-wave
+nodal-network tracer in `scripts/figures/gWave_Nodal_Network`.
 
 ## Verify
 
@@ -214,7 +258,7 @@ From the QGT library root, using a Python environment with the library's
 NumPy/SciPy/QuTiP dependencies and pytest:
 
 ```sh
-python -m pytest -q tests/test_minimal_ham_sg124.py tests/test_minimal_models.py tests/test_minimal_models_table_three.py tests/test_minimal_models_table_four.py tests/test_minimal_models_planes.py
+python -m pytest -q tests/test_minimal_ham_sg124.py tests/test_minimal_models.py tests/test_minimal_models_table_three.py tests/test_minimal_models_table_four.py tests/test_minimal_models_planes.py tests/test_crossings.py
 ```
 
 The tests check source form factors, independent amplitudes, spectra,

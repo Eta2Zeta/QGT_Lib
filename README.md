@@ -115,6 +115,12 @@ altermagnetism* are in `qgt/hamiltonians/minimal_models`. See the
 [model catalog and examples](qgt/hamiltonians/minimal_models/README.md) for
 classes, parameter conventions and source coverage.
 
+`qgt.hamiltonians.minimal_models.crossings.find_band_crossings(model)` finds
+where the bands of a minimal model cross, exactly from its form factors
+(planes, lines and linear relations in closed form, other curves from exact
+equations). `python scripts/compute/band_crossings.py` saves them with a 3D view;
+see [Exact band crossings](qgt/hamiltonians/minimal_models/README.md#exact-band-crossings).
+
 ## To do
 
 - Berry curvature calculation -> Chern number
