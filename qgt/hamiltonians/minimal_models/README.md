@@ -204,7 +204,11 @@ python scripts/plot/minimal_planes.py --crossings --workers 4 --output-root <run
 
 This adds `band_crossings.json` and `qgt_eigenvalue_berry_component_heatmaps_band_<n>_crossings.png`
 to every dataset and writes `index_crossings.html` next to `index.html`; the saved
-arrays and the standard figures are left as they are.
+arrays and the standard figures are left as they are. Datasets of the same models
+with other parameters in `Results/legacy/MinimalModels_QGT_planes` (the SG11 sets
+without or with smaller added terms) are included too: their figures go to
+`<run folder>/<model>/legacy_sets/`, and SG11 is labelled by parameter set (Set 1
+is the original minimal model, Sets 2-4 add the Note 3-3 terms; Set 4 is the default).
 
 For trigonal/hexagonal models, the grid covers the Cartesian bounding box of
 the hexagonal BZ; `bz_mask.npy` identifies its interior. Other models use the

@@ -18,6 +18,7 @@ import argparse
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import hashlib
 import html
+import inspect
 import json
 import os
 from pathlib import Path
@@ -273,45 +274,72 @@ def crossing_plot_files(n_bands):
                                      for band in range(n_bands))]
 
 
-def plot_dataset_crossings(dataset_dir, force=False):
+def _saved_hamiltonian(dataset_dir, ki, kj, kk, bz_mask, eigenvalues, samples=64):
+    """The dataset's pickled Hamiltonian, checked against its saved eigenvalues.
+
+    Objects pickled by an older version of a class lack attributes for terms added to
+    the class later (e.g. SG11's lamb_z_xz_add); those terms were absent, so they are
+    set to 0. The model must then reproduce the saved eigenvalues.
+    """
+    with (dataset_dir / "meta_info.pkl").open("rb") as stream:
+        hamiltonian = pickle.load(stream)["Hamiltonian_Obj"]
+    missing = [name for name in inspect.signature(type(hamiltonian).__init__).parameters
+               if name not in ("self", "args", "kwargs") and not hasattr(hamiltonian, name)]
+    for name in missing:
+        setattr(hamiltonian, name, 0)
+    rows, cols = np.nonzero(bz_mask)
+    pick = np.random.default_rng(0).choice(len(rows), min(samples, len(rows)), replace=False)
+    worst = max(np.max(np.abs(np.linalg.eigvalsh(hamiltonian.compute_static(ki[i, j], kj[i, j], kk))
+                              - np.sort(eigenvalues[i, j])))
+                for i, j in zip(rows[pick], cols[pick]))
+    if worst > 1e-8:
+        raise ValueError(f"The saved Hamiltonian in {dataset_dir} (missing {missing} set to 0) does not "
+                         f"reproduce the saved eigenvalues (difference {worst:.2e})")
+    return hamiltonian
+
+
+def plot_dataset_crossings(dataset_dir, force=False, output_dir=None):
     """Find the exact band crossings in a saved dataset's plane and redraw its band and
     Berry-component heatmaps with them overlaid.
 
-    Adds ``band_crossings.json`` and ``qgt_eigenvalue_berry_component_heatmaps_band_<n>_crossings.png``;
-    the saved arrays and the standard figures are not touched. ``crossings_plots.json`` records
-    what was made and lets an unchanged dataset be skipped.
+    Writes ``band_crossings.json`` and ``qgt_eigenvalue_berry_component_heatmaps_band_<n>_crossings.png``
+    into output_dir (default: the dataset folder); the saved arrays and the standard figures
+    are not touched. ``crossings_plots.json`` records what was made and lets an unchanged
+    dataset be skipped.
     """
     from qgt.hamiltonians.minimal_models.crossings import find_band_crossings
 
     dataset_dir = Path(relocate_legacy_path(dataset_dir)).resolve()
+    output_dir = Path(output_dir or dataset_dir).resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
     meta = json.loads((dataset_dir / "meta.json").read_text())
     summary = json.loads((dataset_dir / "summary.json").read_text())
     n_bands = int(meta["n_bands"])
     files = crossing_plot_files(n_bands)
     source_sha256 = {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in CROSSING_SOURCES}
     input_sha256 = _input_hashes(dataset_dir)
-    marker = dataset_dir / "crossings_plots.json"
+    marker = output_dir / "crossings_plots.json"
     if marker.exists() and not force:
         previous = json.loads(marker.read_text())
         if (previous.get("source_sha256") == source_sha256 and previous.get("input_sha256") == input_sha256
-                and all((dataset_dir / name).is_file() for name in files)):
+                and all((output_dir / name).is_file() for name in files)):
             return {**previous, "status": "reused"}
     marker.unlink(missing_ok=True)
 
-    with (dataset_dir / "meta_info.pkl").open("rb") as stream:
-        hamiltonian = pickle.load(stream)["Hamiltonian_Obj"]
     kk, order = meta["kk"], meta["order"]
     if order != "xyz":
         raise ValueError(f"Crossing overlays need kx-ky planes (order 'xyz'), not {order!r}")
-    crossings = find_band_crossings(hamiltonian, kz=kk, line_samples=200)
-    components = [c.to_dict() for c in crossings]
-    _write_json(dataset_dir / "band_crossings.json",
-                {"model": summary["model"], "plane": summary["plane"], "kz": kk, "components": components})
-
     ki = np.load(dataset_dir / "ki.npy")
     kj = np.load(dataset_dir / "kj.npy")
     bz_mask = np.load(dataset_dir / "bz_mask.npy")
-    eigenvalues = capping_eigenvalues(np.load(dataset_dir / "eigenvalues.npy"), z_limit=1000)
+    saved_eigenvalues = np.load(dataset_dir / "eigenvalues.npy")
+    hamiltonian = _saved_hamiltonian(dataset_dir, ki, kj, kk, bz_mask, saved_eigenvalues)
+    crossings = find_band_crossings(hamiltonian, kz=kk, line_samples=200)
+    components = [c.to_dict() for c in crossings]
+    _write_json(output_dir / "band_crossings.json",
+                {"model": summary["model"], "plane": summary["plane"], "kz": kk, "components": components})
+
+    eigenvalues = capping_eigenvalues(saved_eigenvalues.copy(), z_limit=1000)
     eigenvalues[~bz_mask] = np.nan
     qgt = {key: np.load(dataset_dir / (key + ".npy")) for key in ("g_xy_imag", "g_xz_imag", "g_yz_imag")}
     label = f"{summary['model']} | kz = {kk:.8g} ({summary['plane']})"
@@ -322,13 +350,14 @@ def plot_dataset_crossings(dataset_dir, force=False):
                 plot_qgt_eigenvalue_berry_component_heatmaps(
                     ki, kj, eigenvalues, qgt["g_xy_imag"][band], qgt["g_xz_imag"][band], qgt["g_yz_imag"][band],
                     eigenvalue_band=band, title=f"{label} | Band {band + 1} | exact band crossings overlaid",
-                    zlim_berry=1000, zlim_percentile=95, results_dir=str(dataset_dir), save_fig=True,
+                    zlim_berry=1000, zlim_percentile=95, results_dir=str(output_dir), save_fig=True,
                     hamiltonian=hamiltonian, kk=kk, order=order, crossings=crossings,
                     filename=f"qgt_eigenvalue_berry_component_heatmaps_band_{band}_crossings.png",
                 )
     finally:
         plt.close("all")
-    report = {"status": "complete", "dataset_dir": str(dataset_dir), "model": summary["model"],
+    report = {"status": "complete", "dataset_dir": str(dataset_dir), "output_dir": str(output_dir),
+              "model": summary["model"],
               "plane": summary["plane"], "kz": kk, "n_bands": n_bands, "files": files,
               "components": [{key: c[key] for key in ("pair", "dimension", "exact", "description", "max_gap")}
                              for c in components],
@@ -530,6 +559,58 @@ def _sg11_added_terms_html(params):
             '<div class="added-hamiltonian">' + ''.join(rows) + '</div>')
 
 
+# SG11 parameter sets of the batch: Set 1 is the original minimal model, Sets 2-4 add
+# the symmetry-allowed terms of Note 3-3 with the coefficients below.
+_SG11_ADDED = ("t3_add", "lamb_z_add", "lamb_z_xz_add")
+_SG11_SETS = {(0.0, 0.0, 0.0): 1, (0.08, 0.06, 0.0): 2, (0.8, 0.3, 0.0): 3, (0.8, 0.3, 0.3): 4}
+
+
+def _sg11_set(params):
+    """The SG11 set number for saved parameters, or None."""
+    return _SG11_SETS.get(tuple(round(float(params.get(name) or 0), 12) for name in _SG11_ADDED))
+
+
+def _set_order(item):
+    if item["model"] != "MinimalHamSG11_2a2b2c2d":
+        return 0
+    dataset_dir = Path(relocate_legacy_path(item["dataset_dir"]))
+    params = json.loads((dataset_dir / "meta.json").read_text()).get("hamiltonian_params", {})
+    return _sg11_set(params) or 99
+
+
+def other_parameter_sets(results, output_root, root=None):
+    """Saved datasets of the same models and planes with other parameters, kept in
+    Results/legacy (e.g. SG11 without or with smaller added terms). Their crossing
+    figures go to <output_root>/<model>/legacy_sets/<plane>/<dataset>, so the legacy
+    folders stay unchanged."""
+    root = Path(root or legacy_dir("MinimalModels_QGT_planes"))
+    known = {}
+    for item in results:
+        meta = json.loads((Path(relocate_legacy_path(item["dataset_dir"])) / "meta.json").read_text())
+        known.setdefault((item["model"], item["plane"]), []).append(meta.get("hamiltonian_params"))
+    found = []
+    for meta_path in sorted(root.glob("*/*/dataset_*/meta.json")):
+        dataset_dir = meta_path.parent
+        if not ((dataset_dir / "summary.json").is_file() and (dataset_dir / "plots.json").is_file()):
+            continue
+        summary = json.loads((dataset_dir / "summary.json").read_text())
+        meta = json.loads(meta_path.read_text())
+        key = (summary["model"], summary["plane"])
+        if key not in known or meta.get("hamiltonian_params") in known[key]:
+            continue
+        found.append({"model": key[0], "plane": key[1], "kz": meta["kk"], "dataset_dir": str(dataset_dir),
+                      "output_dir": str(Path(output_root) / key[0] / "legacy_sets" / key[1] / dataset_dir.name)})
+    return found
+
+
+def gallery_order(results):
+    """Models in their first-seen order; within a model, parameter sets, then planes."""
+    first = {}
+    for position, item in enumerate(results):
+        first.setdefault(item["model"], position)
+    return sorted(results, key=lambda item: (first[item["model"]], _set_order(item), item["kz"]))
+
+
 def _crossings_html(dataset_dir, link):
     """List of the exact band crossings saved for one dataset, plus links to every band's overlay."""
     path = dataset_dir / "crossings_plots.json"
@@ -577,16 +658,20 @@ def write_gallery(output_root, results, *, crossings=False):
         label = f"{model} · {plane}"
         added_terms = ""
         if model == "MinimalHamSG11_2a2b2c2d":
-            set_number = int(dataset_dir.name.removeprefix("dataset_"))
-            label += f" · Set {set_number}"
             meta = json.loads((dataset_dir / "meta.json").read_text())
-            added_terms = _sg11_added_terms_html(meta["hamiltonian_params"])
+            set_number = _sg11_set(meta["hamiltonian_params"]) or int(dataset_dir.name.removeprefix("dataset_"))
+            label += f" · Set {set_number}" + (" · original minimal model" if set_number == 1 else " · added terms")
+            added_terms = (_sg11_added_terms_html(meta["hamiltonian_params"])
+                           or '<p class="added-terms">Original minimal model: no added terms.</p>')
         anchor = f"dataset-{position}"
         navigation.append(f'<li><a href="#{anchor}">{html.escape(label)}</a></li>')
 
-        def link(name):
-            relative = os.path.relpath(dataset_dir / name, output_root)
+        def link(name, folder=dataset_dir):
+            relative = os.path.relpath(folder / name, output_root)
             return quote(relative, safe="/")
+
+        output_dir = Path(result.get("output_dir") or dataset_dir)
+        image_link = link
 
         existing = [name for name in plots["files"] if (dataset_dir / name).is_file()]
         note = ("<p class=note>Band 1 Berry curvature is undefined on this "
@@ -604,17 +689,21 @@ def write_gallery(output_root, results, *, crossings=False):
         image_name = "qgt_eigenvalue_berry_component_heatmaps_band_0.png"
         if crossings:
             image_name = "qgt_eigenvalue_berry_component_heatmaps_band_0_crossings.png"
-            if (dataset_dir / image_name).is_file():
+            if (output_dir / image_name).is_file():
                 existing.append(image_name)
-            added_terms += _crossings_html(dataset_dir, link)
+
+            def image_link(name):
+                return link(name, output_dir)
+
+            added_terms += _crossings_html(output_dir, image_link)
         if image_name in existing:
             band_count += 1
-            image = (f'<a href="{link(image_name)}"><img loading="lazy" '
-                     f'src="{link(image_name)}" alt="Band 1: '
+            image = (f'<a href="{image_link(image_name)}"><img loading="lazy" '
+                     f'src="{image_link(image_name)}" alt="Band 1: '
                      'energy and Berry curvature components Ωx, Ωy, Ωz"></a>')
             cards.append(
                 f'<article><h3>Band 1</h3>{image}'
-                f'<p><a href="{link(image_name)}">Open full-size band and Berry components</a></p></article>'
+                f'<p><a href="{image_link(image_name)}">Open full-size band and Berry components</a></p></article>'
             )
         sections.append(
             f'<section id="{anchor}"><div class="model-heading"><div>'
@@ -690,6 +779,9 @@ CROSSINGS_INTRO = (
     "bands 3–4); on the band 2 and band 3 figures, magenta marks bands 2–3. White is the "
     "high-symmetry path, as before. Each crossing was checked by diagonalizing the model "
     "(gap below 1e-12).</p>"
+    "<p>SG11 is shown for every saved parameter set: Set 1 is the original minimal model, "
+    "Sets 2–4 add the symmetry-allowed terms of Note 3–3 with the coefficients listed "
+    "(Set 4 is the current default).</p>"
 )
 
 
@@ -697,11 +789,13 @@ def plot_crossings_batch(output_root=DEFAULT_OUTPUT, *, workers=2, force=False, 
     """plot_dataset_crossings for every dataset of a manifest, then index_crossings.html."""
     output_root = Path(output_root).resolve()
     manifest = json.loads((output_root / "manifest.json").read_text())
-    selected = [item for item in manifest["results"]
+    others = other_parameter_sets(manifest["results"], output_root)
+    selected = [item for item in manifest["results"] + others
                 if model_names is None or item["model"] in model_names]
     results, failures = [], []
     with ProcessPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(plot_dataset_crossings, item["dataset_dir"], force): item for item in selected}
+        futures = {pool.submit(plot_dataset_crossings, item["dataset_dir"], force, item.get("output_dir")): item
+                   for item in selected}
         for future in as_completed(futures):
             item = futures[future]
             try:
@@ -714,7 +808,7 @@ def plot_crossings_batch(output_root=DEFAULT_OUTPUT, *, workers=2, force=False, 
     results.sort(key=lambda item: (item["model"], item["kz"]))
     report = {"expected_datasets": len(selected), "completed_datasets": len(results),
               "results": results, "failures": failures,
-              "gallery": write_gallery(output_root, manifest["results"], crossings=True)}
+              "gallery": write_gallery(output_root, gallery_order(manifest["results"] + others), crossings=True)}
     _write_json(output_root / "crossings_manifest.json", report)
     return report
 
