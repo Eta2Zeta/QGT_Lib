@@ -4,20 +4,17 @@ import unittest
 
 import numpy as np
 
-from Library.plotting_qgt_polar import (
+from qgt.plotting.qgt_polar import (
     _polar_component_to_cartesian,
     plot_berry_components_vs_phi_radius_slider,
     plot_berry_winding_vs_radius,
 )
-from Library.topology import (
+from qgt.topology import (
     berry_curvature_components_from_qgt,
     integrate_berry_flux_2d,
     winding_numbers_vs_radius,
 )
-from Library.dimension_lib import (
-    create_2d_coordinate_grid_from_ranges,
-    cylindrical_order_axes,
-)
+from qgt.kspace.grids import create_2d_coordinate_grid_from_ranges, cylindrical_order_axes
 
 
 class TestPolarQGTWinding(unittest.TestCase):

@@ -6,11 +6,11 @@ from tqdm import tqdm  # Import tqdm for progress bar
 
 
 # from Library import * 
-from Library.Hamiltonian_v1 import *
-from Library.Hamiltonian import *
-from Library.eigenvalue_calc_lib import *
-from Library.QGT_lib import *
-from Library.topology import *
+from qgt.hamiltonians.graphene import GrapheneHamiltonian
+from qgt.hamiltonians.rashba import RashbaHamiltonian
+from qgt.hamiltonians.square_lattice import SquareLatticeHamiltonian
+from qgt.hamiltonians.toy import TestHamiltonian
+from qgt.hamiltonians.two_orbital_unspinful import TwoOrbitalUnspinfulHamiltonian
 
 
 import numpy as np

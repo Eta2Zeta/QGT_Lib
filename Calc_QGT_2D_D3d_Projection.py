@@ -7,17 +7,11 @@ import tempfile
 
 import numpy as np
 
-from Library.GroupTheory import (
-    D3dPointGroup,
-    calculate_numerical_qgt_group_orbit,
-)
-from Library.Hamiltonian.MinimalModels import MinimalHamSG194_2a
-from Library.data_management_utils_common import (
-    dump_metadata,
-    pick_or_create_result_dir_simple,
-)
-from Library.dimension_lib import create_2d_coordinate_grid, map_k_by_order
-from Library.runs import new_run
+from qgt.symmetry import D3dPointGroup, calculate_numerical_qgt_group_orbit
+from qgt.hamiltonians.minimal_models import MinimalHamSG194_2a
+from qgt.io.metadata import dump_metadata, pick_or_create_result_dir_simple
+from qgt.kspace.grids import create_2d_coordinate_grid, map_k_by_order
+from qgt.io.runs import new_run
 
 
 BUNDLE_FILENAME = "qgt_d3d_all_irrep_projection_bundle.npz"
@@ -348,7 +342,7 @@ def calculate_d3d_all_irrep_berry_projections(
         print(f"Saved projection bundle to: {bundle_path}")
 
     if plot_results:
-        from Library.plotting_qgt_2d import (
+        from qgt.plotting.qgt_2d import (
             plot_berry_irrep_projection_heatmaps,
         )
 

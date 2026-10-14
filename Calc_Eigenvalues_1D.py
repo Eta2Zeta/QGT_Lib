@@ -4,11 +4,11 @@ import pickle
 
 import numpy as np
 
-from Library.Hamiltonian import THF_Hamiltonian
-from Library.data_management_utils_1d import setup_results_directory_1d
-from Library.eigenvalue_calc_lib_1d import line_eigenvalues_eigenfunctions
-from Library.output_utils import print_calculation_complete
-from Library.plotting_lib_1d import plot_eigenvalues_line
+from qgt.hamiltonians import THF_Hamiltonian
+from qgt.io.setup_1d import setup_results_directory_1d
+from qgt.spectra.eigenvalues_1d import line_eigenvalues_eigenfunctions
+from qgt.io.output import print_calculation_complete
+from qgt.plotting.bands_1d import plot_eigenvalues_line
 
 
 def calculation_1d(

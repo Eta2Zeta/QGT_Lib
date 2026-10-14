@@ -2,8 +2,8 @@ import os
 import pickle
 import numpy as np
 import plotly.graph_objects as go
-from Library.utilities import generate_3d_sym_lines
-from Library.data_paths import legacy_dir
+from qgt.kspace.paths import generate_3d_sym_lines
+from qgt.io.paths import legacy_dir
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 

@@ -38,7 +38,7 @@ def _diagnostic_arrays():
     return ratios, indices
 
 
-def _write_bundle(root_dir):
+def _write_floquet_ratio_bundle(root_dir):
     ratios, indices = _diagnostic_arrays()
     axis = np.array([-1.0, 1.0])
     kx, ky = np.meshgrid(axis, axis)
@@ -84,7 +84,7 @@ class TestDynamicNDFloquetRatioPlot(unittest.TestCase):
     def test_reduction_and_hover_follow_the_maximizing_source_band(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            ratios, _ = _write_bundle(root)
+            ratios, _ = _write_floquet_ratio_bundle(root)
             with np.load(root / "qgt_nd_bundle.npz", allow_pickle=True) as data:
                 field, hover = _prepare_floquet_ratio_field(data)
 
@@ -115,7 +115,7 @@ class TestDynamicNDFloquetRatioPlot(unittest.TestCase):
     def test_html_caps_infinity_but_preserves_diagnostic_hover(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            _write_bundle(root)
+            _write_floquet_ratio_bundle(root)
             output_path = root / "ratio.html"
 
             plot_floquet_max_ratio_nd_html(
@@ -144,7 +144,7 @@ class TestDynamicNDFloquetRatioPlot(unittest.TestCase):
     def test_symmetric_color_scale_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            _write_bundle(root)
+            _write_floquet_ratio_bundle(root)
 
             with self.assertRaisesRegex(ValueError, "nonnegative"):
                 plot_floquet_max_ratio_nd_html(
@@ -156,7 +156,7 @@ class TestDynamicNDFloquetRatioPlot(unittest.TestCase):
     def test_existing_trace_field_still_uses_the_shared_renderer(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            _write_bundle(root)
+            _write_floquet_ratio_bundle(root)
             output_path = root / "trace.html"
 
             dynamic_nd_field_with_bands_html(

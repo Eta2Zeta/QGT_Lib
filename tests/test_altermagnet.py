@@ -26,7 +26,7 @@ mock_qutip.sigmax = mock_sigmax
 mock_qutip.sigmay = mock_sigmay
 mock_qutip.sigmaz = mock_sigmaz
 sys.modules['qutip'] = mock_qutip
-from Library.Hamiltonian.AltermagnetHamiltonian import AltermagnetHamiltonian
+from qgt.hamiltonians.altermagnet import AltermagnetHamiltonian
 
 def test_hamiltonian_structure():
     """Check dimensions and hermiticity."""

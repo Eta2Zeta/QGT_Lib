@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 import Calc_QGT_2D_nd_parameter_sweep as nd_sweep
-from Library.Hamiltonian.Hamiltonian import hamiltonian
+from qgt.hamiltonians.base import hamiltonian
 
 
 class TinyHamiltonian(hamiltonian):

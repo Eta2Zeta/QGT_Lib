@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 import plotly.offline as pyo
 import json
 import pickle
-from Library.data_paths import legacy_dir
+from qgt.io.paths import legacy_dir
 
 
 def _save_dynamic_qgt_plotly(

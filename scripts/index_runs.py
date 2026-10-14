@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from Library.runs import write_index  # noqa: E402
+from qgt.io.runs import write_index
 
 if __name__ == "__main__":
     print(f"Wrote {write_index()}")

@@ -8,14 +8,13 @@ import multiprocessing as mp
 from multiprocessing import Pool, cpu_count
 from functools import partial
 
-from Library.Hamiltonian.Hamiltonian import *
-from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
-from Library.Hamiltonian.MinimalModels import MinimalHamSG194_2a
-from Library.utilities import generate_3d_sym_lines
-from Library.Hamiltonian_helper import get_Hamiltonian
-from Library.data_management_utils_nd import build_parameter_points
-from Library.output_utils import print_calculation_complete
-from Library.runs import new_run
+from qgt.hamiltonians.chiral import ChiralHamiltonian
+from qgt.hamiltonians.minimal_models import MinimalHamSG194_2a
+from qgt.kspace.paths import generate_3d_sym_lines
+from qgt.hamiltonians.evaluate import get_Hamiltonian
+from qgt.io.setup_nd import build_parameter_points
+from qgt.io.output import print_calculation_complete
+from qgt.io.runs import new_run
 
 
 # ---------- per-point worker ----------

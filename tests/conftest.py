@@ -11,7 +11,7 @@ import tempfile
 
 os.environ["MPLBACKEND"] = "Agg"
 
-from Library.data_paths import data_root  # noqa: E402
+from qgt.io.paths import data_root
 
 os.environ["QGT_REAL_DATA"] = data_root()
 os.environ["QGT_DATA"] = tempfile.mkdtemp(prefix="qgt_test_data_")

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from Library.GroupTheory import D3dPointGroup, PointGroupElement
+from qgt.symmetry import D3dPointGroup, PointGroupElement
 
 
 @pytest.fixture

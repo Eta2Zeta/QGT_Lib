@@ -1,8 +1,8 @@
 import numpy as np
 
 from Calc_QGT_2D_nd_parameter_sweep import _worker_qgt_point
-from Library.Hamiltonian.Hamiltonian import hamiltonian
-from Library.dimension_lib import create_2d_coordinate_grid_from_ranges
+from qgt.hamiltonians.base import hamiltonian
+from qgt.kspace.grids import create_2d_coordinate_grid_from_ranges
 
 
 class MassiveDiracHamiltonian(hamiltonian):

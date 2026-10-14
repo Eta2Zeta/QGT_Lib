@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from scipy.optimize import curve_fit
-from Library.data_paths import legacy_dir
+from qgt.io.paths import legacy_dir
 
 def power_law(x, a, b, c, d):
     # y = a * (x - c)^b + d

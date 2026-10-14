@@ -1,6 +1,6 @@
 # Eigenvector Block Alignment (Procrustes Method)
 
-This document explains the mathematical workings inside the `_align_block_svd` function from `Library/Eigenvector.py`.
+This document explains the mathematical workings inside the `_align_block_svd` function from `qgt/spectra/eigenvectors.py`.
 
 ## The Problem it Solves
 When a Hamiltonian has a degenerate subspace (e.g., two bands with the exact same energy), any linear combination of their eigenvectors is *also* a valid eigenvector. When you ask Python (like `np.linalg.eigh`) to calculate the eigenvectors at $k$ and then at $k + \delta k$, it will spit out two completely arbitrary, randomly rotated bases for that degenerate subspace. 

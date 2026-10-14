@@ -5,20 +5,20 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Button, Slider
 import numpy as np
 
-from Library.dimension_lib import cylindrical_order_axes, is_cylindrical_order
-from Library.plotting_qgt_polar import (
+from qgt.kspace.grids import cylindrical_order_axes, is_cylindrical_order
+from qgt.plotting.qgt_polar import (
     _polar_component_to_cartesian,
     _polar_grid_values,
     _polar_plane_coordinates,
 )
-from Library.plotting_utils import (
+from qgt.plotting.common import (
     bz_wigner_seitz_from_bvecs,
     draw_symmetry_point_overlay,
     get_bvecs_from_meta,
     symmetry_path_chains_on_slice,
     symmetry_points_on_fixed_slice,
 )
-from Library.data_paths import legacy_dir
+from qgt.io.paths import legacy_dir
 from Plot_QGT_2D_Dynamic_ND_sweep import (
     BERRY_COMPONENT_QUANTITIES,
     FLOQUET_RATIO_QUANTITIES,
@@ -28,7 +28,7 @@ from Plot_QGT_2D_Dynamic_ND_sweep import (
     _label_from_quantity,
     _load_nd_bundle,
     _load_saved_winding_grid,
-    _pick_field_grid,
+    _nd_sweep_field_grid,
     _prepare_floquet_ratio_field,
     _prepare_nd_band_panel,
 )
@@ -1006,7 +1006,7 @@ def dynamic_nd_field_with_bands_matplotlib(
     if is_floquet_ratio:
         raw_field_grid, _ratio_hover_grid = _prepare_floquet_ratio_field(data)
     else:
-        raw_field_grid = _pick_field_grid(
+        raw_field_grid = _nd_sweep_field_grid(
             data,
             quantity,
             convert_berry_from_imQ=convert_berry_from_imQ,

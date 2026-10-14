@@ -24,7 +24,7 @@ dev = ["pytest"]
 plot3d = ["trimesh"]
 
 [tool.setuptools.packages.find]
-include = ["Library*"]
+include = ["qgt*", "Library*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

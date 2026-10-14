@@ -9,30 +9,34 @@ from functools import partial
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # from Library import * 
-from Library.Hamiltonian_v1 import *
-from Library.Hamiltonian.Hamiltonian import * 
-from Library.eigenvalue_calc_lib import *
-from Library.eigenvalue_calc_lib_1d import eigenvalues_along_path
-from Library.QGT_lib import *
-from Library.topology import *
-from Library.utilities import *
-from Library.dimension_lib import cylindrical_order_axes, is_cylindrical_order
-from Library.plotting_qgt_2d import (
+from qgt.spectra.eigenvalues_1d import eigenvalues_along_path
+from qgt.kspace.grids import cylindrical_order_axes, is_cylindrical_order
+from qgt.plotting.qgt_2d import (
     plot_qgt_component_heatmaps,
     plot_qgt_component_surfaces,
     plot_qgt_eigenvalue_berry_component_heatmaps,
     plot_qgt_eigenvalue_berry_trace_heatmaps,
     plot_qgt_eigenvalue_berry_trace_surfaces,
 )
-from Library.plotting_qgt_polar import (
+from qgt.plotting.qgt_polar import (
     plot_berry_components_vs_phi_radius_slider,
     plot_berry_winding_vs_radius,
 )
-from Library.Hamiltonian.RuO2Hamiltonian import *
-from Library.Hamiltonian.MinimalModels import MinimalHamSG194_2a
-from Library.data_management_utils_2d import setup_2D_QGT_results_directory
-from Library.output_utils import print_calculation_complete
-from Library.runs import input_run, record_inputs
+from qgt.hamiltonians.minimal_models import MinimalHamSG194_2a
+from qgt.io.setup_2d import setup_2D_QGT_results_directory
+from qgt.io.output import print_calculation_complete
+from qgt.io.runs import input_run, record_inputs
+from qgt.geometry.qgt_2d import QGT_grid_analytic, QGT_grid_num, QGT_grid_semi_num
+from qgt.topology import berry_curvature_components_from_qgt, winding_numbers_vs_radius
+from qgt.kspace.paths import generate_2d_sym_lines
+from qgt.geometry.pointwise_3d import (
+    quantum_geometric_tensor_3d_num,
+    quantum_geometric_tensor_3d_num_phase_corrected,
+)
+from qgt.geometry.pointwise_2d import (
+    quantum_geometric_tensor_analytic,
+    quantum_geometric_tensor_semi_num,
+)
 
 
 def _save_polar_berry_diagnostics(

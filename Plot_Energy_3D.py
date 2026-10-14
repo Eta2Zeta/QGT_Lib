@@ -9,8 +9,8 @@ import numpy as np
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
 
-from Library.plotting_lib_3d import plot_volumetric_cloud, plot_arbitrary_slice_no_interp
-from Library.data_paths import legacy_dir
+from qgt.plotting.volume_3d import plot_volumetric_cloud, plot_arbitrary_slice_no_interp
+from qgt.io.paths import legacy_dir
 
 def plot_3d_energy(results_dir, band_idx=2, cloud_opacity=0.2, cloud_stride=2, slice_stride=2, levels=[0]):
     """

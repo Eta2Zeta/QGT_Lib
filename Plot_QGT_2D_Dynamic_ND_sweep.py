@@ -6,22 +6,20 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from Library.dimension_lib import (
+from qgt.kspace.grids import (
     cylindrical_order_axes,
     is_cylindrical_order,
     normalize_coordinate_order,
 )
-from Library.plotting_qgt_2d import get_symmetric_plot_limits
-from Library.plotting_qgt_polar import (
+from qgt.plotting.qgt_2d import get_symmetric_plot_limits
+from qgt.plotting.qgt_polar import (
     _polar_component_to_cartesian,
     _polar_grid_values,
     _polar_plane_coordinates,
 )
-from Library.plotting_utils import bz_wigner_seitz_from_bvecs, get_bvecs_from_meta
-from Library.topology import (
-    berry_curvature_components_from_qgt,
-)
-from Library.data_paths import legacy_dir
+from qgt.plotting.common import bz_wigner_seitz_from_bvecs, get_bvecs_from_meta
+from qgt.topology import berry_curvature_components_from_qgt
+from qgt.io.paths import legacy_dir
 
 
 FLOQUET_RATIO_QUANTITIES = frozenset(
@@ -160,7 +158,7 @@ def _normal_berry_grid(data, order, convert_berry_from_imQ):
     return (-2.0 * gxy_imag) if convert_berry_from_imQ else gxy_imag
 
 
-def _pick_field_grid(
+def _nd_sweep_field_grid(
     data,
     quantity="trace",
     *,
@@ -1499,7 +1497,7 @@ def dynamic_nd_field_with_bands_html(
     if is_floquet_ratio:
         raw_field_grid, ratio_hover_grid = _prepare_floquet_ratio_field(data)
     else:
-        raw_field_grid = _pick_field_grid(
+        raw_field_grid = _nd_sweep_field_grid(
             data,
             quantity,
             convert_berry_from_imQ=convert_berry_from_imQ,

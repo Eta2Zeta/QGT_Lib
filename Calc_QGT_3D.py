@@ -9,17 +9,16 @@ from functools import partial
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # from Library import * 
-from Library.Hamiltonian.Hamiltonian import * 
-from Library.eigenvalue_calc_lib import *
-from Library.QGT_lib import *
-from Library.QGT_Calc_3d_lib import *
-from Library.topology import *
-from Library.utilities import *
-from Library.Hamiltonian.RuO2Hamiltonian import *
-from Library.Hamiltonian.MinimalModels import MinimalHamSG194_2a
-from Library.data_management_utils_3d import setup_3D_QGT_results_directory
-from Library.output_utils import print_calculation_complete
-from Library.runs import input_run, record_inputs
+from qgt.hamiltonians.minimal_models import MinimalHamSG194_2a
+from qgt.io.setup_3d import setup_3D_QGT_results_directory
+from qgt.io.output import print_calculation_complete
+from qgt.io.runs import input_run, record_inputs
+from qgt.geometry.qgt_3d import QGT_3d_num, QGT_grid_3d_analytic
+from qgt.geometry.pointwise_3d import (
+    quantum_geometric_tensor_3d_analytic,
+    quantum_geometric_tensor_3d_num_eigenvector_ordered,
+    quantum_geometric_tensor_3d_num_phase_corrected,
+)
 
 
 

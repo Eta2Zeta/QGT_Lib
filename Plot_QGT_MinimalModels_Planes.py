@@ -29,19 +29,19 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from Library.eigenvalue_calc_lib import capping_eigenvalues
-from Library.plotting_eigenvalues_2d import (
+from qgt.spectra.eigenvalues import capping_eigenvalues
+from qgt.plotting.bands_2d import (
     plot_degeneracy_heatmap,
     plot_eigenvalue_line_slider,
     plot_eigenvalue_surfaces,
 )
-from Library.plotting_qgt_2d import (
+from qgt.plotting.qgt_2d import (
     plot_qgt_component_surfaces,
     plot_qgt_eigenvalue_berry_component_heatmaps,
     plot_qgt_eigenvalue_berry_trace_heatmaps,
     plot_qgt_eigenvalue_berry_trace_surfaces,
 )
-from Library.data_paths import legacy_dir, relocate_legacy_path
+from qgt.io.paths import legacy_dir, relocate_legacy_path
 
 
 ROOT = Path(__file__).resolve().parent
@@ -89,8 +89,8 @@ def expected_plot_files(n_bands):
 def _source_hashes():
     names = [
         Path(__file__).name, "Calc_Eigenvalues_2D.py", "Calc_QGT_2D.py",
-        "Library/plotting_eigenvalues_2d.py", "Library/plotting_qgt_2d.py",
-        "Library/plotting_utils.py", "Library/utilities.py",
+        "qgt/plotting/bands_2d.py", "qgt/plotting/qgt_2d.py",
+        "qgt/plotting/common.py", "qgt/kspace/paths.py", "qgt/utils.py",
     ]
     return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
             for name in names}

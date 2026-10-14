@@ -1,7 +1,7 @@
 """Physical regression checks for the exact SG194 nodal-network tracer.
 
 Run next to the plotting script. For a staging directory outside QGT_Lib, set
-QGT_LIB_ROOT to the repository containing Library/Hamiltonian.
+QGT_LIB_ROOT to the repository containing qgt/hamiltonians.
 """
 
 import numpy as np

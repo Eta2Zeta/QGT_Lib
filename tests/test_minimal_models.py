@@ -5,17 +5,17 @@ import pickle
 import numpy as np
 import pytest
 
-import Library.Hamiltonian.MinimalModels as minimal_models
-from Library.Hamiltonian.Hamiltonian import hamiltonian
-from Library.Hamiltonian.MinimalModels import (
+import qgt.hamiltonians.minimal_models as minimal_models
+from qgt.hamiltonians.base import hamiltonian
+from qgt.hamiltonians.minimal_models import (
     MINIMAL_MODELS,
     MinimalAltermagnetHamiltonian,
     MinimalHamSG194_2a,
 )
-from Library.Hamiltonian_helper import get_Hamiltonian
-from Library.QGT_calc_functions_2comp import quantum_geometric_tensor_num
-from Library.diagnalization import eigenvalues_and_vectors_eigenvalue_ordering
-from Library.eigenvalue_calc_lib_1d import eigenvalues_along_path
+from qgt.hamiltonians.evaluate import get_Hamiltonian
+from qgt.geometry.pointwise_2d import quantum_geometric_tensor_num
+from qgt.spectra.diagonalization import eigenvalues_and_vectors_eigenvalue_ordering
+from qgt.spectra.eigenvalues_1d import eigenvalues_along_path
 
 
 MODEL_CLASSES = tuple(MINIMAL_MODELS.values())

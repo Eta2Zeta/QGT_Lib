@@ -5,20 +5,20 @@ import re
 import numpy as np
 import pytest
 
-from Library.plotting_utils import symmetry_path_chains_on_slice
+from qgt.plotting.common import symmetry_path_chains_on_slice
 from Plot_QGT_2D_Dynamic_ND_sweep_matplotlib import (
     dynamic_nd_field_with_bands_matplotlib,
     plot_berry_components_nd_matplotlib,
 )
 from Plot_QGT_2D_Dynamic_ND_sweep import (
     _berry_component_grids,
-    _pick_field_grid,
+    _nd_sweep_field_grid,
     dynamic_nd_field_with_bands_html,
     plot_berry_components_nd_html,
 )
 
 
-def _write_bundle(root: Path, *, polar: bool, include_winding: bool = True):
+def _write_berry_components_bundle(root: Path, *, polar: bool, include_winding: bool = True):
     parameter_values = np.array([-0.2, 0.2])
     if polar:
         radius_values = np.linspace(0.0, 1.0, 5)
@@ -179,7 +179,7 @@ def test_symmetry_plane_segments_stitch_only_at_shared_endpoints():
 
 
 def test_berry_component_conversion_uses_pseudovector_convention(tmp_path):
-    expected = _write_bundle(tmp_path, polar=False)
+    expected = _write_berry_components_bundle(tmp_path, polar=False)
     with np.load(tmp_path / "qgt_nd_bundle.npz", allow_pickle=True) as data:
         actual = _berry_component_grids(data)
 
@@ -211,13 +211,13 @@ def test_scalar_polar_berry_selects_plane_normal_component(
         g_yz_imag_grid=-0.5 * np.full(shape, 1.0),
     )
     with np.load(tmp_path / "components.npz", allow_pickle=True) as data:
-        berry = _pick_field_grid(data, "berry", order=order)
+        berry = _nd_sweep_field_grid(data, "berry", order=order)
 
     np.testing.assert_allclose(berry, expected_value)
 
 
 def test_cartesian_berry_components_have_bands_and_three_maps(tmp_path):
-    _write_bundle(tmp_path, polar=False)
+    _write_berry_components_bundle(tmp_path, polar=False)
     output = tmp_path / "cartesian_components.html"
 
     plot_berry_components_nd_html(
@@ -236,7 +236,7 @@ def test_cartesian_berry_components_have_bands_and_three_maps(tmp_path):
 
 
 def test_polar_berry_components_add_ring_cuts_winding_and_magnitude(tmp_path):
-    _write_bundle(tmp_path, polar=True)
+    _write_berry_components_bundle(tmp_path, polar=True)
     output = tmp_path / "polar_components.html"
 
     plot_berry_components_nd_html(
@@ -258,7 +258,7 @@ def test_polar_berry_components_add_ring_cuts_winding_and_magnitude(tmp_path):
 
 
 def test_existing_scalar_viewer_interpolates_polar_data_to_cartesian(tmp_path):
-    _write_bundle(tmp_path, polar=True)
+    _write_berry_components_bundle(tmp_path, polar=True)
     output = tmp_path / "polar_trace.html"
 
     dynamic_nd_field_with_bands_html(
@@ -296,7 +296,7 @@ def test_missing_off_plane_qgt_components_requests_recalculation(tmp_path):
 
 
 def test_cartesian_matplotlib_viewer_updates_maps_and_bands(tmp_path):
-    _write_bundle(tmp_path, polar=False)
+    _write_berry_components_bundle(tmp_path, polar=False)
     figure = plot_berry_components_nd_matplotlib(
         tmp_path,
         bands_to_plot=[0, 1],
@@ -338,7 +338,7 @@ def test_cartesian_matplotlib_viewer_updates_maps_and_bands(tmp_path):
 
 
 def test_matplotlib_band_plane_filter_can_be_disabled(tmp_path):
-    _write_bundle(tmp_path, polar=False)
+    _write_berry_components_bundle(tmp_path, polar=False)
     figure = dynamic_nd_field_with_bands_matplotlib(
         tmp_path,
         quantity="trace",
@@ -356,7 +356,7 @@ def test_matplotlib_band_plane_filter_can_be_disabled(tmp_path):
 
 
 def test_polar_matplotlib_viewer_updates_radius_diagnostics(tmp_path):
-    _write_bundle(tmp_path, polar=True)
+    _write_berry_components_bundle(tmp_path, polar=True)
     figure = plot_berry_components_nd_matplotlib(
         tmp_path,
         bands_to_plot=[0, 1],
@@ -428,7 +428,7 @@ def test_polar_matplotlib_viewer_updates_radius_diagnostics(tmp_path):
 
 
 def test_polar_matplotlib_ring_limits_match_percentile_clipped_maps(tmp_path):
-    components = _write_bundle(tmp_path, polar=True)
+    components = _write_berry_components_bundle(tmp_path, polar=True)
     percentile = 60.0
     figure = plot_berry_components_nd_matplotlib(
         tmp_path,
@@ -454,7 +454,7 @@ def test_polar_matplotlib_ring_limits_match_percentile_clipped_maps(tmp_path):
 
 
 def test_polar_matplotlib_viewer_requires_saved_winding_data(tmp_path):
-    _write_bundle(tmp_path, polar=True, include_winding=False)
+    _write_berry_components_bundle(tmp_path, polar=True, include_winding=False)
 
     with pytest.raises(KeyError, match="saved winding data"):
         plot_berry_components_nd_matplotlib(
@@ -472,7 +472,7 @@ def test_polar_matplotlib_viewer_requires_saved_winding_data(tmp_path):
 
 @pytest.mark.parametrize("polar", [False, True])
 def test_scalar_matplotlib_viewer_uses_same_nd_bundle(tmp_path, polar):
-    _write_bundle(tmp_path, polar=polar)
+    _write_berry_components_bundle(tmp_path, polar=polar)
     figure = dynamic_nd_field_with_bands_matplotlib(
         tmp_path,
         quantity="trace",

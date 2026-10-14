@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
 
-from Library.GroupTheory import (
+from qgt.symmetry import (
     D3dPointGroup,
     calculate_numerical_qgt_group_orbit,
+    qgt_orbit as qgt_orbit_module,
 )
-from Library.GroupTheory import qgt_orbit as qgt_orbit_module
 
 
 class FakeHamiltonian:

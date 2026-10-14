@@ -5,7 +5,7 @@ import re
 
 import pytest
 
-from Library import runs
+from qgt.io import runs
 
 
 @pytest.fixture

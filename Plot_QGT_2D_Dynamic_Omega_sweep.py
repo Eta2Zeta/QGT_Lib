@@ -4,12 +4,12 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 import pickle
-from Library.plotting_utils import load_qgt, filter_entries_by_omega
+from qgt.plotting.common import load_qgt, filter_entries_by_omega
+from qgt.plotting.qgt_2d import get_symmetric_plot_limits
+from qgt.io.paths import legacy_dir
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from Library.plotting_qgt_2d import get_symmetric_plot_limits
-from Library.data_paths import legacy_dir
 import json
 
 

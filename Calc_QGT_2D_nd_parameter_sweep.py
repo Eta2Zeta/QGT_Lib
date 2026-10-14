@@ -9,24 +9,17 @@ import multiprocessing as mp
 from multiprocessing import Pool, cpu_count
 from functools import partial
 
-from Library.Hamiltonian.Hamiltonian import *
-from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
-from Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected import ChiralHamiltonianChiralBasisProjected
-from Library.Hamiltonian.SquareLatticeHamiltonian import SquareLatticeHamiltonian
-from Library.Hamiltonian.MinimalModels import MinimalHamSG127_2a2b
-from Library.Hamiltonian.THF_Hamiltonian import THF_Hamiltonian
-from Library.eigenvalue_calc_lib import *
-from Library.QGT_lib import *
-from Library.topology import *
-from Library.data_management_utils_nd import (
-    build_parameter_points,
-    setup_qgt_nd_results_dir,
-)
-from Library.utilities import generate_2d_sym_lines
-from Library.Hamiltonian_helper import get_Hamiltonian
-from Library.eigenvalue_calc_lib_1d import eigenvalues_along_path
-from Library.output_utils import print_calculation_complete
-from Library.dimension_lib import (
+from qgt.hamiltonians.chiral import ChiralHamiltonian
+from qgt.hamiltonians.chiral_basis_projected import ChiralHamiltonianChiralBasisProjected
+from qgt.hamiltonians.square_lattice import SquareLatticeHamiltonian
+from qgt.hamiltonians.minimal_models import MinimalHamSG127_2a2b
+from qgt.hamiltonians.thf import THF_Hamiltonian
+from qgt.io.setup_nd import build_parameter_points, setup_qgt_nd_results_dir
+from qgt.kspace.paths import generate_2d_sym_lines
+from qgt.hamiltonians.evaluate import get_Hamiltonian
+from qgt.spectra.eigenvalues_1d import eigenvalues_along_path
+from qgt.io.output import print_calculation_complete
+from qgt.kspace.grids import (
     CARTESIAN_ORDERS,
     create_2d_coordinate_grid_from_ranges,
     cylindrical_order_axes,
@@ -34,6 +27,15 @@ from Library.dimension_lib import (
     map_k_by_order,
     normalize_coordinate_order,
 )
+from qgt.geometry.qgt_2d import QGT_grid_num
+from qgt.topology import (
+    berry_curvature_components_from_qgt,
+    compute_chern_number,
+    integrate_berry_flux_2d,
+    winding_numbers_vs_radius,
+)
+from qgt.spectra.eigenvalues import grid_eigenvalues_eigenfunctions
+from qgt.geometry.pointwise_3d import quantum_geometric_tensor_3d_num_phase_corrected
 
 
 def _metric_trace_on_sampled_plane(g_xx, g_yy, g_zz, order):

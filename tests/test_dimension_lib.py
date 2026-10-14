@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from Library.dimension_lib import (
+from qgt.kspace.grids import (
     cylindrical_order_axes,
     create_2d_coordinate_grid,
     create_2d_coordinate_grid_from_ranges,

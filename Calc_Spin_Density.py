@@ -5,9 +5,9 @@ import pickle
 import json
 import shutil
 
-from Library.data_management_utils_2d import setup_Spin_Density_results_directory
-from Library.output_utils import print_calculation_complete
-from Library.runs import input_run, record_inputs
+from qgt.io.setup_2d import setup_Spin_Density_results_directory
+from qgt.io.output import print_calculation_complete
+from qgt.io.runs import input_run, record_inputs
 from Plot_Spin_Density import plot_all_spin_components
 
 def calculate_spin_density_all_bands(Force_new=True, eigen_run=None):

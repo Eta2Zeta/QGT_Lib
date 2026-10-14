@@ -5,12 +5,12 @@ import pickle
 
 import numpy as np
 
-from Library.Hamiltonian import THF_Hamiltonian
-from Library.data_management_utils_1d import setup_1D_angles_results_directory
-from Library.eigenvalue_calc_lib_1d import eigenvalues_along_path
-from Library.output_utils import print_calculation_complete
-from Library.plotting_lib_1d import plot_band_structure_angles_slider
-from Library.utilities import generate_1d_lines_at_angles
+from qgt.hamiltonians import THF_Hamiltonian
+from qgt.io.setup_1d import setup_1D_angles_results_directory
+from qgt.spectra.eigenvalues_1d import eigenvalues_along_path
+from qgt.io.output import print_calculation_complete
+from qgt.plotting.bands_1d import plot_band_structure_angles_slider
+from qgt.kspace.paths import generate_1d_lines_at_angles
 
 
 def calculation_1d_at_angles(

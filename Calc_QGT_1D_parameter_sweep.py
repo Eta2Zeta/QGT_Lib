@@ -4,17 +4,10 @@ import numpy as np
 import pickle
 from tqdm import tqdm  # Import tqdm for progress bar
 
-from Library.Hamiltonian_v1 import *
-from Library.Hamiltonian.Hamiltonian import * 
-from Library.Hamiltonian.THF_Hamiltonian import *
-from Library.Hamiltonian.TwoOrbitalUnspinfulHamiltonian import *
-from Library.Hamiltonian.SquareLatticeHamiltonian import *
-from Library.eigenvalue_calc_lib import *
-from Library.QGT_lib import *
-from Library.topology import *
-from Library.utilities import *
-from Library.data_management_utils_1d import setup_QGT_results_directory_1D_single_param
-from Library.output_utils import print_calculation_complete
+from qgt.io.setup_1d import setup_QGT_results_directory_1D_single_param
+from qgt.io.output import print_calculation_complete
+from qgt.geometry.qgt_2d import QGT_line
+from qgt.hamiltonians.square_lattice import SquareLatticeHamiltonian
 
 def sweep_single_param_1d(
     hamiltonian,

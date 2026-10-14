@@ -120,7 +120,7 @@ def table_iv_bases(kx, ky, kz):
 
 
 def model_class(name):
-    module = importlib.import_module(f"Library.Hamiltonian.MinimalModels.{name}")
+    module = importlib.import_module(f"qgt.hamiltonians.minimal_models.{name}")
     return getattr(module, name)
 
 

@@ -5,8 +5,8 @@ import unittest
 
 import numpy as np
 
-from Library.QGT_calc_functions_3comp import quantum_geometric_tensor_3d_num_phase_corrected
-from Library.diagnalization import eigenvalues_and_vectors_eigenvalue_ordering
+from qgt.geometry.pointwise_3d import quantum_geometric_tensor_3d_num_phase_corrected
+from qgt.spectra.diagonalization import eigenvalues_and_vectors_eigenvalue_ordering
 
 
 class TestMinimalModelsTableThree(unittest.TestCase):
@@ -66,7 +66,7 @@ class TestMinimalModelsTableThree(unittest.TestCase):
         else:
             suffix = "2b"
         name = f"MinimalHamSG{space_group}_{suffix}"
-        module = importlib.import_module(f"Library.Hamiltonian.MinimalModels.{name}")
+        module = importlib.import_module(f"qgt.hamiltonians.minimal_models.{name}")
         return getattr(module, name)
 
     @staticmethod

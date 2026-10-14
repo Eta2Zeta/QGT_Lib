@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from Library.data_management_utils_nd import build_parameter_points
+from qgt.io.setup_nd import build_parameter_points
 
 
 def _parameter_axis(parameter_range, count, scale="log"):

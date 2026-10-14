@@ -3,8 +3,8 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
-from Library.data_paths import legacy_dir
-from Library.runs import latest_run
+from qgt.io.paths import legacy_dir
+from qgt.io.runs import latest_run
 
 def dynamic_sym_nd(bundle_path, bands=None):
     if not os.path.exists(bundle_path):

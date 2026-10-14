@@ -42,14 +42,14 @@ os.environ.setdefault("MPLBACKEND", "Agg")
 
 import numpy as np
 
-from Library.Hamiltonian.MinimalModels import MINIMAL_MODELS
-from Library.QGT_calc_functions_3comp import quantum_geometric_tensor_3d_num_phase_corrected
-from Library.QGT_lib import QGT_grid_num
-from Library.data_management_utils_common import dump_metadata, pick_or_create_result_dir_simple
-from Library.dimension_lib import create_2d_coordinate_grid_from_ranges
-from Library.eigenvalue_calc_lib import grid_eigenvalues_eigenfunctions
-from Library.topology import berry_curvature_components_from_qgt
-from Library.data_paths import legacy_dir
+from qgt.hamiltonians.minimal_models import MINIMAL_MODELS
+from qgt.geometry.pointwise_3d import quantum_geometric_tensor_3d_num_phase_corrected
+from qgt.geometry.qgt_2d import QGT_grid_num
+from qgt.io.metadata import dump_metadata, pick_or_create_result_dir_simple
+from qgt.kspace.grids import create_2d_coordinate_grid_from_ranges
+from qgt.spectra.eigenvalues import grid_eigenvalues_eigenfunctions
+from qgt.topology import berry_curvature_components_from_qgt
+from qgt.io.paths import legacy_dir
 
 
 ROOT = Path(__file__).resolve().parent
@@ -120,14 +120,14 @@ def source_hashes(model_name):
     """Make cached datasets sensitive to changes in models and numerical code."""
     files = [
         Path(__file__),
-        ROOT / f"Library/Hamiltonian/MinimalModels/{model_name}.py",
+        ROOT / f"qgt/hamiltonians/minimal_models/{model_name}.py",
     ]
-    files += [ROOT / "Library" / filename for filename in (
-        "Hamiltonian/MinimalModels/MinimalAltermagnetHamiltonian.py",
-        "Hamiltonian/Hamiltonian.py",
-        "Hamiltonian_helper.py", "eigenvalue_calc_lib.py", "diagnalization.py",
-        "Eigenvector.py", "calculus_lib.py", "QGT_calc_functions_3comp.py",
-        "QGT_lib.py", "dimension_lib.py", "topology.py",
+    files += [ROOT / "qgt" / filename for filename in (
+        "hamiltonians/minimal_models/MinimalAltermagnetHamiltonian.py",
+        "hamiltonians/base.py",
+        "hamiltonians/evaluate.py", "spectra/eigenvalues.py", "spectra/diagonalization.py",
+        "spectra/eigenvectors.py", "geometry/derivatives.py", "geometry/pointwise_3d.py",
+        "geometry/qgt_2d.py", "kspace/grids.py", "topology.py",
     )]
     return {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
             for path in files}

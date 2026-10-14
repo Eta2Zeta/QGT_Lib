@@ -5,12 +5,12 @@ import pickle
 
 import numpy as np
 
-from Library.Hamiltonian import THF_Hamiltonian
-from Library.data_management_utils_1d import setup_sym_points_results_directory
-from Library.eigenvalue_calc_lib_1d import eigenvalues_along_path
-from Library.output_utils import print_calculation_complete
-from Library.plotting_lib_1d import plot_band_structure_sym
-from Library.plotting_lib_3d import plot_degeneracy_on_path_3d
+from qgt.hamiltonians import THF_Hamiltonian
+from qgt.io.setup_1d import setup_sym_points_results_directory
+from qgt.spectra.eigenvalues_1d import eigenvalues_along_path
+from qgt.io.output import print_calculation_complete
+from qgt.plotting.bands_1d import plot_band_structure_sym
+from qgt.plotting.volume_3d import plot_degeneracy_on_path_3d
 
 
 def calculation_sym_points(

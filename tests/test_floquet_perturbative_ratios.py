@@ -1,7 +1,7 @@
 import numpy as np
 
-from Library.Hamiltonian.Hamiltonian import hamiltonian
-from Library.eigenvalue_calc_lib import grid_eigenvalues_eigenfunctions
+from qgt.hamiltonians.base import hamiltonian
+from qgt.spectra.eigenvalues import grid_eigenvalues_eigenfunctions
 
 
 class CircularTwoBandHamiltonian(hamiltonian):

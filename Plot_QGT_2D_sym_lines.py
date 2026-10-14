@@ -3,7 +3,7 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-from Library.data_paths import legacy_dir
+from qgt.io.paths import legacy_dir
 
 
 def _load_npz_dict(path):

@@ -5,7 +5,7 @@ from unittest.mock import patch
 import matplotlib.pyplot as plt
 import numpy as np
 
-from Library.plotting_qgt_2d import (
+from qgt.plotting.qgt_2d import (
     DEFAULT_BERRY_HEATMAP_PERCENTILE,
     get_coordinate_axis_labels,
     get_asymmetric_plot_limits,

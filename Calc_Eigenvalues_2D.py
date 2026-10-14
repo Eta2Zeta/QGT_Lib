@@ -5,24 +5,18 @@ import pickle
 
 import numpy as np
 
-from Library.Hamiltonian import THF_Hamiltonian
-from Library.Hamiltonian.MinimalModels import (
+from qgt.hamiltonians import THF_Hamiltonian
+from qgt.hamiltonians.minimal_models import (
     MinimalHamSG124_2b2d,
     MinimalHamSG127_2a2b,
     MinimalHamSG127_2c2d,
     MinimalHamSG194_2a,
 )
-from Library.data_management_utils_2d import setup_2D_Eigen_results_directory
-from Library.dimension_lib import (
-    create_2d_coordinate_grid,
-    is_cylindrical_order,
-)
-from Library.eigenvalue_calc_lib import (
-    capping_eigenvalues,
-    grid_eigenvalues_eigenfunctions,
-)
-from Library.output_utils import print_calculation_complete
-from Library.plotting_eigenvalues_2d import (
+from qgt.io.setup_2d import setup_2D_Eigen_results_directory
+from qgt.kspace.grids import create_2d_coordinate_grid, is_cylindrical_order
+from qgt.spectra.eigenvalues import capping_eigenvalues, grid_eigenvalues_eigenfunctions
+from qgt.io.output import print_calculation_complete
+from qgt.plotting.bands_2d import (
     plot_degeneracy_heatmap,
     plot_eigenvalue_line_slider,
     plot_eigenvalue_surfaces,

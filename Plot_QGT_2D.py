@@ -6,10 +6,8 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 
-from Library.dimension_lib import coordinate_order_info
-
-# Import plotting functions
-from Library.plotting_qgt_2d import (
+from qgt.kspace.grids import coordinate_order_info
+from qgt.plotting.qgt_2d import (
     plot_qgt_component_surfaces,
     plot_qgt_eigenvalue_berry_trace_surfaces,
     plot_qgt_eigenvalue_berry_trace_heatmaps,
@@ -18,7 +16,9 @@ from Library.plotting_qgt_2d import (
     get_coordinate_axis_labels,
     get_symmetric_plot_limits,
 )
-from Library.data_paths import legacy_dir
+from qgt.io.paths import legacy_dir
+
+# Import plotting functions
 
 def plot_qgt_from_directory(
     target_dir,

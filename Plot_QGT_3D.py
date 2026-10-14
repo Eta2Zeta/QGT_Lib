@@ -3,15 +3,14 @@ from mpl_toolkits.mplot3d import Axes3D
 import os
 import pickle
 import numpy as np
-from Library.plotting_lib_3d import plot_slice_stack
+from qgt.plotting.volume_3d import plot_slice_stack, plot_volumetric_cloud
+from qgt.io.paths import legacy_dir
 import sys
 import trimesh
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 from matplotlib.colorbar import ColorbarBase
 from skimage.measure import marching_cubes
-from Library.plotting_lib_3d import plot_volumetric_cloud
-from Library.data_paths import legacy_dir
 
 def plot_3d_qgt_slices(results_dir, quantity, component="xy", slice_plane="xy",
                        n_slices=1, include_endpoints=True):

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from Library.plotting_utils import load_qgt, filter_entries_by_omega
-from Plot_QGT_2D_Dynamic_ND_sweep import _load_nd_bundle, _pick_field_grid, _label_from_quantity
+from qgt.plotting.common import load_qgt, filter_entries_by_omega
+from Plot_QGT_2D_Dynamic_ND_sweep import _load_nd_bundle, _nd_sweep_field_grid, _label_from_quantity
 
 
 def _join_by_signed_inverse_omega(omegas_left, vals_left, omegas_right, vals_right,
@@ -148,7 +148,7 @@ def plot_1d_field_std(root_dir, quantity="trace"):
         
     param_name = names[0]
     param_axis = axes[0]
-    field_grid = _pick_field_grid(data, quantity)
+    field_grid = _nd_sweep_field_grid(data, quantity)
     
     # Calculate std over the BZ (the last two dimensions Ny, Nx)
     std_values = np.nanstd(field_grid, axis=(-2, -1))

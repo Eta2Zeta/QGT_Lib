@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from Library.topology import compute_chern_number
-from Library.data_paths import legacy_dir
+from qgt.topology import compute_chern_number
+from qgt.io.paths import legacy_dir
 import pickle
 # 2D, single data set not joined
 def plot_trace_std_param2d_inverse_omega(result_dir,
@@ -116,7 +116,7 @@ def _axis_for(bundle, i, name):
         raise KeyError(f"Missing axis array in bundle: '{key}'")
     return np.asarray(bundle[key], dtype=float)
 
-def _pick_field_grid(bundle, quantity, convert_berry_from_imQ):
+def _idealness_bundle_field_grid(bundle, quantity, convert_berry_from_imQ):
     q = quantity.lower()
     if q == "trace":
         return np.asarray(bundle["trace_grid"])
@@ -202,7 +202,7 @@ def prepare_joined_signed_invomega_data(
             
         else:
             # Standard fields (Trace, Berry, etc.) -> (N0, N1, Ny, Nx)
-            f_grid = _pick_field_grid(bundle, quantity, convert_berry_from_imQ)
+            f_grid = _idealness_bundle_field_grid(bundle, quantity, convert_berry_from_imQ)
             return np.nanstd(f_grid, axis=(-2, -1))
 
     # ----- load left bundle -----

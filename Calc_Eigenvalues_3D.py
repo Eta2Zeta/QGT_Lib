@@ -5,16 +5,16 @@ import pickle
 
 import numpy as np
 
-from Library.Hamiltonian import THF_Hamiltonian
-from Library.data_management_utils_3d import setup_3D_Eigen_results_directory
-from Library.eigenvalue_calc_lib import compute_eigenvalues_3d
-from Library.output_utils import print_calculation_complete
-from Library.plotting_lib_3d import (
+from qgt.hamiltonians import THF_Hamiltonian
+from qgt.io.setup_3d import setup_3D_Eigen_results_directory
+from qgt.spectra.eigenvalues import compute_eigenvalues_3d
+from qgt.io.output import print_calculation_complete
+from qgt.plotting.volume_3d import (
     plot_arbitrary_slice_no_interp,
     plot_degeneracy_3d,
     plot_volumetric_cloud,
 )
-from Library.utilities import centered_kvals
+from qgt.kspace.paths import centered_kvals
 
 
 def calculation_3d(

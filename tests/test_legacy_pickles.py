@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from Library import legacy_pickles
+from qgt.io import legacy_pickles
 
 
 def _pickled_global(module, name):
@@ -16,18 +16,24 @@ def _pickled_global(module, name):
 @pytest.mark.parametrize(
     "old_module, old_name, new_module, new_name",
     [
-        ("Library.Hamiltonian_v2", "HaldaneHamiltonian", "Library.Hamiltonian.HaldaneHamiltonian", "HaldaneHamiltonian"),
-        ("Library.Hamiltonian_v2", "RhombohedralGrapheneHamiltonian", "Library.Hamiltonian.ChiralHamiltonian", "ChiralHamiltonian"),
+        ("Library.Hamiltonian_v2", "HaldaneHamiltonian", "qgt.hamiltonians.haldane", "HaldaneHamiltonian"),
+        ("Library.Hamiltonian_v2", "RhombohedralGrapheneHamiltonian", "qgt.hamiltonians.chiral", "ChiralHamiltonian"),
         ("Library.Hamiltonian.Altermagnet_Hamiltonian", "AltermagnetHamiltonian",
-         "Library.Hamiltonian.AltermagnetHamiltonian", "AltermagnetHamiltonian"),
+         "qgt.hamiltonians.altermagnet", "AltermagnetHamiltonian"),
         ("Library.Hamiltonian.Chiral_Hamiltonian_Projected", "ChiralHamiltonianProjected",
-         "Library.Hamiltonian.ChiralHamiltonian_ChiralBasis_Projected", "ChiralHamiltonianChiralBasisProjected"),
+         "qgt.hamiltonians.chiral_basis_projected", "ChiralHamiltonianChiralBasisProjected"),
         ("Library.Hamiltonian.gWaveAltermagnetHamiltonian", "gWaveAltermagnetHamiltonian",
-         "Library.Hamiltonian.MinimalModels.MinimalHamSG194_2a", "MinimalHamSG194_2a"),
+         "qgt.hamiltonians.minimal_models.MinimalHamSG194_2a", "MinimalHamSG194_2a"),
         ("Library.Hamiltonian.MinimalHamSG1272a2b", "MinimalHamSG1272a2b",
-         "Library.Hamiltonian.MinimalModels.MinimalHamSG127_2a2b", "MinimalHamSG127_2a2b"),
+         "qgt.hamiltonians.minimal_models.MinimalHamSG127_2a2b", "MinimalHamSG127_2a2b"),
         ("Library.Hamiltonian.MinimalHamSG127_2c2d", "MinimalHamSG127_2c2d",
-         "Library.Hamiltonian.MinimalModels.MinimalHamSG127_2c2d", "MinimalHamSG127_2c2d"),
+         "qgt.hamiltonians.minimal_models.MinimalHamSG127_2c2d", "MinimalHamSG127_2c2d"),
+        # Library -> qgt
+        ("Library.Hamiltonian.ChiralHamiltonian", "ChiralHamiltonian", "qgt.hamiltonians.chiral", "ChiralHamiltonian"),
+        ("Library.Hamiltonian.Hamiltonian", "GrapheneHamiltonian", "qgt.hamiltonians.graphene", "GrapheneHamiltonian"),
+        ("Library.Hamiltonian.MinimalModels.MinimalHamSG194_2a", "MinimalHamSG194_2a",
+         "qgt.hamiltonians.minimal_models.MinimalHamSG194_2a", "MinimalHamSG194_2a"),
+        ("Library.Hamiltonian.THF_Hamiltonian", "THF_Hamiltonian", "qgt.hamiltonians.thf", "THF_Hamiltonian"),
     ],
 )
 def test_old_module_paths_unpickle_to_current_classes(old_module, old_name, new_module, new_name):
@@ -35,11 +41,25 @@ def test_old_module_paths_unpickle_to_current_classes(old_module, old_name, new_
     assert (cls.__module__, cls.__name__) == (new_module, new_name)
 
 
-def test_every_explicit_entry_resolves():
-    for old_module, table in legacy_pickles.MOVED_MODULES.items():
-        for old_name in table:
-            if old_name != "*":
-                assert isinstance(legacy_pickles.resolve(old_module, old_name), type)
+def test_every_table_entry_loads():
+    for old_module, entry in legacy_pickles.MOVED_MODULES.items():
+        module = importlib.import_module(old_module)
+        for old_name in entry["renamed"]:
+            assert isinstance(legacy_pickles.resolve(old_module, old_name), type)
+            assert getattr(module, old_name) is legacy_pickles.resolve(old_module, old_name)
+
+
+def test_old_import_statements_still_work():
+    from Library.QGT_lib import QGT_grid_num
+    from qgt.geometry.qgt_2d import QGT_grid_num as current
+
+    assert QGT_grid_num is current
+    namespace = {}
+    exec("from Library.utilities import *", namespace)
+    assert {"generate_2d_sym_lines", "replace_zeros_with_nan", "sign_check"} <= set(namespace)
+    from Library.Hamiltonian import MinimalModels
+
+    assert MinimalModels.MinimalHamSG194_2a.__module__ == "qgt.hamiltonians.minimal_models.MinimalHamSG194_2a"
 
 
 def test_unknown_name_in_moved_module_fails_clearly():

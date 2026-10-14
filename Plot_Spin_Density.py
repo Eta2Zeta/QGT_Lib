@@ -2,8 +2,8 @@ import os
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
-from Library.data_paths import legacy_dir
-from Library.runs import find_runs
+from qgt.io.paths import legacy_dir
+from qgt.io.runs import find_runs
 
 def plot_spin_component_2x2(kx, ky, spin_data, component_name, results_dir=None):
     """

@@ -2,8 +2,8 @@ from pathlib import Path
 
 import numpy as np
 
-from Library.Hamiltonian import ChiralHamiltonian
-from Library.Hamiltonian.MinimalModels import MinimalHamSG127_2a2b
+from qgt.hamiltonians import ChiralHamiltonian
+from qgt.hamiltonians.minimal_models import MinimalHamSG127_2a2b
 from Plot_Symmetry_Lines_3D import (
     SEGMENT_COLOR_PALETTE,
     build_symmetry_path_3d_figure,

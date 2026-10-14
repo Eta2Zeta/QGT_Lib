@@ -3,11 +3,12 @@ import matplotlib.pyplot as plt
 import sys
 import os
 
-# Add the repository root to the path to allow importing from Library
+# Add the repository root to the path to allow importing from qgt
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
-from Library.Hamiltonian.ChiralHamiltonian import ChiralHamiltonian
-from Library.Hamiltonian.ChiralHamiltonianEffective import ChiralHamiltonianEffective
+from qgt.hamiltonians.chiral import ChiralHamiltonian
+# ChiralHamiltonianEffective was renamed ChiralHamiltonianSWProjected in v0.1.1.
+from qgt.hamiltonians.chiral_sw_projected import ChiralHamiltonianSWProjected as ChiralHamiltonianEffective
 
 def main():
     # Parameters

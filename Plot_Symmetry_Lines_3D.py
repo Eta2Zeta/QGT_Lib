@@ -8,8 +8,8 @@ from pathlib import Path
 import numpy as np
 import plotly.graph_objects as go
 
-from Library.Hamiltonian.MinimalModels import MinimalHamSG194_2a
-from Library.data_paths import legacy_dir
+from qgt.hamiltonians.minimal_models import MinimalHamSG194_2a
+from qgt.io.paths import legacy_dir
 
 
 SEGMENT_COLOR_PALETTE = (

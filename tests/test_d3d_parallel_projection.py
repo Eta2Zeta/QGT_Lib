@@ -7,7 +7,7 @@ from Calc_QGT_2D_D3d_Projection import (
     _project_all_irreps_parallel,
     _project_irrep_worker,
 )
-from Library.GroupTheory import D3dPointGroup
+from qgt.symmetry import D3dPointGroup
 
 
 def test_irrep_worker_matches_serial_projection(tmp_path):
