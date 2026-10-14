@@ -24,6 +24,8 @@ def test_original_model_is_shown_before_the_default(tmp_path):
     results = [_dataset(tmp_path / plane / name, plane, kz, params)
                for name, params in (("dataset_2", DEFAULT), ("dataset_3", ORIGINAL))
                for plane, kz in (("kz_0", 0.0), ("kz_0p01_BZ", 0.06))]
+    missing = {"model": SG11, "plane": "kz_0", "kz": 0.0, "dataset_dir": str(tmp_path / "gone")}
+    assert len(gallery_order(results + [missing])) == 5  # a removed dataset does not break the order
     ordered = [(Path(i["dataset_dir"]).name, i["plane"]) for i in gallery_order(results)]
     assert ordered == [("dataset_3", "kz_0"), ("dataset_3", "kz_0p01_BZ"),
                        ("dataset_2", "kz_0"), ("dataset_2", "kz_0p01_BZ")]

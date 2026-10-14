@@ -211,7 +211,7 @@ variant; the gallery shows both. SG11's original minimal model (without the thre
 Note 3-3 terms) is calculated this way:
 
 ```sh
-python scripts/compute/minimal_planes.py --models MinimalHamSG11_2a2b2c2d --mesh-spacing 151 \
+python scripts/compute/minimal_planes.py --models MinimalHamSG11_2a2b2c2d \
     --params '{"t3_add": 0, "lamb_z_add": 0, "lamb_z_xz_add": 0}' --variant original --output-root <run folder>
 ```
 

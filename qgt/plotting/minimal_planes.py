@@ -579,8 +579,10 @@ def _sg11_variant(params):
 def _variant_order(item):
     if item["model"] != "MinimalHamSG11_2a2b2c2d":
         return 0
-    dataset_dir = Path(relocate_legacy_path(item["dataset_dir"]))
-    return _sg11_variant(json.loads((dataset_dir / "meta.json").read_text()).get("hamiltonian_params", {}))[0]
+    meta = Path(relocate_legacy_path(item["dataset_dir"])) / "meta.json"
+    if not meta.is_file():  # a dataset being replaced; write_gallery skips it
+        return 0
+    return _sg11_variant(json.loads(meta.read_text()).get("hamiltonian_params", {}))[0]
 
 
 def gallery_order(results):
