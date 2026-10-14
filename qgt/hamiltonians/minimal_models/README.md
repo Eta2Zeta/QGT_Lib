@@ -149,14 +149,14 @@ The SG192 docstring's old table attribution has been corrected to Table IV.
 From the library root:
 
 ```sh
-python Calc_QGT_MinimalModels_Planes.py --workers 6
+python scripts/compute/minimal_planes.py --workers 6
 ```
 
 To replace the existing calculations and regenerate their plots in the same
 dataset folders, use `--overwrite`:
 
 ```sh
-python Calc_QGT_MinimalModels_Planes.py --overwrite --workers 6
+python scripts/compute/minimal_planes.py --overwrite --workers 6
 ```
 
 The runner uses the existing `grid_eigenvalues_eigenfunctions` first, followed
@@ -187,13 +187,13 @@ To add or repair plots for the datasets already in the manifest, without
 recalculating bands or geometry:
 
 ```sh
-python Calc_QGT_MinimalModels_Planes.py --plots-only --workers 2
+python scripts/compute/minimal_planes.py --plots-only --workers 2
 ```
 
 This calls the existing plotting helpers through
-`Plot_QGT_MinimalModels_Planes.py`. `--force-new` with `--plots-only` regenerates
+`scripts/plot/minimal_planes.py`. `--force-new` with `--plots-only` regenerates
 plots, leaving the numerical arrays and calculation metadata unchanged.
-The existing `Plot_QGT_2D.plot_qgt_from_directory` also accepts each dataset.
+The existing `qgt.plotting.qgt_2d_comparison.plot_qgt_from_directory` also accepts each dataset.
 
 For trigonal/hexagonal models, the grid covers the Cartesian bounding box of
 the hexagonal BZ; `bz_mask.npy` identifies its interior. Other models use the

@@ -1,6 +1,6 @@
 import numpy as np
 
-from Calc_QGT_2D_nd_parameter_sweep import _worker_qgt_point
+from qgt.workflows.qgt_nd_sweep import _worker_qgt_point
 from qgt.hamiltonians.base import hamiltonian
 from qgt.kspace.grids import create_2d_coordinate_grid_from_ranges
 

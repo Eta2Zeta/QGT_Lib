@@ -1,15 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from skimage import measure
 from scipy.interpolate import RegularGridInterpolator
 import plotly.graph_objects as go
-from qgt.utils import replace_zeros_with_nan
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
-from itertools import product
-from matplotlib.lines import Line2D
 
 
 def plot_degeneracy_3d(kx_vals, ky_vals, kz_vals, eigenvalues, threshold=0.01, title="Degeneracy Map (3D)",

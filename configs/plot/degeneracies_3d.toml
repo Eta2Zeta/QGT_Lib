@@ -1,0 +1,9 @@
+# Band degeneracies of a 3D eigenvalue run, as an interactive 3D plot.
+# Run: python scripts/plot/degeneracies_3d.py [config]
+# Calls qgt.plotting.degeneracies_3d.plot_3d_degeneracies(**arguments).
+
+[arguments]
+# The newest pre-reorganization dataset; use "@latest/eigen_3d" for the newest new run.
+results_dir = "@legacy/3D_Eigen_results/gWaveAltermagnetHamiltonian/data_set_5"
+threshold = 0.02
+stride = 2

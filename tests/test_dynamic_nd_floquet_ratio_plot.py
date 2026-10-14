@@ -6,7 +6,7 @@ import unittest
 
 import numpy as np
 
-from Plot_QGT_2D_Dynamic_ND_sweep import (
+from qgt.plotting.nd_sweep_html import (
     _floquet_ratio_summary_grid,
     _prepare_floquet_ratio_field,
     dynamic_nd_field_with_bands_html,

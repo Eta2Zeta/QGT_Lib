@@ -1,0 +1,9 @@
+# A qgt_nd sweep as a matplotlib window with sliders over the parameters.
+# Run: python scripts/plot/nd_sweep_matplotlib.py [config]
+# Calls qgt.plotting.nd_sweep_matplotlib.dynamic_nd_field_with_bands_matplotlib(**arguments).
+
+[arguments]
+root_dir = "@legacy/2D_QGT_ND/gWaveAltermagnetHamiltonian/dataset7"
+quantity = "berry_components"
+berry_lim_percentile = 90.0
+bands_to_plot = [0, 1, 2, 3]

@@ -25,11 +25,18 @@ from qgt.io.paths import REPO_ROOT, data_root
 
 RUN_INFO = "run.json"
 _LATEST = "latest.txt"
+_CONFIG = {"config": None, "file": None}
 
 
 def runs_dir(*parts):
     """Return a path inside ``Results/runs``."""
     return os.path.join(data_root(), "runs", *parts)
+
+
+def use_config(config, path):
+    """Record ``config`` (loaded from ``path``) in every run created until it is cleared with None."""
+    _CONFIG["config"] = config
+    _CONFIG["file"] = os.path.abspath(path) if path else None
 
 
 def _safe(name):
@@ -115,6 +122,9 @@ def new_run(kind, model, required_params=None, *, required_files=None, force_new
         "runner": os.path.basename(sys.argv[0]) or None,
         "inputs": {}, "schema": 1,
     }
+    if _CONFIG["config"] is not None:
+        info["config_file"] = _CONFIG["file"]
+        info["config"] = _CONFIG["config"]
     with open(os.path.join(run_dir, RUN_INFO), "w") as handle:
         json.dump(info, handle, indent=2)
     _mark_latest(kind, run_dir)

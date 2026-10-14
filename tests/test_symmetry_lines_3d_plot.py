@@ -4,7 +4,7 @@ import numpy as np
 
 from qgt.hamiltonians import ChiralHamiltonian
 from qgt.hamiltonians.minimal_models import MinimalHamSG127_2a2b
-from Plot_Symmetry_Lines_3D import (
+from qgt.plotting.symmetry_path_3d import (
     SEGMENT_COLOR_PALETTE,
     build_symmetry_path_3d_figure,
     plot_symmetry_path_3d,

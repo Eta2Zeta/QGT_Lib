@@ -1,0 +1,9 @@
+# A qgt_nd sweep as interactive HTML: the field on the k-grid with sliders over the parameters.
+# Run: python scripts/plot/nd_sweep_html.py [config]
+# Calls qgt.plotting.nd_sweep_html.dynamic_nd_field_with_bands_html(**arguments).
+
+[arguments]
+root_dir = "@legacy/2D_QGT_ND/gWaveAltermagnetHamiltonian/dataset5"
+quantity = "berry_components"
+bands_to_plot = [0, 1, 2, 3]
+output_html = "@legacy/2D_QGT_ND/gWaveAltermagnetHamiltonian/dataset5/qgt_trace_nd_sweep.html"

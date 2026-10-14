@@ -1,0 +1,8 @@
+# Eigenvalues along the symmetry path with sliders over a sym_nd parameter sweep.
+# Run: python scripts/plot/sym_nd.py [config | bundle.npz]
+# Calls qgt.plotting.sym_nd.dynamic_sym_nd(**arguments).
+
+[arguments]
+# The last pre-reorganization sweep; use "@latest/sym_nd/sym_nd_bundle.npz" for the newest new run.
+bundle_path = "@legacy/Sym_Energy_ND/gWaveAltermagnetHamiltonian_Sym_Jx_0.0to1_Jy_0.0to1_Jz_0.0to1_lamb_0.0to0.3_lamb_z_0.0to0.3_t1_0.0to0.3_t2_0.0to0.3_t3_0.0to0.3_t4_0.0to0.3/sym_nd_bundle.npz"
+# Earlier sweep: @legacy/Sym_Energy_ND/gWaveAltermagnetHamiltonian_Sym_Jx_0.0to1_Jy_0.0to1_Jz_0.0to1_lamb_0.0to0.3_lamb_z_0.0to0.3_1/sym_nd_bundle.npz

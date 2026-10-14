@@ -1,0 +1,8 @@
+# QGT of all bands on the 3D grid of an eigen_3d run, one process per band. Writes a qgt_3d run.
+# Run: python scripts/compute/qgt_3d.py [config]
+# Calls qgt.workflows.qgt_3d.calculate_3d_all_bands_parallel(**arguments).
+# Reads the eigen_3d run created or reused most recently, unless eigen_run is set.
+
+[arguments]
+method = "numerical"
+# eigen_run = "@runs/eigen_3d/<model>/<YYYYMMDD-HHMMSS>"

@@ -1,0 +1,9 @@
+# The model's high-symmetry path in 3D, as interactive HTML.
+# Run: python scripts/plot/symmetry_path_3d.py [config]
+# Calls qgt.plotting.symmetry_path_3d.plot_symmetry_path_3d(model, **arguments).
+
+[model]
+class = "MinimalHamSG194_2a"
+
+[arguments]
+# path = ...   # a custom path; default: the model's own symmetry path

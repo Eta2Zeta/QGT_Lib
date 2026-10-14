@@ -1,0 +1,15 @@
+# Fit the horizontal (1/omega) and vertical (V) slices exported by plot/idealness_2d.
+# Run: python scripts/compute/fit_idealness_1d.py [config]
+# Calls qgt.workflows.fit_idealness_1d.process_slice_data(**arguments).
+
+[arguments]
+input_npz_path = "@legacy/1D_idealness_resutls/slice_data_export.npz"
+output_dir = "@legacy/1D_idealness_resutls"
+# Horizontal slice (1/omega): e.g. only the positive side, up to a cutoff.
+horz_x_min = 0.00
+horz_x_max = 0.0125
+invert_horz_x = true
+# Vertical slice (V): e.g. the tail.
+vert_x_min = 15.0
+vert_x_max = 50.0
+invert_vert_x = false

@@ -1,0 +1,9 @@
+# Eigenvalues along a 1D line through the Brillouin zone.
+# Run: python scripts/compute/eigen_1d.py [config]
+# Calls qgt.workflows.eigen_1d.calculation_1d(model, **arguments).
+
+[model]
+class = "THF_Hamiltonian"
+
+[model.params]
+A0 = 0

@@ -1,0 +1,58 @@
+# QGT on a 2D k-grid at every point of an N-dimensional parameter grid. Writes a qgt_nd run.
+# Run: python scripts/compute/qgt_nd_sweep.py [config]
+# Calls qgt.workflows.qgt_nd_sweep.compute_qgt_nd_parallel(hamiltonian_template=model, **arguments).
+
+[model]
+class = "MinimalHamSG127_2a2b"
+argument = "hamiltonian_template"
+
+[model.params]
+t1 = 0.3
+t2 = 0.3
+t3 = 0.3
+t4 = 0.3
+mu = 0
+Jx = 0.0
+Jy = 0.0
+Jz = 0.2
+lamb = 0.1
+lamb_z = 0.1
+
+[arguments]
+# Polar grid for any supported cylindrical order (also ypz, xpy, zpy, ypx, zpx),
+# or order = "xyz" with ki_range = kj_range = [-k_theta, k_theta].
+order = "xpz"
+ki_range = [0.0, 4.71238898038469]    # radius: [0, 1.5 π]
+kj_range = [0.0, 6.283185307179586]   # phi: [0, 2 π]
+kk = 0.0
+include_endpoints = true
+mesh_spacing = 100
+band = 2
+num_points_per_segment = 100
+processes = 10
+force_new_dir = false
+float_dtype = "float32"
+max_l = 10
+delta_k = 1e-5
+
+[arguments.param_ranges]
+t1 = [-0.5, 0.5]
+t2 = [-0.5, 0.5]
+t3 = [-0.5, 0.5]
+t4 = [-0.5, 0.5]
+lamb = [-0.5, 0.5]
+lamb_z = [-0.5, 0.5]
+
+[arguments.parameter_spacing]
+t1 = { n = 5, scale = "linear" }
+t2 = { n = 5, scale = "linear" }
+t3 = { n = 5, scale = "linear" }
+t4 = { n = 5, scale = "linear" }
+lamb = { n = 5, scale = "linear" }
+lamb_z = { n = 5, scale = "linear" }
+
+# THF setup previously kept in the script:
+#   [model] class = "THF_Hamiltonian", params A0 = 0.10, V = 0.0, omega = 5000,
+#   polarization = "right", magnus_order = 1, analytic_magnus = false
+#   param_ranges: V = [0.0, 10.0] (keep below |gamma| = 24.75 meV), omega = [5000, 100000]
+#   parameter_spacing: V = { n = 5, scale = "linear" }, omega = { n = 16, scale = "log" }

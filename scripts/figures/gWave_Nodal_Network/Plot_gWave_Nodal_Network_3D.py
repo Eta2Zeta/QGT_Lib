@@ -1,6 +1,6 @@
 """Trace the exact SG194 middle-band nodal network and export offline Plotly HTML.
 
-Run from anywhere after placing this directory in results/Plot_Specific/:
+Run from anywhere; this directory is scripts/figures/gWave_Nodal_Network/:
     python Plot_gWave_Nodal_Network_3D.py
     python Plot_gWave_Nodal_Network_3D.py --t4 0.5 --grid 601
 

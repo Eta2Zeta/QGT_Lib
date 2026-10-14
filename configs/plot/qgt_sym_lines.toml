@@ -1,0 +1,11 @@
+# Two QGT runs compared along the symmetry path.
+# Run: python scripts/plot/qgt_sym_lines.py [config]
+# Calls qgt.plotting.qgt_sym_lines.plot_two_qgt_sym_lines(**arguments).
+
+[arguments]
+left_dir = "@legacy/2D_QGT_results/ChiralHamiltonian/dataset_1"
+right_dir = "@legacy/2D_QGT_results/ChiralHamiltonianChiralBasisProjected/dataset_2"
+quantity = "berry"
+left_band = 4
+right_band = 0
+labels = ["Full chiral Hamiltonian", "Chiral-basis projected"]

@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 
-import Calc_QGT_2D_nd_parameter_sweep as nd_sweep
+from qgt.workflows import qgt_nd_sweep as nd_sweep
 from qgt.hamiltonians.base import hamiltonian
 
 

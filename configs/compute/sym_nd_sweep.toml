@@ -1,0 +1,47 @@
+# Eigenvalues along the symmetry path at every point of an N-dimensional parameter grid.
+# Writes a sym_nd run, which plot/sym_nd shows.
+# Run: python scripts/compute/sym_nd_sweep.py [config]
+# Calls qgt.workflows.sym_nd_sweep.compute_sym_nd_parallel(hamiltonian_template=model, **arguments).
+
+[model]
+class = "MinimalHamSG194_2a"
+argument = "hamiltonian_template"
+
+[model.params]
+t1 = 0.3
+t2 = 0.3
+t3 = 0.3
+t4 = 0.3
+mu = 0
+Jx = 0.2
+Jy = 0.0
+Jz = 0.0
+lamb = 0.1
+lamb_z = 0.1
+
+[arguments]
+num_points_per_segment = 50
+space_group = 194
+float_dtype = "float32"
+
+[arguments.param_ranges]
+Jx = [0.0, 1]
+Jy = [0.0, 1]
+Jz = [0.0, 1]
+lamb = [0.0, 0.3]
+lamb_z = [0.0, 0.3]
+t1 = [0.0, 0.3]
+t2 = [0.0, 0.3]
+t3 = [0.0, 0.3]
+t4 = [0.0, 0.3]
+
+[arguments.parameter_spacing]
+Jx = { n = 6, scale = "linear" }
+Jy = { n = 6, scale = "linear" }
+Jz = { n = 6, scale = "linear" }
+lamb = { n = 3, scale = "linear" }
+lamb_z = { n = 3, scale = "linear" }
+t1 = { n = 3, scale = "linear" }
+t2 = { n = 3, scale = "linear" }
+t3 = { n = 3, scale = "linear" }
+t4 = { n = 3, scale = "linear" }

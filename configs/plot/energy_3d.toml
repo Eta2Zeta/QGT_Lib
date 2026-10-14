@@ -1,0 +1,12 @@
+# Energy isosurfaces and slices of one band of a 3D eigenvalue run.
+# Run: python scripts/plot/energy_3d.py [config]
+# Calls qgt.plotting.energy_3d.plot_3d_energy(**arguments).
+
+[arguments]
+# The newest pre-reorganization dataset; use "@latest/eigen_3d" for the newest new run.
+results_dir = "@legacy/3D_Eigen_results/gWaveAltermagnetHamiltonian/data_set_5"
+band_idx = 2
+cloud_opacity = 0.2
+cloud_stride = 2   # increase to render faster
+slice_stride = 2   # increase to render faster
+levels = [0]       # energy levels for isosurfaces

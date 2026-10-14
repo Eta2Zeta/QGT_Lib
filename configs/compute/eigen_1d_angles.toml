@@ -1,0 +1,14 @@
+# Eigenvalues along 1D lines through Gamma at many angles.
+# Run: python scripts/compute/eigen_1d_angles.py [config]
+# Calls qgt.workflows.eigen_1d_angles.calculation_1d_at_angles(model, **arguments).
+# k_max defaults to the model's k_theta (2π if it has none); set it here to override.
+
+[model]
+class = "THF_Hamiltonian"
+
+[model.params]
+A0 = 0
+
+[arguments]
+num_angles = 200
+bands_to_plot = [2, 3]

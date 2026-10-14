@@ -1,0 +1,22 @@
+# QGT versus drive frequency for left/right drive, joined into one interactive HTML.
+# Run: python scripts/plot/omega_sweep.py [config]
+# Calls qgt.plotting.omega_sweep.<function>(**arguments).
+
+function = "dynamic_2d_qgt_vs_omega_jointed_html"
+
+[arguments]
+left_dataset_path = "@legacy/2D_QGT_ND/ChiralHamiltonian/dataset1"
+right_dataset_path = "@legacy/2D_QGT_ND/ChiralHamiltonian/dataset3"
+quantity = "trace"
+omega_min_left = 50
+omega_min_right = 30
+label_left = "left drive"
+label_right = "right drive"
+bands_to_plot = [3, 4, 5, 6]
+
+# Other calls previously kept in the script:
+#   function = "dynamic_2d_trace_hprime_eigs_vs_omega_dual" on
+#     2D_QGT_ND/ChiralHamiltonianChiralBasisProjected/dataset3 and dataset5,
+#     label_left = "Numerical Direct Drive", label_right = "Analytic Direct Drive"
+#   dynamic_2d_trace_hprime_eigs_vs_omega_nd (no longer exists) on
+#     2D_QGT_ND/ChiralHamiltonianChiralBasisProjected/dataset1

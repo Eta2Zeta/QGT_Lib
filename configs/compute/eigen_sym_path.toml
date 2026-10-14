@@ -1,0 +1,12 @@
+# Eigenvalues along the model's high-symmetry path.
+# Run: python scripts/compute/eigen_sym_path.py [config]
+# Calls qgt.workflows.eigen_sym_path.calculation_sym_points(model, **arguments).
+
+[model]
+class = "THF_Hamiltonian"
+
+[model.params]
+A0 = 0
+
+[arguments]
+force_new = true

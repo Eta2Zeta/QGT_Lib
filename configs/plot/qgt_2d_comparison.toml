@@ -1,0 +1,12 @@
+# Two 2D QGT runs side by side, with their energies along the symmetry path.
+# Run: python scripts/plot/qgt_2d_comparison.py [config]
+# Calls qgt.plotting.qgt_2d_comparison.plot_qgt_2d_comparison_with_energies(**arguments).
+
+[arguments]
+left_dir = "@legacy/2D_QGT_results/ChiralHamiltonianChiralBasisProjected/dataset_1"
+right_dir = "@legacy/2D_QGT_results/ChiralHamiltonianChiralBasisProjected/dataset_2"
+quantity = "berry"
+left_band = 0
+right_band = 0
+labels = ["Chiral-basis Projected Naive Numerical", "Chiral-basis Projected Analytical"]
+output_path = "@legacy/2D_QGT_results/ChiralHamiltonian/chiral_basis_projected_naive_numerical_vs_chiral_basis_projected_analytical.png"

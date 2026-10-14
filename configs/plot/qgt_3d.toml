@@ -1,0 +1,22 @@
+# Views of a 3D QGT run (needs trimesh: pip install -e ".[plot3d]").
+# Run: python scripts/plot/qgt_3d.py [config]
+# Calls qgt.plotting.qgt_3d.<function>(**arguments).
+# The previous script had every call below commented out; the last one is active here.
+
+function = "plot_3d_qgt"
+
+[arguments]
+results_dir = "@legacy/3D_QGT_results/gWaveAltermagnetHamiltonian/data_set_6"
+quantity = "berry"
+count = 2
+bands = [1, 2, 3, 4]
+plot_step_size = 1
+kz_range = [-3.14, 3.14]
+
+# Other calls previously kept in the script, on the same results_dir:
+#   plot_3d_qgt: quantity = "berry", plane = "xy", count = 4, bands = [1, 2, 3, 4],
+#     plot_step_size = 1, kz_range = [0, 3.141592653589793]
+#   plot_3d_qgt: quantity = "berry", plane = "xy", levels = [0.3, -0.3], kz_range = [0, 2.827433388230814]  (0.9 π)
+#   plot_3d_qgt_all_slices_dynamic: quantity = "berry", component = "yz", slice_plane = "xy",
+#     bands = [1, 2, 3, 4], debug = false
+#   plot_3d_qgt_slices: quantity = "berry", component = "xy", slice_plane = "xy", n_slices = 3

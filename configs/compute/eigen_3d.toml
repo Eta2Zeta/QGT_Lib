@@ -1,0 +1,13 @@
+# Eigenvalues on a 3D k-grid. Writes an eigen_3d run, which qgt_3d reads.
+# Run: python scripts/compute/eigen_3d.py [config]
+# Calls qgt.workflows.eigen_3d.calculation_3d(model, **arguments).
+
+[model]
+class = "THF_Hamiltonian"
+
+[model.params]
+A0 = 0
+
+[arguments]
+force_new = false
+include_end_points = true

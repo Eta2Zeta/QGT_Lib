@@ -1,0 +1,18 @@
+# A QGT metric versus signed 1/omega, left and right drive joined; one figure per [[calls]] entry.
+# Run: python scripts/plot/idealness_1d.py [config]
+# Calls qgt.plotting.idealness_1d.plot_qgt_metric_vs_signed_invomega_joined(**arguments) per entry.
+
+[arguments]
+left_folder_name = "ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationleft_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1"
+right_folder_name = "ChiralHamiltonian/omega6.283185307179586_A00.1_polarizationright_magnus_order1_analytic_magnusFalse_n5_vF542.1_t1355.16_V30.0_eta1.0_kx-0.82_0.82_ky-0.82_0.82_mesh150_omega5.00e_00_5.00e_03_spacing_log_points64_1"
+omega_min_left = 33
+omega_min_right = 50
+
+[[calls]]
+quantity = "trace"
+
+[[calls]]
+quantity = "berry"
+
+[[calls]]
+quantity = "trace_minus_berry"

@@ -1,0 +1,10 @@
+# QGT of all bands on the 2D grid of an eigen_2d run. Writes a qgt_2d run.
+# Run: python scripts/compute/qgt_2d.py [config]
+# Calls qgt.workflows.qgt_2d.calculate_2d_all_bands(**arguments).
+# Reads the eigen_2d run created or reused most recently, unless eigen_run is set.
+
+[arguments]
+Force_new = false
+method_name = "numerical_phase_corrected"
+include_sym_path_qgt = true
+# eigen_run = "@runs/eigen_2d/<model>/<YYYYMMDD-HHMMSS>"

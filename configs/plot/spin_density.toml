@@ -1,0 +1,5 @@
+# Spin textures of the newest spin_density run for a model (new runs first, then legacy data).
+# Run: python scripts/plot/spin_density.py [config]
+
+[arguments]
+model_name = "MinimalHamSG127_2a2b"

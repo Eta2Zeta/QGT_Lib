@@ -1,0 +1,29 @@
+# QGT along a 1D line while sweeping one model parameter.
+# Run: python scripts/compute/qgt_1d_sweep.py [config]
+# Calls qgt.workflows.qgt_1d_sweep.sweep_single_param_1d(model, **arguments).
+
+[model]
+class = "SquareLatticeHamiltonian"
+
+[model.params]
+A0 = 0.1
+omega = 1.0
+t1 = 1
+t2 = 0.7071067811865475   # 1/√2
+t5 = 0
+
+[model.attributes]
+polarization = "right"
+
+[arguments]
+param_name = "omega"
+vmin = 0.05
+vmax = 10.0
+spacing = "log"
+num_param_points = 50
+num_k_points = 200
+angle_deg = 45.0
+kx_shift = 0.0
+ky_shift = -1.5707963267948966   # -π/2
+band = 0
+force_new = true

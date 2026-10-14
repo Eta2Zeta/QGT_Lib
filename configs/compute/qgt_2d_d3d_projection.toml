@@ -1,0 +1,28 @@
+# Berry curvature projected onto every irrep of D3d, on a 2D grid.
+# Run: python scripts/compute/qgt_2d_d3d_projection.py [config]
+# Calls qgt.workflows.qgt_2d_d3d_projection.calculate_d3d_all_irrep_berry_projections(model, **arguments).
+
+[model]
+class = "MinimalHamSG194_2a"
+
+[model.params]
+Jx = 0.0
+Jy = 0.0
+Jz = 0.2
+lamb = 0.1
+lamb_z = 0.5
+A0 = 0.0
+magnus_order = 0
+t1 = 0.3
+t2 = 0.3
+t3 = 0.3
+t4 = 0.3
+
+[arguments]
+mesh_spacing = 150
+k_max = 4.71238898038469   # 1.5 π
+kk = 0.0
+band_indices = "all"       # every band of the model; or a list such as [0, 1]
+delta_k = 1e-5
+orbit_workers = 6
+force_new = false

@@ -8,7 +8,7 @@ import pickle
 import numpy as np
 import pytest
 
-import Calc_QGT_MinimalModels_Planes as runner
+from qgt.workflows import minimal_planes as runner
 
 
 def test_new_model_catalog_and_requested_planes():
@@ -166,7 +166,7 @@ def test_hexagonal_degenerate_plane_and_displaced_plane(tmp_path, monkeypatch):
 
 
 def test_automatic_plotting_for_new_and_cached_calculations(tmp_path, monkeypatch):
-    import Plot_QGT_MinimalModels_Planes as plotting
+    from qgt.plotting import minimal_planes as plotting
 
     plotted = []
 
@@ -208,7 +208,7 @@ def test_overwrite_recalculates_changed_parameters_in_same_folder(tmp_path, monk
 
 
 def test_plots_only_preserves_calculation_manifest(tmp_path, monkeypatch):
-    import Plot_QGT_MinimalModels_Planes as plotting
+    from qgt.plotting import minimal_planes as plotting
 
     manifest = tmp_path / "manifest.json"
     original = '{"completed_calculations": 44, "results": []}\n'
@@ -230,7 +230,7 @@ def test_plots_only_preserves_calculation_manifest(tmp_path, monkeypatch):
 
 
 def test_subset_force_new_preserves_old_sets_and_full_gallery(tmp_path, monkeypatch):
-    import Plot_QGT_MinimalModels_Planes as plotting
+    from qgt.plotting import minimal_planes as plotting
 
     selected = "MinimalHamSG11_2a2b2c2d"
     model_class = runner.MINIMAL_MODELS[selected]

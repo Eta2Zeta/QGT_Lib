@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pytest
 
-from Calc_QGT_2D_D3d_Projection import (
+from qgt.workflows.qgt_2d_d3d_projection import (
     _project_all_irreps_parallel,
     _project_irrep_worker,
 )

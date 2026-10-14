@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "qgt-lib"
 version = "0.1.14"
 description = "Quantum geometric tensor, Berry curvature and band-structure calculations for tight-binding and Floquet Hamiltonians"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "numpy",
     "scipy",
@@ -20,7 +20,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest"]
-# Only Plot_QGT_3D.py needs trimesh.
+# Only qgt.plotting.qgt_3d needs trimesh.
 plot3d = ["trimesh"]
 
 [tool.setuptools.packages.find]

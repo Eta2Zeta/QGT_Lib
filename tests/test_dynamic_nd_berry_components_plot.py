@@ -6,11 +6,11 @@ import numpy as np
 import pytest
 
 from qgt.plotting.common import symmetry_path_chains_on_slice
-from Plot_QGT_2D_Dynamic_ND_sweep_matplotlib import (
+from qgt.plotting.nd_sweep_matplotlib import (
     dynamic_nd_field_with_bands_matplotlib,
     plot_berry_components_nd_matplotlib,
 )
-from Plot_QGT_2D_Dynamic_ND_sweep import (
+from qgt.plotting.nd_sweep_html import (
     _berry_component_grids,
     _nd_sweep_field_grid,
     dynamic_nd_field_with_bands_html,

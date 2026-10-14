@@ -305,7 +305,7 @@ def compute_QGT_projector(eigenvectors, band_idx, dk_x, dk_y):
     
     Parameters:
     - eigenvectors: complex array (Nx, Ny, num_bands, dim_hilbert)
-      Note: Calc_Eigenvalues produces (Nx, Ny, dim, dim) where
+      Note: qgt.workflows.eigen_2d produces (Nx, Ny, dim, dim) where
             eigenvectors[i, j, m, :] is the m-th eigenvector components.
     - band_idx: index of the band to compute (e.g., 0 for ground state)
     - dk_x, dk_y: grid spacing in kx and ky directions
