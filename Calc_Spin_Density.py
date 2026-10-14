@@ -7,18 +7,19 @@ import shutil
 
 from Library.data_management_utils_2d import setup_Spin_Density_results_directory
 from Library.output_utils import print_calculation_complete
+from Library.runs import input_run, record_inputs
 from Plot_Spin_Density import plot_all_spin_components
 
-def calculate_spin_density_all_bands(Force_new=True):
-    # Retrieve pre-computed vectors from the temp directory
-    temp_dir = os.path.join(os.getcwd(), "temp")
+def calculate_spin_density_all_bands(Force_new=True, eigen_run=None):
+    # Input: the given 2D eigenvalue run, else the one most recently created or reused
+    eigen_dir = input_run("eigen_2d", eigen_run)
     
-    eigenvalues_file = os.path.join(temp_dir, "eigenvalues.npy")
-    eigenfunctions_file = os.path.join(temp_dir, "eigenfunctions.npy")
-    meta_info_file = os.path.join(temp_dir, "meta_info.pkl")
+    eigenvalues_file = os.path.join(eigen_dir, "eigenvalues.npy")
+    eigenfunctions_file = os.path.join(eigen_dir, "eigenfunctions.npy")
+    meta_info_file = os.path.join(eigen_dir, "meta_info.pkl")
 
     if not (os.path.exists(eigenvalues_file) and os.path.exists(eigenfunctions_file) and os.path.exists(meta_info_file)):
-        raise FileNotFoundError("Missing temp eigenvalues/eigenfunctions/meta_info.pkl. Please ensure a 2D eigenvalue calc ran.")
+        raise FileNotFoundError(f"Missing eigenvalues/eigenfunctions/meta_info.pkl in {eigen_dir}.")
 
     print("Loading eigenfunctions and meta_info...")
     eigenfunctions = np.load(eigenfunctions_file)
@@ -90,6 +91,8 @@ def calculate_spin_density_all_bands(Force_new=True):
         meta_params=meta_params,
         force_new=Force_new
     )
+    if not use_existing:
+        record_inputs(results_subdir, eigen_run=eigen_dir)
     
     if use_existing and os.path.exists(file_paths["spin_x"]):
         print("Existing spin arrays successfully identified and extracted. Overriding explicitly...")

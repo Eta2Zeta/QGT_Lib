@@ -15,7 +15,7 @@ from Library.utilities import generate_3d_sym_lines
 from Library.Hamiltonian_helper import get_Hamiltonian
 from Library.data_management_utils_nd import build_parameter_points
 from Library.output_utils import print_calculation_complete
-from Library.data_paths import legacy_dir
+from Library.runs import new_run
 
 
 # ---------- per-point worker ----------
@@ -54,7 +54,6 @@ def compute_sym_nd_parallel(
     num_points_per_segment=100,
     space_group=194,
     processes=None,
-    force_new_dir=False,
     float_dtype=np.float64,
 ):
     # TODO: This space group based sym path seems to be outdated, everything should be done in the Hamiltonian, maybe update it later
@@ -87,19 +86,8 @@ def compute_sym_nd_parallel(
     out_shape = tuple(shape) + (num_k_points, dim)
     eigenvalues_grid = np.empty(out_shape, dtype=float_dtype)
 
-    # Result directory
-    base = legacy_dir("Sym_Phase_Diagram")
-    name = (
-        f"{getattr(H_template, 'name', 'Model')}_Sym"
-        + "".join([f"_{k}_{v[0]}to{v[1]}" for k, v in param_ranges.items()])
-    )
-    path = os.path.join(base, name)
-    suffix, idx_dir = "", 1
-    while not force_new_dir and os.path.exists(path + suffix):
-        suffix = f"_{idx_dir}"
-        idx_dir += 1
-    root = path + suffix
-    os.makedirs(root, exist_ok=True)
+    # Result directory (a new run every time)
+    root, _ = new_run("sym_nd", getattr(H_template, 'name', 'Model'), force_new=True)
 
     bundle_path = os.path.join(root, "sym_nd_bundle.npz")
 
@@ -181,7 +169,6 @@ def main():
         num_points_per_segment=50,
         space_group=194,
         processes=None,
-        force_new_dir=False,
         float_dtype=np.float32,
     )
 

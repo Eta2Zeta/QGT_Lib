@@ -1,9 +1,7 @@
 """Calculate eigenvalues and eigenvectors on a two-dimensional momentum grid."""
 
 import json
-import os
 import pickle
-import shutil
 
 import numpy as np
 
@@ -111,9 +109,6 @@ def calculation_2d(
         )
     )
 
-    temp_dir = os.path.join(os.getcwd(), "temp")
-    os.makedirs(temp_dir, exist_ok=True)
-
     if use_existing:
         eigenvalues = np.load(file_paths["eigenvalues"])
         eigenfunctions = np.load(file_paths["eigenfunctions"])
@@ -125,10 +120,6 @@ def calculation_2d(
             "Loaded existing 2D eigenvalues, eigenfunctions, Floquet ratios, "
             "and metadata."
         )
-
-        for file_path in file_paths.values():
-            shutil.copy(file_path, os.path.join(temp_dir, os.path.basename(file_path)))
-        print(f"Copied existing results to temporary directory: {temp_dir}")
     else:
         (
             eigenvalues,
@@ -155,16 +146,6 @@ def calculation_2d(
             file_paths["floquet_max_ratio_indices"],
             floquet_max_ratio_indices,
         )
-        np.save(os.path.join(temp_dir, "eigenvalues.npy"), eigenvalues)
-        np.save(os.path.join(temp_dir, "eigenfunctions.npy"), eigenfunctions)
-        np.save(
-            os.path.join(temp_dir, "floquet_max_ratio.npy"),
-            floquet_max_ratio,
-        )
-        np.save(
-            os.path.join(temp_dir, "floquet_max_ratio_indices.npy"),
-            floquet_max_ratio_indices,
-        )
 
         with open(file_paths["meta_json"], "w") as meta_file:
             json.dump(meta_target, meta_file, indent=2, sort_keys=True)
@@ -179,9 +160,6 @@ def calculation_2d(
         )
         with open(file_paths["meta_pkl"], "wb") as meta_file:
             pickle.dump(meta_info_pkl, meta_file)
-        with open(os.path.join(temp_dir, "meta_info.pkl"), "wb") as meta_file:
-            pickle.dump(meta_info_pkl, meta_file)
-        shutil.copy(file_paths["meta_json"], os.path.join(temp_dir, "meta.json"))
 
     eigenvalues_for_plot = capping_eigenvalues(
         eigenvalues=eigenvalues,
@@ -245,7 +223,6 @@ def calculation_2d(
         "2D Eigenvalues",
         results_dir,
         artifact="Results",
-        copied_to=temp_dir,
     )
     return (
         eigenvalues,

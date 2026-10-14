@@ -19,41 +19,42 @@ from Library.Hamiltonian.RuO2Hamiltonian import *
 from Library.Hamiltonian.MinimalModels import MinimalHamSG194_2a
 from Library.data_management_utils_3d import setup_3D_QGT_results_directory
 from Library.output_utils import print_calculation_complete
+from Library.runs import input_run, record_inputs
 
 
 
-def calculate_3d():
+def calculate_3d(eigen_run=None):
     print(f"Starting 3D QGT Calculation...")
     band = 0
     z_cutoff = 20
-    # --- Check Temp Directory First (User Request) ---
-    temp_dir = os.path.join(os.getcwd(), "temp")
-    temp_eig = os.path.join(temp_dir, "eigenvalues_3d.npy")
-    temp_vec = os.path.join(temp_dir, "eigenvectors_3d.npy")
-    temp_meta = os.path.join(temp_dir, "meta_info.pkl")
+    # Input: the given 3D eigenvalue run, else the one most recently created or reused
+    eigen_dir = input_run("eigen_3d", eigen_run)
+    eig_path = os.path.join(eigen_dir, "eigenvalues_3d.npy")
+    vec_path = os.path.join(eigen_dir, "eigenvectors_3d.npy")
+    meta_path = os.path.join(eigen_dir, "meta_info.pkl")
     
     
-    if os.path.exists(temp_eig) and os.path.exists(temp_vec) and os.path.exists(temp_meta):
-        print("Found results in temp directory. Attempting to load from there...")
+    if os.path.exists(eig_path) and os.path.exists(vec_path) and os.path.exists(meta_path):
+        print(f"Loading the 3D eigenvalue run {eigen_dir} ...")
         try:
-            with open(temp_meta, "rb") as f:
-                temp_info = pickle.load(f)
+            with open(meta_path, "rb") as f:
+                eigen_info = pickle.load(f)
             
             # Check if it looks like what we expect
             # We trust the user wants to use this
-            hamiltonian = temp_info["Hamiltonian_Obj"]
-            kx_vals = temp_info["kx_vals"]
-            ky_vals = temp_info["ky_vals"]
-            kz_vals = temp_info["kz_vals"]
-            mesh_shape = temp_info["mesh_shape"]
-            kvals_mode = temp_info["kvals_mode"]
-            include_endpoints = temp_info["include_endpoints"]
-            eigenvalues_3d = np.load(temp_eig)
-            eigenvectors_3d = np.load(temp_vec)
-            print(f"Successfully loaded data from temp. Hamiltonian: {hamiltonian.name}, Mesh: {mesh_size}")
+            hamiltonian = eigen_info["Hamiltonian_Obj"]
+            kx_vals = eigen_info["kx_vals"]
+            ky_vals = eigen_info["ky_vals"]
+            kz_vals = eigen_info["kz_vals"]
+            mesh_shape = eigen_info["mesh_shape"]
+            kvals_mode = eigen_info["kvals_mode"]
+            include_endpoints = eigen_info["include_endpoints"]
+            eigenvalues_3d = np.load(eig_path)
+            eigenvectors_3d = np.load(vec_path)
+            print(f"Successfully loaded the eigenvalue run. Hamiltonian: {hamiltonian.name}, Mesh: {mesh_size}")
             
         except Exception as e:
-            print(f"Failed to load from temp: {e}. Falling back to standard calculation.")
+            print(f"Failed to load {eigen_dir}: {e}. Falling back to standard calculation.")
 
 
     delta_k = 1e-5 # Use small step for numerical derivative, matching 2D calculation
@@ -68,6 +69,8 @@ def calculate_3d():
         force_new=True,
         kvals_mode=kvals_mode,  # if your function supports it
     )
+    if not qgt_use_existing:
+        record_inputs(qgt_results_dir, eigen_run=eigen_dir)
 
     if qgt_use_existing and all(os.path.exists(p) for p in qgt_file_paths.values()):
          print("Loading existing QGT results...")
@@ -130,15 +133,15 @@ def calculate_3d():
 def _qgt3d_one_band_worker(payload: dict):
     """
     Compute 3D QGT for ONE band in a separate process.
-    Big arrays are mmap-loaded from temp to avoid huge pickles.
+    Big arrays are mmap-loaded from the eigenvalue run to avoid huge pickles.
     """
     band      = payload["band"]
-    temp_dir  = payload["temp_dir"]
+    eigen_dir = payload["eigen_dir"]
     delta_k   = payload["delta_k"]
     method    = payload["method"]
 
     # load meta (includes Hamiltonian + k grids)
-    meta_path = os.path.join(temp_dir, "meta_info.pkl")
+    meta_path = os.path.join(eigen_dir, "meta_info.pkl")
     with open(meta_path, "rb") as f:
         meta = pickle.load(f)
 
@@ -148,8 +151,8 @@ def _qgt3d_one_band_worker(payload: dict):
     kz_vals = meta["kz_vals"]
 
     # mmap big arrays
-    eig_path = os.path.join(temp_dir, "eigenvalues_3d.npy")
-    vec_path = os.path.join(temp_dir, "eigenvectors_3d.npy")
+    eig_path = os.path.join(eigen_dir, "eigenvalues_3d.npy")
+    vec_path = os.path.join(eigen_dir, "eigenvectors_3d.npy")
     eigenvalues_3d  = np.load(eig_path, mmap_mode="r")
     eigenvectors_3d = np.load(vec_path, mmap_mode="r")
 
@@ -198,19 +201,20 @@ def _qgt3d_one_band_worker(payload: dict):
         "trace": np.array(trace),
     }
 
-def calculate_3d_all_bands_parallel(force_new=True, method = "numerical"):
+def calculate_3d_all_bands_parallel(force_new=True, method = "numerical", eigen_run=None):
     print("Starting PARALLEL 3D QGT (one core per band)...")
 
-    temp_dir  = os.path.join(os.getcwd(), "temp")
-    temp_eig  = os.path.join(temp_dir, "eigenvalues_3d.npy")
-    temp_vec  = os.path.join(temp_dir, "eigenvectors_3d.npy")
-    temp_meta = os.path.join(temp_dir, "meta_info.pkl")
+    # Input: the given 3D eigenvalue run, else the one most recently created or reused
+    eigen_dir = input_run("eigen_3d", eigen_run)
+    eig_path  = os.path.join(eigen_dir, "eigenvalues_3d.npy")
+    vec_path  = os.path.join(eigen_dir, "eigenvectors_3d.npy")
+    meta_path = os.path.join(eigen_dir, "meta_info.pkl")
 
-    if not (os.path.exists(temp_eig) and os.path.exists(temp_vec) and os.path.exists(temp_meta)):
-        raise FileNotFoundError("Missing temp eigenvalues_3d.npy / eigenvectors_3d.npy / meta_info.pkl")
+    if not (os.path.exists(eig_path) and os.path.exists(vec_path) and os.path.exists(meta_path)):
+        raise FileNotFoundError(f"Missing eigenvalues_3d.npy / eigenvectors_3d.npy / meta_info.pkl in {eigen_dir}")
 
     # load meta in parent (small)
-    with open(temp_meta, "rb") as f:
+    with open(meta_path, "rb") as f:
         meta = pickle.load(f)
 
     hamiltonian = meta["Hamiltonian_Obj"]
@@ -225,7 +229,7 @@ def calculate_3d_all_bands_parallel(force_new=True, method = "numerical"):
     n_bands = int(getattr(hamiltonian, "dim", None) or getattr(hamiltonian, "n_bands", None) or 0)
     if n_bands <= 0:
         # fallback: infer from eigenvalues file shape
-        ev = np.load(temp_eig, mmap_mode="r")
+        ev = np.load(eig_path, mmap_mode="r")
         n_bands = int(ev.shape[-1])
 
     n_cores   = os.cpu_count() or 1
@@ -248,6 +252,8 @@ def calculate_3d_all_bands_parallel(force_new=True, method = "numerical"):
         n_bands=int(n_bands),
         method_name="numerical"
     )
+    if not use_existing:
+        record_inputs(qgt_results_dir, eigen_run=eigen_dir)
 
     stacked_keys = [
         "g_xx","g_yy","g_zz",
@@ -268,7 +274,7 @@ def calculate_3d_all_bands_parallel(force_new=True, method = "numerical"):
     delta_k  = 1e-5
 
     payloads = [
-        {"band": b, "temp_dir": temp_dir, "delta_k": delta_k, "method": method}
+        {"band": b, "eigen_dir": eigen_dir, "delta_k": delta_k, "method": method}
         for b in range(n_bands)
     ]
 
@@ -292,8 +298,6 @@ def calculate_3d_all_bands_parallel(force_new=True, method = "numerical"):
     for k, arr in stacked.items():
         if k in qgt_file_paths:
             np.save(qgt_file_paths[k], arr)
-        # also mirror to temp for convenience (like your 2D)
-        np.save(os.path.join(temp_dir, f"{k}_3d.npy"), arr)
 
     # ---- meta save ----
     # JSON meta

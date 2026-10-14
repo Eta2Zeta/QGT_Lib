@@ -17,7 +17,7 @@ from Library.data_management_utils_common import (
     pick_or_create_result_dir_simple,
 )
 from Library.dimension_lib import create_2d_coordinate_grid, map_k_by_order
-from Library.data_paths import legacy_dir
+from Library.runs import new_run
 
 
 BUNDLE_FILENAME = "qgt_d3d_all_irrep_projection_bundle.npz"
@@ -227,18 +227,21 @@ def calculate_d3d_all_irrep_berry_projections(
     }
 
     if results_root is None:
-        results_root = legacy_dir(
-            "2D_QGT_Projection_results",
+        results_dir, use_existing = new_run(
+            "qgt_2d_d3d_projection",
             Hamiltonian_Obj.name,
+            required_params=metadata,
+            force_new=force_new,
+            required_files=[BUNDLE_FILENAME, "meta.json"],
         )
-
-    results_dir, use_existing = pick_or_create_result_dir_simple(
-        base_root=results_root,
-        base_name="dataset_",
-        required_params=metadata,
-        force_new=force_new,
-        required_files=[BUNDLE_FILENAME, "meta.json"],
-    )
+    else:
+        results_dir, use_existing = pick_or_create_result_dir_simple(
+            base_root=results_root,
+            base_name="dataset_",
+            required_params=metadata,
+            force_new=force_new,
+            required_files=[BUNDLE_FILENAME, "meta.json"],
+        )
     bundle_path = os.path.join(results_dir, BUNDLE_FILENAME)
     metadata_path = os.path.join(results_dir, "meta.json")
 

@@ -1,9 +1,7 @@
 """Calculate eigenvalues and eigenvectors on a three-dimensional momentum grid."""
 
 import json
-import os
 import pickle
-import shutil
 
 import numpy as np
 
@@ -30,9 +28,6 @@ def calculation_3d(
 ):
     """Calculate, save, and plot a 3D eigenvalue grid."""
     print(f"Performing 3D eigenvalue calculation ({Hamiltonian_Obj.name})...")
-
-    temp_dir = os.path.join(os.getcwd(), "temp")
-    os.makedirs(temp_dir, exist_ok=True)
 
     if include_end_points:
         kx_vals = np.linspace(-k_range, k_range, mesh)
@@ -95,18 +90,6 @@ def calculation_3d(
         with open(file_paths["meta_pkl"], "wb") as meta_file:
             pickle.dump(meta_pkl, meta_file)
 
-    print(f"Copying 3D results to temporary directory: {temp_dir}")
-    shutil.copy(file_paths["meta_json"], os.path.join(temp_dir, "meta.json"))
-    shutil.copy(file_paths["meta_pkl"], os.path.join(temp_dir, "meta_info.pkl"))
-    shutil.copy(
-        file_paths["eigenvalues"],
-        os.path.join(temp_dir, "eigenvalues_3d.npy"),
-    )
-    shutil.copy(
-        file_paths["eigenfunctions"],
-        os.path.join(temp_dir, "eigenvectors_3d.npy"),
-    )
-
     print("Generating 3D plots...")
     eig_band = eigenvalues_3d[:, :, :, band_idx]
     plot_volumetric_cloud(
@@ -145,7 +128,6 @@ def calculation_3d(
         "3D Eigenvalues",
         results_dir,
         artifact="Results",
-        copied_to=temp_dir,
     )
     return eigenvalues_3d, eigenvectors_3d, results_dir
 

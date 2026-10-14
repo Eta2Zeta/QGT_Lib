@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from Library.data_paths import legacy_dir
+from Library.runs import find_runs
 
 def plot_spin_component_2x2(kx, ky, spin_data, component_name, results_dir=None):
     """
@@ -87,6 +88,11 @@ def plot_all_spin_components(dataset_dir):
 
 
 def latest_spin_density_dataset(hamiltonian_name):
+    """Newest spin-density run for this model, else the newest pre-reorganization dataset."""
+    runs = find_runs("spin_density", hamiltonian_name)
+    if runs:
+        return runs[0]
+
     base_dir = legacy_dir("Spin_Density_results", hamiltonian_name)
 
     if not os.path.exists(base_dir):

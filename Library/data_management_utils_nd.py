@@ -1,11 +1,10 @@
 import os
-import re
 import json
 import pickle
 import numpy as np
 from typing import Tuple, Dict, Any, List, Optional
 from Library.data_management_utils_common import pick_or_create_result_dir_simple, dump_metadata
-from Library.data_paths import legacy_dir
+from Library.runs import new_run
 
 
 _SYMMETRIC_LOG_DECADES = 3.0
@@ -145,7 +144,6 @@ def setup_phase_diagram_results_general(
     force_new_range=False
 ):
     Hname = getattr(hamiltonian_template, "name", "Hamiltonian")
-    base_root = legacy_dir("phase_diagram", re.sub(r'[^\w.-]','_',Hname))
 
     meta_target = {
         "hamiltonian_name": Hname,
@@ -153,11 +151,11 @@ def setup_phase_diagram_results_general(
         "parameter_spacing": parameter_spacing
     }
 
-    dir_path, used = pick_or_create_result_dir_simple(
-        base_root=base_root,
-        base_name="dataset_",
+    dir_path, used = new_run(
+        "phase_diagram",
+        Hname,
         required_params=meta_target,
-        force_new=force_new_range
+        force_new=force_new_range,
     )
     
     if not used:
@@ -212,10 +210,6 @@ def setup_qgt_nd_results_dir(
     """
     Hname = getattr(hamiltonian_template, "name", "Hamiltonian")
     
-    def _sanitize(name: str) -> str:
-        return re.sub(r"[^\w.\-]", "_", str(name))
-        
-    base_root = legacy_dir("2D_QGT_ND", _sanitize(Hname))
     
     # 1. Normalize ranges → dict {name: {"min": ..., "max": ...}}
     def _norm_ranges_dict(ranges):
@@ -276,11 +270,11 @@ def setup_qgt_nd_results_dir(
         }
         
     # Attempt to find or create
-    dir_path, used = pick_or_create_result_dir_simple(
-        base_root=base_root,
-        base_name="dataset",
+    dir_path, used = new_run(
+        "qgt_nd",
+        Hname,
         required_params=metadata,
-        force_new=force_new
+        force_new=force_new,
     )
     
     if not used:

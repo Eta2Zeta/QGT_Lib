@@ -32,6 +32,7 @@ from Library.Hamiltonian.RuO2Hamiltonian import *
 from Library.Hamiltonian.MinimalModels import MinimalHamSG194_2a
 from Library.data_management_utils_2d import setup_2D_QGT_results_directory
 from Library.output_utils import print_calculation_complete
+from Library.runs import input_run, record_inputs
 
 
 def _save_polar_berry_diagnostics(
@@ -335,19 +336,20 @@ def calculate_2d(
     include_sym_path_qgt=False,
     sym_path_bands=None,
     sym_path_points_per_segment=100,
+    eigen_run=None,
 ):
     # Define parameters
     band =5 # Which band to calculate your QGT on, starting from 0
     z_cutoff = .3 #where to cutoff the plot for the z axis when singularties occur
     z_percentile = 99 # percentile to cut off the plot
 
-    # Define the temp directory for storing .npy files
-    temp_dir = os.path.join(os.getcwd(), "temp")
+    # Input: the given eigenvalue run, else the one most recently created or reused
+    eigen_dir = input_run("eigen_2d", eigen_run)
 
     # File paths for loading the data
-    eigenvalues_file = os.path.join(temp_dir, "eigenvalues.npy")
-    eigenfunctions_file = os.path.join(temp_dir, "eigenfunctions.npy")
-    meta_info_file = os.path.join(temp_dir, "meta_info.pkl")  # New file for meta information
+    eigenvalues_file = os.path.join(eigen_dir, "eigenvalues.npy")
+    eigenfunctions_file = os.path.join(eigen_dir, "eigenfunctions.npy")
+    meta_info_file = os.path.join(eigen_dir, "meta_info.pkl")
 
     # Load the eigenvalues and eigenfunctions from files
     if os.path.exists(eigenvalues_file) and os.path.exists(eigenfunctions_file) and os.path.exists(meta_info_file):
@@ -398,6 +400,8 @@ def calculate_2d(
         meta_params=meta_params,
         force_new=Force_new
     )
+    if not use_existing:
+        record_inputs(results_subdir, eigen_run=eigen_dir)
     
     if use_existing:
         # Load existing QGT data
@@ -498,9 +502,8 @@ def calculate_2d(
         for key, array in save_dict.items():
             if key in file_paths:
                 np.save(file_paths[key], array)
-                np.save(os.path.join(temp_dir, os.path.basename(file_paths[key])), array)
             else:
-                np.save(os.path.join(temp_dir, f"{key}.npy"), array)
+                np.save(os.path.join(results_subdir, f"{key}.npy"), array)
 
         if eigenvalues is not None:
             np.save(os.path.join(results_subdir, "eigenvalues.npy"), eigenvalues)
@@ -611,7 +614,7 @@ def calculate_2d(
             results_dir=results_subdir,
         )
 
-    print_calculation_complete("2D QGT", results_subdir, artifact="Results", copied_to=temp_dir)
+    print_calculation_complete("2D QGT", results_subdir, artifact="Results")
 
 
 def _qgt_one_band_worker(payload: dict):
@@ -622,7 +625,7 @@ def _qgt_one_band_worker(payload: dict):
     """
     # ---- unpack minimal payload ----
     band = payload["band"]
-    temp_dir = payload["temp_dir"]
+    eigen_dir = payload["eigen_dir"]
     z_cutoff = payload["z_cutoff"]
     delta_k = payload["delta_k"]
     method_name = payload["method_name"]
@@ -630,7 +633,7 @@ def _qgt_one_band_worker(payload: dict):
     order = payload["order"]
 
     # Load meta + Hamiltonian object (pickled) inside worker
-    meta_info_file = os.path.join(temp_dir, "meta_info.pkl")
+    meta_info_file = os.path.join(eigen_dir, "meta_info.pkl")
     with open(meta_info_file, "rb") as f:
         meta_info = pickle.load(f)
     H = meta_info["Hamiltonian_Obj"]
@@ -639,8 +642,8 @@ def _qgt_one_band_worker(payload: dict):
     kj = meta_info["kj"]
 
     # mmap the big arrays
-    eigenvalues = np.load(os.path.join(temp_dir, "eigenvalues.npy"), mmap_mode="r")
-    eigenfunctions = np.load(os.path.join(temp_dir, "eigenfunctions.npy"), mmap_mode="r")
+    eigenvalues = np.load(os.path.join(eigen_dir, "eigenvalues.npy"), mmap_mode="r")
+    eigenfunctions = np.load(os.path.join(eigen_dir, "eigenfunctions.npy"), mmap_mode="r")
 
     # If you need these set:
     H.A0 = 0.0
@@ -701,18 +704,20 @@ def calculate_2d_all_bands(
     include_sym_path_qgt=False,
     sym_path_bands=None,
     sym_path_points_per_segment=100,
+    eigen_run=None,
 ):
     # ---- your existing setup/load block ----
     z_cutoff = 1000
     z_percentile = 95
-    temp_dir = os.path.join(os.getcwd(), "temp")
+    # Input: the given eigenvalue run, else the one most recently created or reused
+    eigen_dir = input_run("eigen_2d", eigen_run)
 
-    eigenvalues_file = os.path.join(temp_dir, "eigenvalues.npy")
-    eigenfunctions_file = os.path.join(temp_dir, "eigenfunctions.npy")
-    meta_info_file = os.path.join(temp_dir, "meta_info.pkl")
+    eigenvalues_file = os.path.join(eigen_dir, "eigenvalues.npy")
+    eigenfunctions_file = os.path.join(eigen_dir, "eigenfunctions.npy")
+    meta_info_file = os.path.join(eigen_dir, "meta_info.pkl")
 
     if not (os.path.exists(eigenvalues_file) and os.path.exists(eigenfunctions_file) and os.path.exists(meta_info_file)):
-        raise FileNotFoundError("Missing temp eigenvalues/eigenfunctions/meta_info.pkl")
+        raise FileNotFoundError(f"Missing eigenvalues/eigenfunctions/meta_info.pkl in {eigen_dir}")
 
     # mmap in parent only for nbands inference + plotting ki/kj later
     eigenvalues = np.load(eigenvalues_file, mmap_mode="r")
@@ -764,6 +769,8 @@ def calculate_2d_all_bands(
         meta_params=meta_params,
         force_new=Force_new
     )
+    if not use_existing:
+        record_inputs(results_subdir, eigen_run=eigen_dir)
 
     # ---- if existing stacked results, load them and skip compute ----
     stacked_keys = ["g_xx","g_yy","g_zz","g_xy_real","g_xy_imag","g_xz_real","g_xz_imag","g_yz_real","g_yz_imag","trace"]
@@ -782,7 +789,7 @@ def calculate_2d_all_bands(
         payloads = [
             {
                 "band": b,
-                "temp_dir": temp_dir,
+                "eigen_dir": eigen_dir,
                 "z_cutoff": z_cutoff,
                 "delta_k": delta_k,
                 "method_name": method_name,
@@ -835,8 +842,6 @@ def calculate_2d_all_bands(
         for k, arr in stacked_save.items():
             if k in file_paths:
                 np.save(file_paths[k], arr)
-            # also copy to temp for convenience
-            np.save(os.path.join(temp_dir, f"{k}.npy"), arr)
 
         if eigenvalues is not None:
             np.save(os.path.join(results_subdir, "eigenvalues.npy"), eigenvalues)
@@ -923,7 +928,7 @@ def calculate_2d_all_bands(
             results_dir=results_subdir,
         )
 
-    print_calculation_complete("2D QGT all bands", results_subdir, artifact="Results", copied_to=temp_dir)
+    print_calculation_complete("2D QGT all bands", results_subdir, artifact="Results")
 
 
 
