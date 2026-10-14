@@ -171,3 +171,25 @@ def test_run_folder(monkeypatch, tmp_path):
     data = json.loads(Path(run_dir, "crossings.json").read_text())
     assert data["model"] == "MinimalHamSG127_2a2b" and data["components"]
     assert {"crossings.html", "summary.txt", "meta.json", "run.json"} <= {p.name for p in Path(run_dir).iterdir()}
+
+
+def test_overlay_on_band_and_berry_heatmaps(tmp_path):
+    from qgt.plotting.crossings import crossings_for_band, zone_images
+    from qgt.plotting.qgt_2d import plot_qgt_eigenvalue_berry_component_heatmaps
+
+    model = MinimalHamSG127_2a2b()
+    crossings = cr.find_band_crossings(model, kz=0.0)
+    assert {c.pair for c in crossings_for_band(crossings, 0)} == {"1-2,3-4"}
+    assert crossings_for_band(crossings, 1) == crossings
+    edge = next(c for c in crossings if c.fixed.get("x") == sp.pi)
+    centres = {round(float(np.nanmean(image[:, 0])), 6) for image in zone_images(edge.samples, False)}
+    assert {round(np.pi, 6), round(-np.pi, 6)} <= centres  # the zone-edge line is drawn on both edges
+
+    k = np.linspace(-np.pi, np.pi, 21)
+    kx, ky = np.meshgrid(k, k)
+    rng = np.random.default_rng(0)
+    plot_qgt_eigenvalue_berry_component_heatmaps(
+        kx, ky, rng.normal(size=(21, 21, 4)), *rng.normal(size=(3, 21, 21)), results_dir=str(tmp_path),
+        save_fig=True, hamiltonian=model, kk=0.0, crossings=crossings, filename="overlay.png")
+    assert (tmp_path / "overlay.png").stat().st_size > 0
+    assert not (tmp_path / "qgt_eigenvalue_berry_component_heatmaps_band_0.png").exists()

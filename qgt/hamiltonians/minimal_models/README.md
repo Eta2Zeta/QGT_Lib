@@ -195,6 +195,17 @@ This calls the existing plotting helpers through
 plots, leaving the numerical arrays and calculation metadata unchanged.
 The existing `qgt.plotting.qgt_2d_comparison.plot_qgt_from_directory` also accepts each dataset.
 
+To overlay the exact band crossings of each plane (see below) on the band and
+Berry-component heatmaps:
+
+```sh
+python scripts/plot/minimal_planes.py --crossings --workers 4 --output-root <run folder>
+```
+
+This adds `band_crossings.json` and `qgt_eigenvalue_berry_component_heatmaps_band_<n>_crossings.png`
+to every dataset and writes `index_crossings.html` next to `index.html`; the saved
+arrays and the standard figures are left as they are.
+
 For trigonal/hexagonal models, the grid covers the Cartesian bounding box of
 the hexagonal BZ; `bz_mask.npy` identifies its interior. Other models use the
 [-pi, pi]^2 reciprocal phase box. Eigenpairs are saved across the full grid;

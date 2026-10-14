@@ -427,6 +427,9 @@ def plot_qgt_eigenvalue_berry_trace_heatmaps(
       hamiltonian       : Hamiltonian providing get_sym_path(); None disables the overlay
       kk                : fixed kz value of the plotted kx-ky slice
       sym_kz_threshold  : fraction of the in-plane span used to select 3D path nodes
+      crossings         : band crossings in this plane (find_band_crossings(..., kz=kk));
+                          those involving this band are drawn on every panel
+      filename          : file name when saving (default qgt_eigenvalue_berry_component_heatmaps_band_<n>.png)
     """
     coordinate_info = coordinate_order_info(order)
     x_label, y_label = get_coordinate_axis_labels(order, backend="matplotlib")
@@ -531,6 +534,8 @@ def plot_qgt_eigenvalue_berry_component_heatmaps(
     kk=0.0,
     sym_kz_threshold=0.02,
     order="xyz",
+    crossings=None,
+    filename=None,
 ):
     """
     Make a 1x4 row of 2D heatmaps for:
@@ -554,6 +559,9 @@ def plot_qgt_eigenvalue_berry_component_heatmaps(
       hamiltonian       : Hamiltonian providing get_sym_path(); None disables the overlay
       kk                : fixed kz value of the plotted kx-ky slice
       sym_kz_threshold  : fraction of the in-plane span used to select 3D path nodes
+      crossings         : band crossings in this plane (find_band_crossings(..., kz=kk));
+                          those involving this band are drawn on every panel
+      filename          : file name when saving (default qgt_eigenvalue_berry_component_heatmaps_band_<n>.png)
     """
     coordinate_info = coordinate_order_info(order)
     x_label, y_label = get_coordinate_axis_labels(order, backend="matplotlib")
@@ -629,12 +637,15 @@ def plot_qgt_eigenvalue_berry_component_heatmaps(
         kk=kk,
         sym_kz_threshold=sym_kz_threshold,
     )
+    if crossings is not None:
+        from qgt.plotting.crossings import overlay_band_crossings
+        overlay_band_crossings(axes, crossings, band=eigenvalue_band)
         
     plt.tight_layout(rect=(0, 0, 1, 0.95))
     
     if save_fig and results_dir:
         import os
-        filename = f"qgt_eigenvalue_berry_component_heatmaps_band_{eigenvalue_band}.png"
+        filename = filename or f"qgt_eigenvalue_berry_component_heatmaps_band_{eigenvalue_band}.png"
         filepath = os.path.join(results_dir, filename)
         plt.savefig(filepath, dpi=300, bbox_inches='tight')
         print(f"Saved QGT Berry-component heatmaps to: {filepath}")

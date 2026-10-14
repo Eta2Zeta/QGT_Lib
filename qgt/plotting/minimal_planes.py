@@ -6,6 +6,12 @@ This calls the same plotting functions and defaults as
 recomputed, and the saved numerical arrays are never modified.
 
     python scripts/plot/minimal_planes.py --workers 2
+
+With --crossings, the band and Berry-component heatmaps are redrawn with the exact band
+crossings of each plane overlaid (new *_crossings.png files) and index_crossings.html is
+written next to index.html:
+
+    python scripts/plot/minimal_planes.py --crossings --workers 4
 """
 
 import argparse
@@ -256,6 +262,81 @@ def plot_dataset(dataset_dir, force=False):
     return report
 
 
+CROSSING_SOURCES = (
+    "qgt/hamiltonians/minimal_models/crossings.py", "qgt/plotting/crossings.py",
+    "qgt/plotting/qgt_2d.py", "qgt/plotting/minimal_planes.py",
+)
+
+
+def crossing_plot_files(n_bands):
+    return ["band_crossings.json", *(f"qgt_eigenvalue_berry_component_heatmaps_band_{band}_crossings.png"
+                                     for band in range(n_bands))]
+
+
+def plot_dataset_crossings(dataset_dir, force=False):
+    """Find the exact band crossings in a saved dataset's plane and redraw its band and
+    Berry-component heatmaps with them overlaid.
+
+    Adds ``band_crossings.json`` and ``qgt_eigenvalue_berry_component_heatmaps_band_<n>_crossings.png``;
+    the saved arrays and the standard figures are not touched. ``crossings_plots.json`` records
+    what was made and lets an unchanged dataset be skipped.
+    """
+    from qgt.hamiltonians.minimal_models.crossings import find_band_crossings
+
+    dataset_dir = Path(relocate_legacy_path(dataset_dir)).resolve()
+    meta = json.loads((dataset_dir / "meta.json").read_text())
+    summary = json.loads((dataset_dir / "summary.json").read_text())
+    n_bands = int(meta["n_bands"])
+    files = crossing_plot_files(n_bands)
+    source_sha256 = {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in CROSSING_SOURCES}
+    input_sha256 = _input_hashes(dataset_dir)
+    marker = dataset_dir / "crossings_plots.json"
+    if marker.exists() and not force:
+        previous = json.loads(marker.read_text())
+        if (previous.get("source_sha256") == source_sha256 and previous.get("input_sha256") == input_sha256
+                and all((dataset_dir / name).is_file() for name in files)):
+            return {**previous, "status": "reused"}
+    marker.unlink(missing_ok=True)
+
+    with (dataset_dir / "meta_info.pkl").open("rb") as stream:
+        hamiltonian = pickle.load(stream)["Hamiltonian_Obj"]
+    kk, order = meta["kk"], meta["order"]
+    if order != "xyz":
+        raise ValueError(f"Crossing overlays need kx-ky planes (order 'xyz'), not {order!r}")
+    crossings = find_band_crossings(hamiltonian, kz=kk, line_samples=200)
+    components = [c.to_dict() for c in crossings]
+    _write_json(dataset_dir / "band_crossings.json",
+                {"model": summary["model"], "plane": summary["plane"], "kz": kk, "components": components})
+
+    ki = np.load(dataset_dir / "ki.npy")
+    kj = np.load(dataset_dir / "kj.npy")
+    bz_mask = np.load(dataset_dir / "bz_mask.npy")
+    eigenvalues = capping_eigenvalues(np.load(dataset_dir / "eigenvalues.npy"), z_limit=1000)
+    eigenvalues[~bz_mask] = np.nan
+    qgt = {key: np.load(dataset_dir / (key + ".npy")) for key in ("g_xy_imag", "g_xz_imag", "g_yz_imag")}
+    label = f"{summary['model']} | kz = {kk:.8g} ({summary['plane']})"
+    try:
+        for band in range(n_bands):
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="All-NaN slice encountered", category=RuntimeWarning)
+                plot_qgt_eigenvalue_berry_component_heatmaps(
+                    ki, kj, eigenvalues, qgt["g_xy_imag"][band], qgt["g_xz_imag"][band], qgt["g_yz_imag"][band],
+                    eigenvalue_band=band, title=f"{label} | Band {band + 1} | exact band crossings overlaid",
+                    zlim_berry=1000, zlim_percentile=95, results_dir=str(dataset_dir), save_fig=True,
+                    hamiltonian=hamiltonian, kk=kk, order=order, crossings=crossings,
+                    filename=f"qgt_eigenvalue_berry_component_heatmaps_band_{band}_crossings.png",
+                )
+    finally:
+        plt.close("all")
+    report = {"status": "complete", "dataset_dir": str(dataset_dir), "model": summary["model"],
+              "plane": summary["plane"], "kz": kk, "n_bands": n_bands, "files": files,
+              "components": [{key: c[key] for key in ("pair", "dimension", "exact", "description", "max_gap")}
+                             for c in components],
+              "source_sha256": source_sha256, "input_sha256": input_sha256}
+    _write_json(marker, report)
+    return report
+
+
 # Note 1–3, "Magnetic Point Groups and Berry-Curvature Nodes":
 # Notes/1-3-0-0: Magnetic Point Groups and Berry-Curvature Nodes/
 # note_1-3_part_01.tex (inventory) and note_1-3.tex, section 5 (nodes).
@@ -449,8 +530,38 @@ def _sg11_added_terms_html(params):
             '<div class="added-hamiltonian">' + ''.join(rows) + '</div>')
 
 
-def write_gallery(output_root, results):
-    """Show the first band's energy and all three Berry components per plane."""
+def _crossings_html(dataset_dir, link):
+    """List of the exact band crossings saved for one dataset, plus links to every band's overlay."""
+    path = dataset_dir / "crossings_plots.json"
+    if not path.exists():
+        return '<p class="note">No band crossings computed for this dataset.</p>'
+    report = json.loads(path.read_text())
+    names = {"2-3": "Bands 2–3", "1-2,3-4": "Bands 1–2 and 3–4"}
+    rows = []
+    for pair in ("1-2,3-4", "2-3"):
+        items = [c for c in report["components"] if c["pair"] == pair]
+        if not items:
+            rows.append(f'<li><b>{names[pair]}</b>: no crossing in this plane</li>')
+            continue
+        entries = "".join(
+            f'<li>{html.escape(c["description"].split("  [")[0][:220])} '
+            f'<span class="tag">{"exact" if c["exact"] else "exact equation, sampled"}</span></li>'
+            for c in items)
+        rows.append(f'<li><b>{names[pair]}</b><ul>{entries}</ul></li>')
+    bands = " ".join(
+        f'<a href="{link(name)}">Band {band + 1}</a>'
+        for band, name in enumerate(n for n in report["files"] if n.endswith("_crossings.png")))
+    return ('<div class="crossings"><h3>Band crossings in this plane</h3><ul>' + "".join(rows) + "</ul>"
+            f'<p class="band-links">Overlay for every band: {bands}</p></div>')
+
+
+def write_gallery(output_root, results, *, crossings=False):
+    """Show the first band's energy and all three Berry components per plane.
+
+    With crossings=True, write index_crossings.html instead: the same page with the
+    exact band crossings overlaid on the figures and listed for each plane
+    (after plot_dataset_crossings).
+    """
     output_root = Path(output_root).resolve()
     sections = []
     navigation = []
@@ -491,6 +602,11 @@ def write_gallery(output_root, results):
         )
         cards = []
         image_name = "qgt_eigenvalue_berry_component_heatmaps_band_0.png"
+        if crossings:
+            image_name = "qgt_eigenvalue_berry_component_heatmaps_band_0_crossings.png"
+            if (dataset_dir / image_name).is_file():
+                existing.append(image_name)
+            added_terms += _crossings_html(dataset_dir, link)
         if image_name in existing:
             band_count += 1
             image = (f'<a href="{link(image_name)}"><img loading="lazy" '
@@ -547,14 +663,60 @@ img{display:block;width:100%;height:auto;border:1px solid #e3e9f0}.band-links a{
                  'Constraints apply where the band is '
                  'isolated; blank degenerate regions are undefined. The finite grid may '
                  'miss an exact nodal line.</p>'
-                 "<details><summary>Jump to a model and plane</summary><nav><ul>"
+                 + (CROSSINGS_INTRO if crossings else "")
+                 + "<details><summary>Jump to a model and plane</summary><nav><ul>"
                  + "".join(navigation) + "</ul></nav></details>"
                  + "".join(sections) + "</body></html>\n")
-    path = output_root / "index.html"
+    if crossings:
+        document = document.replace("<title>Minimal models: bands and Berry components</title>",
+                                    "<title>Minimal models: Berry components and band crossings</title>", 1)
+        document = document.replace("<h1>Minimal models: bands and Berry components</h1>",
+                                    "<h1>Minimal models: Berry components and band crossings</h1>", 1)
+        document = document.replace("</style>", CROSSINGS_CSS + "</style>", 1)
+    path = output_root / ("index_crossings.html" if crossings else "index.html")
     temporary = path.with_suffix(".html.tmp")
     temporary.write_text(document)
     temporary.replace(path)
     return str(path)
+
+
+CROSSINGS_CSS = (".crossings{font-size:14px;margin-top:10px}.crossings h3{font-size:17px}"
+                 ".crossings ul{margin:4px 0;padding-left:20px}.tag{font-size:12px;color:#526174;white-space:nowrap}\n")
+CROSSINGS_INTRO = (
+    '<p class="note">Overlaid on every panel: where band 1 touches band 2, found exactly from '
+    "the model's form factors in this plane (qgt.hamiltonians.minimal_models.crossings). "
+    "Dashed lines are exact crossing lines, circles exact crossing points, dotted curves are "
+    "sampled from exact equations. Black marks bands 1–2 (which always cross together with "
+    "bands 3–4); on the band 2 and band 3 figures, magenta marks bands 2–3. White is the "
+    "high-symmetry path, as before. Each crossing was checked by diagonalizing the model "
+    "(gap below 1e-12).</p>"
+)
+
+
+def plot_crossings_batch(output_root=DEFAULT_OUTPUT, *, workers=2, force=False, model_names=None):
+    """plot_dataset_crossings for every dataset of a manifest, then index_crossings.html."""
+    output_root = Path(output_root).resolve()
+    manifest = json.loads((output_root / "manifest.json").read_text())
+    selected = [item for item in manifest["results"]
+                if model_names is None or item["model"] in model_names]
+    results, failures = [], []
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(plot_dataset_crossings, item["dataset_dir"], force): item for item in selected}
+        for future in as_completed(futures):
+            item = futures[future]
+            try:
+                results.append(future.result())
+                print(f"Crossings {len(results)}/{len(selected)}: {item['model']} {item['plane']}", flush=True)
+            except Exception as exc:
+                failures.append({"dataset_dir": item["dataset_dir"], "model": item["model"],
+                                 "plane": item["plane"], "error": repr(exc)})
+                print(f"CROSSINGS FAILED {item['dataset_dir']}: {exc}", flush=True)
+    results.sort(key=lambda item: (item["model"], item["kz"]))
+    report = {"expected_datasets": len(selected), "completed_datasets": len(results),
+              "results": results, "failures": failures,
+              "gallery": write_gallery(output_root, manifest["results"], crossings=True)}
+    _write_json(output_root / "crossings_manifest.json", report)
+    return report
 
 
 def plot_batch(output_root=DEFAULT_OUTPUT, *, workers=2, force=False, model_names=None):
@@ -603,10 +765,13 @@ def main(argv=None):
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--models", nargs="+")
+    parser.add_argument("--crossings", action="store_true",
+                        help="overlay the exact band crossings and write index_crossings.html")
     args = parser.parse_args(argv)
     if args.workers < 1:
         parser.error("workers must be at least 1")
-    report = plot_batch(args.output_root, workers=args.workers,
-                        force=args.force, model_names=args.models)
+    batch = plot_crossings_batch if args.crossings else plot_batch
+    report = batch(args.output_root, workers=args.workers,
+                   force=args.force, model_names=args.models)
     print(f"Gallery: {report['gallery']}", flush=True)
     return 1 if report["failures"] else 0

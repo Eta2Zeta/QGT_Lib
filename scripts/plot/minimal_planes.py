@@ -2,6 +2,7 @@
 
 Takes command-line options rather than a config file; see --help, e.g.
     python scripts/plot/minimal_planes.py --workers 2
+    python scripts/plot/minimal_planes.py --crossings --workers 4   # band crossings overlaid
 """
 
 import sys
