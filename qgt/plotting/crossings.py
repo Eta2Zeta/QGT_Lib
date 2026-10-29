@@ -168,5 +168,5 @@ def overlay_band_crossings(axes, crossings, band, *, legend=True):
             handles[key] = Line2D([], [], label=f"touches band {partner} ({kind}{'s' if kind != 'curve' else ''})",
                                   **style)
     if legend and handles:
-        plot_axes[0].legend(handles=list(handles.values()), loc="upper right", fontsize=7, framealpha=0.85)
+        plot_axes[0].legend(handles=list(handles.values()), loc="lower left", fontsize=7, framealpha=0.85)
     return selected

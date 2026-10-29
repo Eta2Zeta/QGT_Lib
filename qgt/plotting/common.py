@@ -1,6 +1,7 @@
 import os
 import pickle
 import numpy as np
+import matplotlib.patheffects as path_effects
 
 from qgt.kspace.grids import cylindrical_order_axes, is_cylindrical_order
 from qgt.io.paths import legacy_dir
@@ -305,14 +306,15 @@ def overlay_hamiltonian_symmetry_path(
     color="white",
     line_width=1.5,
     point_size=30,
-    label_fontsize=10,
+    label_fontsize=14,
     show_legend=False,
 ):
     """Overlay ``hamiltonian.get_sym_path()`` on one or more kx-ky axes.
 
     Two-dimensional symmetry points are drawn directly. For three-dimensional
     paths, only nodes and complete path segments within the plotted ``kz=kk``
-    slice are drawn.
+    slice are drawn. A margin around the map keeps boundary labels inside the
+    axes, and a dark text shadow retains contrast without covering the data.
 
     Returns
     -------
@@ -389,7 +391,17 @@ def overlay_hamiltonian_symmetry_path(
     if not segments and not labeled_points:
         return False
 
+    point_coordinates = np.asarray([xy for _, xy in labeled_points])
     for ax in plot_axes:
+        xmin, xmax = sorted(ax.get_xlim())
+        ymin, ymax = sorted(ax.get_ylim())
+        xmin = min(xmin, float(np.min(point_coordinates[:, 0])))
+        xmax = max(xmax, float(np.max(point_coordinates[:, 0])))
+        ymin = min(ymin, float(np.min(point_coordinates[:, 1])))
+        ymax = max(ymax, float(np.max(point_coordinates[:, 1])))
+        x_padding = 0.12 * max(xmax - xmin, kx_range)
+        y_padding = 0.12 * max(ymax - ymin, ky_range)
+
         for segment_index, (start_xy, end_xy) in enumerate(segments):
             ax.plot(
                 [start_xy[0], end_xy[0]],
@@ -422,13 +434,23 @@ def overlay_hamiltonian_symmetry_path(
                 textcoords="offset points",
                 xytext=(5, 5),
                 ha="left",
+                va="bottom",
                 color=color,
                 fontsize=label_fontsize,
                 fontweight="bold",
+                zorder=10,
+                annotation_clip=False,
+                clip_on=False,
+                path_effects=[path_effects.withSimplePatchShadow(
+                    offset=(0.6, -0.6), shadow_rgbFace="black", alpha=0.75,
+                    foreground="black", linewidth=1.8,
+                )],
             )
 
+        ax.set_xlim(xmin - x_padding, xmax + x_padding)
+        ax.set_ylim(ymin - y_padding, ymax + y_padding)
         if show_legend and segments:
-            ax.legend(loc="upper right")
+            ax.legend(loc="lower left")
 
     return True
 

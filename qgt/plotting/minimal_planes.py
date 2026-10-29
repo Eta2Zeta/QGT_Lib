@@ -266,7 +266,7 @@ def plot_dataset(dataset_dir, force=False):
 
 CROSSING_SOURCES = (
     "qgt/hamiltonians/minimal_models/crossings.py", "qgt/plotting/crossings.py",
-    "qgt/plotting/qgt_2d.py", "qgt/plotting/minimal_planes.py",
+    "qgt/plotting/qgt_2d.py", "qgt/plotting/common.py", "qgt/plotting/minimal_planes.py",
 )
 
 

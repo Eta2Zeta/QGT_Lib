@@ -745,7 +745,7 @@ def plot_degeneracy_heatmap(
             sym_kz_threshold=sym_kz_threshold,
             line_width=2,
             point_size=50,
-            label_fontsize=12,
+            label_fontsize=14,
             show_legend=True,
         )
 
