@@ -1,5 +1,13 @@
 import numpy as np
-from qgt.geometry.derivatives import dpsi_from_function, dpsi_num, dpsi_num_eigenvector_ordered
+
+
+def _dpsi_from_function(axis, psi, kx, ky, delta_k):
+    """Central difference along kx or ky of a state function ``psi(kx, ky, prev_psi=None)``."""
+    dx, dy = (delta_k, 0.0) if axis == "x" else (0.0, delta_k)
+    psi_front = psi(kx + dx, ky + dy)
+    psi_back = psi(kx - dx, ky - dy, prev_psi=psi_front)
+    return (psi_front - psi_back) / (2 * delta_k)
+
 
 # Projection operator
 def projection_operator(psi):
@@ -38,8 +46,8 @@ def quantum_geometric_tensor_semi_num(hamiltonian, band_index, kx, ky, delta_k):
     I = np.eye(hamiltonian.dim, dtype=complex)
 
     # finite differences (uses prev_psi internally to smooth gauge)
-    dpsi_dx_val = dpsi_from_function("x", psi, kx, ky, delta_k)
-    dpsi_dy_val = dpsi_from_function("y", psi, kx, ky, delta_k)
+    dpsi_dx_val = _dpsi_from_function("x", psi, kx, ky, delta_k)
+    dpsi_dy_val = _dpsi_from_function("y", psi, kx, ky, delta_k)
 
     # projector onto the chosen state
     psi_val = psi(kx, ky)
@@ -51,43 +59,6 @@ def quantum_geometric_tensor_semi_num(hamiltonian, band_index, kx, ky, delta_k):
     g_xy_imag = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dy_val).imag
     g_yy      = np.vdot(dpsi_dy_val, (I - P) @ dpsi_dy_val).real
 
-    return g_xx, g_xy_real, g_xy_imag, g_yy
-
-
-
-
-# Quantum geometric tensor components calculation using numerically obtained eigenfunctions
-def quantum_geometric_tensor_num(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=0):
-    dpsi_dx_val = dpsi_num("x", Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=kz)
-    dpsi_dy_val = dpsi_num("y", Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=kz)
-    psi_val = eigenfunction[band_index]
-
-    dim = Hamiltonian.dim
-    I = np.eye(dim)
-    P = projection_operator(psi_val)
-    
-    g_xx = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dx_val).real
-    g_xy_real = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dy_val).real
-    g_xy_imag = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dy_val).imag
-    g_yy = np.vdot(dpsi_dy_val, (I - P) @ dpsi_dy_val).real
-    
-    return g_xx, g_xy_real, g_xy_imag, g_yy
-
-# Quantum geometric tensor components calculation using numerically obtained eigenfunctions with Eigenvector Ordering
-def quantum_geometric_tensor_num_eigenvector_ordered(Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=0):
-    dpsi_dx_val = dpsi_num_eigenvector_ordered("x", Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=kz)
-    dpsi_dy_val = dpsi_num_eigenvector_ordered("y", Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index, kz=kz)
-    psi_val = eigenfunction[band_index]
-
-    dim = Hamiltonian.dim
-    I = np.eye(dim)
-    P = projection_operator(psi_val)
-    
-    g_xx = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dx_val).real
-    g_xy_real = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dy_val).real
-    g_xy_imag = np.vdot(dpsi_dx_val, (I - P) @ dpsi_dy_val).imag
-    g_yy = np.vdot(dpsi_dy_val, (I - P) @ dpsi_dy_val).real
-    
     return g_xx, g_xy_real, g_xy_imag, g_yy
 
 

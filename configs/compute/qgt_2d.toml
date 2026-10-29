@@ -5,6 +5,6 @@
 
 [arguments]
 Force_new = false
-method_name = "numerical_phase_corrected"
+method_name = "kubo"
 include_sym_path_qgt = true
 # eigen_run = "@runs/eigen_2d/<model>/<YYYYMMDD-HHMMSS>"

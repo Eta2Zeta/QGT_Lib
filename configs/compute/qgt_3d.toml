@@ -4,5 +4,5 @@
 # Reads the eigen_3d run created or reused most recently, unless eigen_run is set.
 
 [arguments]
-method = "numerical"
+method = "kubo"
 # eigen_run = "@runs/eigen_3d/<model>/<YYYYMMDD-HHMMSS>"

@@ -50,10 +50,10 @@ def test_every_table_entry_loads():
 
 
 def test_old_import_statements_still_work():
-    from Library.QGT_lib import QGT_grid_num
-    from qgt.geometry.qgt_2d import QGT_grid_num as current
+    from Library.QGT_lib import QGT_grid_analytic
+    from qgt.geometry.qgt_2d import QGT_grid_analytic as current
 
-    assert QGT_grid_num is current
+    assert QGT_grid_analytic is current
     namespace = {}
     exec("from Library.utilities import *", namespace)
     assert {"generate_2d_sym_lines", "replace_zeros_with_nan", "sign_check"} <= set(namespace)

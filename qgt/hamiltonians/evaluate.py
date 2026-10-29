@@ -1,3 +1,5 @@
+import numpy as np
+
 from qgt.hamiltonians.base import hamiltonian
 
 def get_Hamiltonian(
@@ -59,3 +61,19 @@ def get_Hamiltonian(
         results.append(second_magnus)
 
     return tuple(results) if len(results) > 1 else (H_k, H_prime)
+
+
+def hamiltonian_at(Hamiltonian, k):
+    """
+    H at momenta ``k`` of shape ``(..., 3)``, as an array of shape ``(..., dim, dim)``.
+
+    A static model is evaluated with ``compute_static_vectorized``; a driven
+    one (``A0 != 0``) point by point with its Floquet ``effective_hamiltonian``.
+    """
+    k = np.asarray(k, dtype=float)
+    flat = k.reshape(-1, 3)
+    if getattr(Hamiltonian, "A0", 0) == 0:
+        H = Hamiltonian.compute_static_vectorized(flat[:, 0], flat[:, 1], flat[:, 2])
+    else:
+        H = np.stack([Hamiltonian.effective_hamiltonian(kx, ky, kz)[0] for kx, ky, kz in flat])
+    return np.asarray(H, dtype=complex).reshape(k.shape[:-1] + (Hamiltonian.dim, Hamiltonian.dim))

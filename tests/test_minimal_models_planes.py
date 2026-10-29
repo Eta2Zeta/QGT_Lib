@@ -55,25 +55,25 @@ def test_real_band_then_geometry_pipeline_and_cache(tmp_path, monkeypatch):
     target = tmp_path / model_name / plane_name / "dataset_1"
     calls = []
     calculate_bands = runner.grid_eigenvalues_eigenfunctions
-    calculate_qgt = runner.QGT_grid_num
+    calculate_qgt = runner.quantum_geometric_tensor
 
     def record_bands(*args, **kwargs):
         calls.append("bands")
         return calculate_bands(*args, **kwargs)
 
     def record_qgt(*args, **kwargs):
-        # The reusable geometry routine receives the already-saved band results.
-        np.testing.assert_array_equal(args[2], np.load(target / "eigenvalues.npy"))
-        np.testing.assert_array_equal(args[3], np.load(target / "eigenfunctions.npy"))
-        calls.append(kwargs["band_index"])
+        # One Kubo evaluation of every band, numbered as in the saved band results.
+        assert args[2] is None
+        np.testing.assert_array_equal(kwargs["eigenvectors"], np.load(target / "eigenfunctions.npy"))
+        calls.append("qgt")
         return calculate_qgt(*args, **kwargs)
 
     monkeypatch.setattr(runner, "grid_eigenvalues_eigenfunctions", record_bands)
-    monkeypatch.setattr(runner, "QGT_grid_num", record_qgt)
+    monkeypatch.setattr(runner, "quantum_geometric_tensor", record_qgt)
     summary = runner.run_plane(
         model_name, plane_name, fraction, output_root=tmp_path, mesh_spacing=5, make_plots=False,
     )
-    assert calls == ["bands", 0, 1, 2, 3]
+    assert calls == ["bands", "qgt"]
     assert Path(summary["dataset_dir"]) == target
     assert summary["status"] == "complete"
     assert summary["analytic_eigenvalue_max_error"] < 1e-10
@@ -121,7 +121,7 @@ def test_real_band_then_geometry_pipeline_and_cache(tmp_path, monkeypatch):
         pytest.fail("Completed matching datasets must be reused without recalculation")
 
     monkeypatch.setattr(runner, "grid_eigenvalues_eigenfunctions", unexpected_recalculation)
-    monkeypatch.setattr(runner, "QGT_grid_num", unexpected_recalculation)
+    monkeypatch.setattr(runner, "quantum_geometric_tensor", unexpected_recalculation)
     repeated = runner.run_plane(
         model_name, plane_name, fraction, output_root=tmp_path, mesh_spacing=5, make_plots=False,
     )

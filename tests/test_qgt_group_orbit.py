@@ -52,19 +52,15 @@ def test_qgt_group_orbit_uses_existing_grid_calculations_for_every_element(
     def fake_qgt_grid(
         kx,
         ky,
-        eigenvalues,
-        eigenfunctions,
-        qgt_function,
         hamiltonian_arg,
-        delta_k,
         band_index,
         *,
-        progress_label,
+        eigenfunctions,
+        delta_k,
         kk,
         order,
-        show_progress,
     ):
-        qgt_calls.append((kx.copy(), ky.copy(), kk, progress_label, order))
+        qgt_calls.append((kx.copy(), ky.copy(), kk, band_index, order))
         return tuple(
             np.full(kx.shape, component_index + 1.0 + 10.0 * band_index)
             for component_index in range(9)
@@ -75,7 +71,7 @@ def test_qgt_group_orbit_uses_existing_grid_calculations_for_every_element(
         "grid_eigenvalues_eigenfunctions",
         fake_grid_eigenvalues,
     )
-    monkeypatch.setattr(qgt_orbit_module, "QGT_grid_num", fake_qgt_grid)
+    monkeypatch.setattr(qgt_orbit_module, "QGT_grid_kubo", fake_qgt_grid)
 
     orbit = calculate_numerical_qgt_group_orbit(
         hamiltonian,
@@ -104,8 +100,9 @@ def test_qgt_group_orbit_uses_existing_grid_calculations_for_every_element(
         assert np.allclose(eigen_calls[element_index][0], expected_grid[..., 0])
         assert np.allclose(eigen_calls[element_index][1], expected_grid[..., 1])
         assert np.isclose(eigen_calls[element_index][2], expected_grid[0, 0, 2])
-        assert qgt_calls[2 * element_index][3] == f"{element.name}, band 0"
-        assert qgt_calls[2 * element_index + 1][3] == f"{element.name}, band 1"
+        assert qgt_calls[2 * element_index][3] == 0
+        assert qgt_calls[2 * element_index + 1][3] == 1
+        assert np.isclose(qgt_calls[2 * element_index][2], expected_grid[0, 0, 2])
 
     assert np.allclose(orbit.berry_curvature[:, 0, ..., 0], -18.0)
     assert np.allclose(orbit.berry_curvature[:, 0, ..., 1], 14.0)

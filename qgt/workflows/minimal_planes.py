@@ -26,7 +26,6 @@ are their class defaults; the Hamiltonian and full parameters are saved.
 import argparse
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import csv
-from functools import partial
 import hashlib
 import json
 import os
@@ -43,8 +42,7 @@ os.environ.setdefault("MPLBACKEND", "Agg")
 import numpy as np
 
 from qgt.hamiltonians.minimal_models import MINIMAL_MODELS
-from qgt.geometry.pointwise_3d import quantum_geometric_tensor_3d_num_phase_corrected
-from qgt.geometry.qgt_2d import QGT_grid_num
+from qgt.geometry.kubo import plane_momenta, qgt_components, quantum_geometric_tensor
 from qgt.io.metadata import dump_metadata, pick_or_create_result_dir_simple
 from qgt.kspace.grids import create_2d_coordinate_grid_from_ranges
 from qgt.spectra.eigenvalues import grid_eigenvalues_eigenfunctions
@@ -101,21 +99,6 @@ def band_gaps(eigenvalues):
     return np.min(gaps, axis=-1)
 
 
-def isolated_band_qgt(
-    model, kx, ky, kz, delta_k, eigenvalues, eigenfunctions, band_index,
-    *, gap_tolerance,
-):
-    """Mask undefined single-band values; delegate all QGT math to the library."""
-    if not inside_bz(kx, ky, model.crystal_system):
-        return (np.nan,) * 9
-    other = np.delete(eigenvalues, band_index)
-    if np.min(np.abs(eigenvalues[band_index] - other)) <= gap_tolerance:
-        return (np.nan,) * 9
-    return quantum_geometric_tensor_3d_num_phase_corrected(
-        model, kx, ky, kz, delta_k, eigenvalues, eigenfunctions, band_index,
-    )
-
-
 def source_hashes(model_name):
     """Make cached datasets sensitive to changes in models and numerical code."""
     files = [
@@ -126,8 +109,7 @@ def source_hashes(model_name):
         "hamiltonians/minimal_models/MinimalAltermagnetHamiltonian.py",
         "hamiltonians/base.py",
         "hamiltonians/evaluate.py", "spectra/eigenvalues.py", "spectra/diagonalization.py",
-        "spectra/eigenvectors.py", "geometry/derivatives.py", "geometry/pointwise_3d.py",
-        "geometry/qgt_2d.py", "kspace/grids.py", "topology.py",
+        "spectra/eigenvectors.py", "geometry/kubo.py", "kspace/grids.py", "topology.py",
     )]
     return {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
             for path in files}
@@ -146,7 +128,7 @@ def run_plane(
     if mesh_spacing < 2 or not np.isfinite(delta_k) or delta_k <= 0:
         raise ValueError("mesh_spacing >= 2 and finite delta_k > 0 are required")
     if not np.isfinite(gap_tolerance) or gap_tolerance < 1e-6:
-        raise ValueError("gap_tolerance must be at least the library's 1e-6 block tolerance")
+        raise ValueError("gap_tolerance must be finite and at least 1e-6")
     if overwrite and force_new:
         raise ValueError("overwrite and force_new cannot be combined")
     model = MINIMAL_MODELS[model_name](**(params or {}))
@@ -162,7 +144,7 @@ def run_plane(
         "crystal_system": model.crystal_system,
         "mesh_spacing": int(mesh_spacing), "kk": kz, "plane_name": plane_name,
         "kz_bz_fraction": bz_fraction, "kz_bz_full_width": float(2 * np.pi),
-        "method_name": "numerical_phase_corrected", "delta_k": delta_k,
+        "method_name": "kubo", "delta_k": delta_k,
         "gap_tolerance": gap_tolerance, "band_index": "ALL",
         "band_indices": list(range(model.dim)), "n_bands": model.dim,
         "array_axes_bands": ["ky", "kx", "band"],
@@ -226,20 +208,20 @@ def run_plane(
     }.items():
         np.save(result_dir / (name + ".npy"), value)
 
-    components = {name: [] for name in QGT_KEYS}
-    callback = partial(isolated_band_qgt, gap_tolerance=gap_tolerance)
-    for band in range(model.dim):
-        print(f"  {model_name} {plane_name}: QGT band {band + 1}/{model.dim}", flush=True)
-        # A fully degenerate plane has no isolated-band QGT to evaluate.
-        arrays = (QGT_grid_num(
-            ki, kj, eigenvalues, eigenfunctions, callback, model,
-            delta_k=delta_k, band_index=band, kk=kz, order="xyz", show_progress=False,
-        ) if valid[band].any() else tuple(np.full(ki.shape, np.nan) for _ in QGT_KEYS))
-        for name, array in zip(QGT_KEYS, arrays):
-            if not np.isfinite(array[valid[band]]).all():
+    print(f"  {model_name} {plane_name}: QGT of {model.dim} bands", flush=True)
+    # Every band in one Kubo evaluation. Outside the BZ, or where a band touches
+    # another, there is no isolated-band QGT: those points are NaN.
+    with np.errstate(invalid="ignore", over="ignore"):
+        Q = quantum_geometric_tensor(
+            model, plane_momenta(ki, kj, kz), None, delta_k=delta_k, eigenvectors=eigenfunctions,
+        )
+    Q = np.moveaxis(Q, -3, 0)
+    Q[~valid] = complex(np.nan, np.nan)
+    components = dict(zip(QGT_KEYS, qgt_components(Q)))
+    for name, array in components.items():
+        for band in range(model.dim):
+            if not np.isfinite(array[band][valid[band]]).all():
                 raise RuntimeError(f"Nonfinite {name} on isolated band {band} of {model_name}")
-            components[name].append(array)
-    components = {name: np.stack(arrays) for name, arrays in components.items()}
     components["trace"] = components["g_xx"] + components["g_yy"] + components["g_zz"]
     for axis, value in zip("xyz", berry_curvature_components_from_qgt(
         components["g_xy_imag"], components["g_xz_imag"], components["g_yz_imag"],

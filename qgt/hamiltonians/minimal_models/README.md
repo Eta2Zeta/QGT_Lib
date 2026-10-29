@@ -160,12 +160,12 @@ python scripts/compute/minimal_planes.py --overwrite --workers 6
 ```
 
 The runner uses the existing `grid_eigenvalues_eigenfunctions` first, followed
-by `QGT_grid_num` and `quantum_geometric_tensor_3d_num_phase_corrected` for all
+by one Kubo evaluation (`qgt.geometry.kubo.quantum_geometric_tensor`) for all
 four bands. Defaults are the 22 newly added classes, their default parameters,
 150 x 150 points, and kz = 0 and 2*pi/100. The offset is one percent of the
 **full** reciprocal z period, not one percent of the Gamma-to-boundary distance.
 All nine Cartesian QGT components are retained, including z derivatives.
-The derivative step is 1e-5, independent of the plotting-grid spacing.
+The step of the central difference of H is 1e-5, independent of the plotting-grid spacing.
 
 Use `--all-models` to include the five older models, `--models CLASS ...` for
 a subset, `--mesh-spacing N` for another resolution, or `--force-new` for new
@@ -218,16 +218,16 @@ python scripts/compute/minimal_planes.py --models MinimalHamSG11_2a2b2c2d \
 For trigonal/hexagonal models, the grid covers the Cartesian bounding box of
 the hexagonal BZ; `bz_mask.npy` identifies its interior. Other models use the
 [-pi, pi]^2 reciprocal phase box. Eigenpairs are saved across the full grid;
-QGT outside the BZ is NaN. At a band separation <= 1e-6, individual-band QGT
-is also marked NaN, matching the near-degenerate block scale in the existing
-phase-correction routine. `band_gap.npy` and `qgt_valid_mask.npy` record this
+QGT outside the BZ is NaN. At a band separation <= 1e-6, where the
+individual-band QGT diverges, it is also marked NaN. `band_gap.npy` and `qgt_valid_mask.npy` record this
 explicitly, both with shape (4, N, N). No finite QGT values are clipped.
 
 With the current defaults no model is degenerate on a whole kz plane that the
 runner computes (the 2026-10-14 rerun has no degenerate points for SG163 or
 SG165, which an earlier version of this note described as degenerate on kz=0).
-Where bands do touch, see the exact crossings below; a degenerate-subspace QGT
-would need a separate method.
+Where bands do touch, see the exact crossings below. The QGT of a group of bands,
+`quantum_geometric_tensor(model, k, [0, 1])`, stays finite where the bands of
+the group touch each other.
 
 ## Exact band crossings
 

@@ -202,7 +202,7 @@ def calculate_d3d_all_irrep_berry_projections(
                 "data_sharing": "read_only_npy_memmap",
             },
         },
-        "qgt_method": "numerical_phase_corrected",
+        "qgt_method": "kubo",
         "berry_convention": {
             "Omega_x": "-2 Im(Q_yz)",
             "Omega_y": "+2 Im(Q_xz)",

@@ -32,7 +32,6 @@ MOVED_MODULES = {
     "Library.diagnalization": _moved("qgt.spectra.diagonalization"),
     "Library.eigenvalue_calc_lib": _moved("qgt.spectra.eigenvalues"),
     "Library.eigenvalue_calc_lib_1d": _moved("qgt.spectra.eigenvalues_1d"),
-    "Library.calculus_lib": _moved("qgt.geometry.derivatives"),
     "Library.QGT_lib": _moved("qgt.geometry.qgt_2d"),
     "Library.QGT_Calc_3d_lib": _moved("qgt.geometry.qgt_3d"),
     "Library.QGT_calc_functions_2comp": _moved("qgt.geometry.pointwise_2d"),

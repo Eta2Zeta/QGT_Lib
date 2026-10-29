@@ -7,8 +7,7 @@ import multiprocessing as mp
 import numpy as np
 from tqdm import tqdm
 
-from qgt.geometry.pointwise_3d import quantum_geometric_tensor_3d_num_phase_corrected
-from qgt.geometry.qgt_2d import QGT_grid_num
+from qgt.geometry.qgt_2d import QGT_grid_kubo
 from qgt.spectra.eigenvalues import grid_eigenvalues_eigenfunctions
 from qgt.symmetry.point_groups import PointGroup
 
@@ -62,19 +61,15 @@ def _calculate_numerical_qgt_group_element(
 
     qgt_for_element = {name: [] for name in QGT_COMPONENT_NAMES}
     for band_index in band_indices:
-        qgt_result = QGT_grid_num(
+        qgt_result = QGT_grid_kubo(
             transformed_kx,
             transformed_ky,
-            eigenvalues,
-            eigenfunctions,
-            quantum_geometric_tensor_3d_num_phase_corrected,
             hamiltonian,
-            delta_k,
             band_index,
-            progress_label=f"{element_name}, band {band_index}",
+            eigenfunctions=eigenfunctions,
+            delta_k=delta_k,
             kk=fixed_kz,
             order="xyz",
-            show_progress=show_progress,
         )
         for component_name, component_grid in zip(
             QGT_COMPONENT_NAMES,
@@ -182,8 +177,8 @@ def calculate_numerical_qgt_group_orbit(
 ):
     """Calculate eigenpairs and QGT data on every ``R_g^{-1} k`` grid.
 
-    The existing grid eigensolver and phase-corrected numerical QGT routine
-    are used unchanged for each group element. ``cartesian_k_grid`` must have
+    The existing grid eigensolver and the Kubo QGT routine are used
+    unchanged for each group element. ``cartesian_k_grid`` must have
     shape ``(N, N, 3)``. Its final axis contains ``(kx, ky, kz)``.
 
     The current two-dimensional grid routines require each transformed grid

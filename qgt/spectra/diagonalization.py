@@ -7,11 +7,12 @@ from qgt.spectra.eigenvectors import Eigenvectors
 
 def get_eigenvalues_and_eigenvectors(Hamiltonian):
     """
-    Hamiltonian is any Matrix
+    Hamiltonian is a Hermitian matrix.
 
-    This solves the Hamiltonian for its spectrum and Eigenstates
+    Returns its real eigenvalues in ascending order and orthonormal
+    eigenvectors as rows, also within degenerate subspaces.
     """
-    eigenvalues, eigenvectors = np.linalg.eig(Hamiltonian)
+    eigenvalues, eigenvectors = np.linalg.eigh(Hamiltonian)
     eigenvectors = np.transpose(eigenvectors)
     return eigenvalues, eigenvectors
 

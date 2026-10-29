@@ -19,13 +19,13 @@ The scripts also run without installing: each adds the repository to `sys.path`.
 qgt/                    the library
   hamiltonians/         base class, one file per model, minimal_models/ (27 altermagnet families)
   spectra/              eigenvalue solvers, eigenvector alignment
-  geometry/             QGT on grids and at single k-points, wavefunction derivatives
+  geometry/             QGT by the Kubo formula at any set of k-points, grids, lines
   symmetry/             point groups, QGT group orbits, Brillouin-zone zones
   kspace/               grids and coordinate orders, indexing, symmetry paths
   workflows/            complete calculations that save a run (eigen_2d, qgt_2d, qgt_nd_sweep, ...)
   plotting/             band, QGT, sweep and 3D plots
   io/                   data folders, run folders, metadata, old results
-  topology.py           Berry curvature, flux, Chern and winding numbers
+  topology.py           Berry curvature, flux, Chern numbers (link variables), monopole charges, winding numbers
   config.py             runs a workflow or plot from a TOML config
 scripts/compute/        one entry point per calculation
 scripts/plot/           one entry point per plot
@@ -121,7 +121,34 @@ where the bands of a minimal model cross, exactly from its form factors
 equations). `python scripts/compute/band_crossings.py` saves them with a 3D view;
 see [Exact band crossings](qgt/hamiltonians/minimal_models/README.md#exact-band-crossings).
 
+## How the QGT is calculated
+
+`qgt.geometry.kubo.quantum_geometric_tensor(model, k, bands)` evaluates the
+Kubo (sum-over-states) formula
+
+    Q_ij = sum_{m != n} <n|d_i H|m> <m|d_j H|n> / (E_n - E_m)^2,
+
+with `g_ij = Re Q_ij` and `Omega_ij = -2 Im Q_ij`, at momenta `k` of any shape
+`(..., 3)`: one point, a line, a plane, a volume, a sphere or scattered points.
+It is vectorized over the points. Only `H` and its central difference enter, so
+no eigenvector phase or order has to be fixed; a driven model uses its Floquet
+effective Hamiltonian.
+
+- `bands` is one band, a list of bands treated as one group (finite where the
+  bands of the group touch each other), or `None` for every band separately.
+- Bands are numbered by energy. Pass `eigenvectors=` from an eigen run to number
+  them as that run does, e.g. bands tracked through crossings.
+- `QGT_grid_kubo` (planes, in any coordinate order), `QGT_3d_kubo` (volumes) and
+  `QGT_line` return the nine component arrays the workflows save; workflows
+  and configs call this method `"kubo"`.
+- `analytic` (closed forms on a model) and `semi_numerical` (the chiral model's
+  pseudo-eigenvectors, which are not eigenstates of `H`) remain separate methods.
+
+`qgt.topology.chern_number_from_links` and `monopole_charge` count Berry flux
+with link variables (Fukui, Hatsugai and Suzuki 2005): integers already on
+coarse meshes, with no derivative. `compute_chern_number` integrates a saved
+curvature grid instead.
+
 ## To do
 
-- Berry curvature calculation -> Chern number
 - Polarization: change A sin(wt) to -A sin(wt)

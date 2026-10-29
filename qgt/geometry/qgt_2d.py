@@ -2,20 +2,16 @@ import numpy as np
 from qgt.utils import sign_check
 from qgt.kspace.grids import map_k_by_order
 from qgt.spectra.eigenvalues_1d import line_eigenvalues_eigenfunctions
-from qgt.geometry.pointwise_2d import quantum_geometric_tensor_num
+from qgt.geometry.kubo import plane_momenta, qgt_components, quantum_geometric_tensor
 from tqdm import tqdm
 
 
-def QGT_grid_num(
-    ki, kj, eigenvalues, eigenfunctions, quantum_geometric_tensor_func,
-    hamiltonian, delta_k, band_index,
-    progress_label=None, kk=0, order="xyz", show_progress=True
-):
+def QGT_grid_kubo(ki, kj, hamiltonian, band_index, *, eigenfunctions=None, delta_k=1e-5, kk=0, order="xyz"):
     """
-    Calculate the quantum geometric tensor (QGT) components for a ki-kj grid with a fixed kk,
-    with flexible axis ordering controlled by `order`.
+    QGT components of a band on a ki-kj grid with a fixed kk, by the Kubo formula
+    (``qgt.geometry.kubo``).
 
-    Mapping rule:
+    Mapping rule (see ``map_k_by_order``):
       - order[0] gets ki[i,j]
       - order[1] gets kj[i,j]
       - order[2] gets kk
@@ -25,65 +21,18 @@ def QGT_grid_num(
       order='yzx' -> (kx,ky,kz)=(kk,ki,kj)
       order='xzy' -> (kx,ky,kz)=(ki,kk,kj)
       etc.
+
+    ``band_index`` is a band or a sequence of bands treated as one group. With
+    ``eigenfunctions`` from an eigen run (shape ``ki.shape + (dim, dim)``), bands
+    are numbered as in that run. ``delta_k`` is the step of the central
+    difference of H.
+
+    Returns the nine arrays g_xx, g_yy, g_zz, g_xy_real, g_xy_imag,
+    g_xz_real, g_xz_imag, g_yz_real, g_yz_imag, each of shape ``ki.shape``.
     """
-    # Initialize arrays to store tensor components
-    shape = ki.shape
-    g_xx_array = np.zeros(shape) 
-    g_yy_array = np.zeros(shape)
-    g_zz_array = np.zeros(shape)
-
-    g_xy_real_array = np.zeros(shape)
-    g_xy_imag_array = np.zeros(shape)
-
-    g_xz_real_array = np.zeros(shape)
-    g_xz_imag_array = np.zeros(shape)
-
-    g_yz_real_array = np.zeros(shape)
-    g_yz_imag_array = np.zeros(shape)
-
-    total_points = shape[0] * shape[1]
-    desc = f"QGT grid [{progress_label}]" if progress_label else "Computing QGT grid"
-
-    with tqdm(
-        total=total_points,
-        desc=desc,
-        unit="kpt",
-        leave=False,
-        disable=not show_progress,
-    ) as pbar:
-        for i in range(shape[0]):
-            for j in range(shape[1]):
-                eigenfunction = eigenfunctions[i, j]
-                eigenvalue = eigenvalues[i, j]
-
-                # Map (ki,kj,kk) -> (kx,ky,kz) per order
-                kx, ky, kz = map_k_by_order(ki[i, j], kj[i, j], kk, order)
-
-                # Call the 3D QGT function:
-                g_xx, g_yy, g_zz, g_xy_real, g_xy_imag, g_xz_real, g_xz_imag, g_yz_real, g_yz_imag = \
-                    quantum_geometric_tensor_func(
-                        hamiltonian, kx, ky, kz, delta_k, eigenvalue, eigenfunction, band_index
-                    )
-
-                g_xx_array[i, j] = g_xx
-                g_yy_array[i, j] = g_yy
-                g_zz_array[i, j] = g_zz
-
-                g_xy_real_array[i, j] = g_xy_real
-                g_xy_imag_array[i, j] = g_xy_imag
-
-                g_xz_real_array[i, j] = g_xz_real
-                g_xz_imag_array[i, j] = g_xz_imag
-
-                g_yz_real_array[i, j] = g_yz_real
-                g_yz_imag_array[i, j] = g_yz_imag
-
-                pbar.update(1)
-
-    return (g_xx_array, g_yy_array, g_zz_array,
-            g_xy_real_array, g_xy_imag_array,
-            g_xz_real_array, g_xz_imag_array,
-            g_yz_real_array, g_yz_imag_array)
+    k = plane_momenta(ki, kj, kk, order)
+    Q = quantum_geometric_tensor(hamiltonian, k, band_index, delta_k=delta_k, eigenvectors=eigenfunctions)
+    return qgt_components(Q)
 
 def QGT_grid_semi_num(
     kx, ky,
@@ -114,7 +63,7 @@ def QGT_grid_semi_num(
     band_index : int
         0 -> psiA, 1 -> psiB (by your convention).
     z_cutoff : float or None
-        If provided, clip outputs above this value (upper bound only, like QGT_grid_num).
+        If provided, clip outputs above this value (upper bound only).
 
     Returns
     -------
@@ -145,7 +94,7 @@ def QGT_grid_semi_num(
 
                 pbar.update(1)
 
-    # Optional clipping (upper bound only, matching QGT_grid_num behavior)
+    # Optional clipping (upper bound only)
     if z_cutoff is not None:
         g_xx_array      = np.clip(g_xx_array,      None, z_cutoff)
         g_xy_real_array = np.clip(g_xy_real_array, None, z_cutoff)
@@ -233,67 +182,31 @@ def QGT_grid_analytic(
 
 def QGT_line(Hamiltonian, line_kx, line_ky, delta_k, band_index):
     """
-    Calculate the Quantum Geometric Tensor (QGT) along a line in the kx-ky plane.
+    Calculate the Quantum Geometric Tensor (QGT) along a line in the kx-ky plane,
+    by the Kubo formula.
 
     Parameters:
-    - Hamiltonian: Function to compute the Hamiltonian matrix.
-    - k_line: 1D array of k-values along the line.
-    - k_angle: The angle of the line in radians.
-    - delta_k: Small step for numerical differentiation.
-    - dim: The dimension of the system.
+    - Hamiltonian: The Hamiltonian object.
+    - line_kx, line_ky: 1D arrays of the k-points on the line.
+    - delta_k: Step of the central difference of H.
     - band_index: Band index for which to calculate the QGT.
 
     Returns:
+    - eigenvalues: Eigenvalues along the line.
+    - perturbations: Perturbation strengths from the eigenvalue calculation.
     - g_xx_values: Array of g_xx components along the line.
     - g_xy_real_values: Array of real parts of g_xy components along the line.
     - g_xy_imag_values: Array of imaginary parts of g_xy components along the line.
     - g_yy_values: Array of g_yy components along the line.
     - trace_values: Array of trace components (g_xx + g_yy) along the line.
+    - magnus_operator_norm: From the eigenvalue calculation.
     """
-    # Step 1: Get eigenvalues and eigenfunctions along the line
     eigenvalues, eigenfunctions, _, perturbations, magnus_operator_norm = line_eigenvalues_eigenfunctions(Hamiltonian, line_kx, line_ky, band_index)
 
-    # Ensure eigenvalues is at least 2D (e.g., [points, bands])
-    eigenvalues = np.asarray(eigenvalues)
-
-    if eigenvalues.ndim == 1:
-        # If eigenvalues is 1D (e.g., just one band at each k-point)
-        eigenvalues_band = eigenvalues
-    elif eigenvalues.ndim >= 2:
-        # General case: eigenvalues is 2D or more, extract the specified band
-        eigenvalues_band = eigenvalues[..., band_index]
-    else:
-        raise ValueError("Invalid eigenvalues shape.")
-    
-
-    # Step 2: Initialize arrays to store QGT components
-    g_xx_values = []
-    g_xy_real_values = []
-    g_xy_imag_values = []
-    g_yy_values = []
-    trace_values = []
-
-    # Step 3: Calculate QGT components at each point along the line
-    for i, (kx, ky) in enumerate(zip(line_kx, line_ky)):
-        eigenvalue = eigenvalues[i]
-        eigenfunction = eigenfunctions[i]
-
-        g_xx, g_xy_real, g_xy_imag, g_yy = quantum_geometric_tensor_num(
-            Hamiltonian, kx, ky, delta_k, eigenvalue, eigenfunction, band_index
-        )
-
-        g_xx_values.append(g_xx)
-        g_xy_real_values.append(g_xy_real)
-        g_xy_imag_values.append(g_xy_imag)
-        g_yy_values.append(g_yy)
-        trace_values.append(g_xx + g_yy)
-
-    # Convert results to numpy arrays
-    g_xx_values = np.array(g_xx_values)
-    g_xy_real_values = np.array(g_xy_real_values)
-    g_xy_imag_values = np.array(g_xy_imag_values)
-    g_yy_values = np.array(g_yy_values)
-    trace_values = np.array(trace_values)
+    k = np.stack([line_kx, line_ky, np.zeros_like(line_kx)], axis=-1)
+    Q = quantum_geometric_tensor(Hamiltonian, k, band_index, delta_k=delta_k, eigenvectors=eigenfunctions)
+    g_xx_values, g_yy_values, _, g_xy_real_values, g_xy_imag_values = qgt_components(Q)[:5]
+    trace_values = g_xx_values + g_yy_values
 
     return eigenvalues, perturbations, g_xx_values, g_xy_real_values, g_xy_imag_values, g_yy_values, trace_values, magnus_operator_norm
 

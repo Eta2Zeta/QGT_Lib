@@ -5,7 +5,7 @@ import unittest
 
 import numpy as np
 
-from qgt.geometry.pointwise_3d import quantum_geometric_tensor_3d_num_phase_corrected
+from qgt.geometry.kubo import qgt_components, quantum_geometric_tensor
 from qgt.spectra.diagonalization import eigenvalues_and_vectors_eigenvalue_ordering
 
 
@@ -199,9 +199,7 @@ class TestMinimalModelsTableThree(unittest.TestCase):
                 )
                 energies, states = eigenvalues_and_vectors_eigenvalue_ordering(model, *k)
                 self.assertGreater(np.min(np.diff(energies.real)), 1e-3)
-                qgt = quantum_geometric_tensor_3d_num_phase_corrected(
-                    model, *k, 1e-5, energies, states, band_index=0,
-                )
+                qgt = qgt_components(quantum_geometric_tensor(model, k, 0))
                 berry = np.array([-2 * qgt[8], 2 * qgt[6], -2 * qgt[4]])
                 mass = model.Jz + abs(model.lamb)
                 energy = np.sqrt(
@@ -241,9 +239,7 @@ class TestMinimalModelsTableThree(unittest.TestCase):
                         -energy_sign * mass * model.t3_add * np.sin(k[0]) * b_z
                         / (2 * energy ** 3)
                     )
-                    qgt = quantum_geometric_tensor_3d_num_phase_corrected(
-                        model, *k, 1e-5, energies, states, band_index=band,
-                    )
+                    qgt = qgt_components(quantum_geometric_tensor(model, k, band))
                     berry = np.array([-2 * qgt[8], 2 * qgt[6], -2 * qgt[4]])
                     np.testing.assert_allclose(
                         berry, [0, expected_y, 0], rtol=3e-5, atol=2e-9,
@@ -255,10 +251,7 @@ class TestMinimalModelsTableThree(unittest.TestCase):
         without_xz = self.model_class(11)(lamb_z_xz_add=0.0)
         k = np.array([1.8, 0.0, 0.0])
         np.testing.assert_allclose(model.compute_static(*k), without_xz.compute_static(*k))
-        energies, states = eigenvalues_and_vectors_eigenvalue_ordering(without_xz, *k)
-        qgt = quantum_geometric_tensor_3d_num_phase_corrected(
-            without_xz, *k, 1e-5, energies, states, band_index=0,
-        )
+        qgt = qgt_components(quantum_geometric_tensor(without_xz, k, 0))
         self.assertLess(abs(2 * qgt[6]), 2e-9)
 
     def test_sg11_xz_full_qgt_matches_analytic_hamiltonian_derivatives(self):
@@ -298,7 +291,6 @@ class TestMinimalModelsTableThree(unittest.TestCase):
                 energies, eigenvectors = np.linalg.eigh(model.compute_static(*k))
                 self.assertGreater(np.min(np.diff(energies)), 1e-3)
                 transformed = np.einsum("an,iab,bm->inm", eigenvectors.conj(), derivatives, eigenvectors)
-                routine_energies, states = eigenvalues_and_vectors_eigenvalue_ordering(model, *k)
                 for band in range(4):
                     with self.subTest(k=k, band=band):
                         others = np.arange(4) != band
@@ -307,9 +299,7 @@ class TestMinimalModelsTableThree(unittest.TestCase):
                             "im,jm,m->ij", matrix_elements, matrix_elements.conj(),
                             1 / (energies[band] - energies[others]) ** 2,
                         )
-                        qgt = quantum_geometric_tensor_3d_num_phase_corrected(
-                            model, *k, 1e-5, routine_energies, states, band_index=band,
-                        )
+                        qgt = qgt_components(quantum_geometric_tensor(model, k, band))
                         xy, xz, yz_q = qgt[3] + 1j * qgt[4], qgt[5] + 1j * qgt[6], qgt[7] + 1j * qgt[8]
                         actual = np.array([
                             [qgt[0], xy, xz], [xy.conjugate(), qgt[1], yz_q],

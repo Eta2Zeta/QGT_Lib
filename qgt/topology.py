@@ -1,5 +1,6 @@
 import numpy as np
 
+from qgt.hamiltonians.evaluate import hamiltonian_at
 from qgt.kspace.grids import CARTESIAN_ORDERS, cylindrical_order_axes, normalize_coordinate_order
 
 
@@ -77,8 +78,7 @@ def integrate_berry_flux_2d(
         if phi_periodic is None:
             phi_periodic = True
 
-    trapezoid = getattr(np, "trapezoid", np.trapz)
-    integral_along_ki = trapezoid(integrand, x=ki_values, axis=1)
+    integral_along_ki = np.trapezoid(integrand, x=ki_values, axis=1)
     if phi_periodic:
         kj_integral_values = np.concatenate(
             (kj_values, [kj_values[0] + 2.0 * np.pi])
@@ -88,7 +88,7 @@ def integrate_berry_flux_2d(
         )
     else:
         kj_integral_values = kj_values
-    return float(trapezoid(integral_along_ki, x=kj_integral_values, axis=0))
+    return float(np.trapezoid(integral_along_ki, x=kj_integral_values, axis=0))
 
 
 def winding_number_on_closed_curve(
@@ -221,10 +221,74 @@ def compute_chern_number(g_xy_imag_array, delta_kx, delta_ky, kx_grid, ky_grid, 
     Berry_Curvature_masked = np.where(mask, Berry_Curvature, 0.0)
 
     # Use the trapezoidal rule along both axes
-    integral = np.trapz(
-        np.trapz(Berry_Curvature_masked, dx=delta_ky, axis=1),
+    integral = np.trapezoid(
+        np.trapezoid(Berry_Curvature_masked, dx=delta_ky, axis=1),
         dx=delta_kx, axis=0
     )
     # Normalize by 2π
     chern_number = integral / (2 * np.pi)
     return chern_number
+
+
+def berry_flux_on_lattice(Hamiltonian, k, bands):
+    """
+    Berry flux of a band or group of bands through a surface sampled as a
+    lattice of momenta ``k`` of shape ``(nu + 1, nv + 1, 3)``, by link variables
+    (Fukui, Hatsugai and Suzuki, J. Phys. Soc. Jpn. 74, 1674 (2005)).
+
+    Plaquette ``(u, v)`` has corners ``k[u, v]``, ``k[u + 1, v]``, ``k[u + 1, v + 1]``
+    and ``k[u, v + 1]``; flux is counted along ``d_u k x d_v k``. Each plaquette
+    contributes the phase of the product of its four links, so the result is
+    gauge invariant and needs no derivative. On a closed surface (the Brillouin
+    zone torus, or a sphere) it is 2 pi times an integer.
+
+    ``bands`` are numbered by energy; a group must stay separated from the
+    other bands on the whole surface.
+    """
+    _, U = np.linalg.eigh(hamiltonian_at(Hamiltonian, k))
+    S = U[..., list(np.atleast_1d(bands))]
+
+    def link(a, b):
+        # Accelerate's det can warn spuriously on small stacks; the values are unaffected.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            det = np.linalg.det(np.conj(np.swapaxes(a, -1, -2)) @ b)
+        return det / np.abs(det)
+
+    loop = (link(S[:-1, :-1], S[1:, :-1]) * link(S[1:, :-1], S[1:, 1:])
+            * link(S[1:, 1:], S[:-1, 1:]) * link(S[:-1, 1:], S[:-1, :-1]))
+    # A link's phase is -A.dk for the connection A = i<u|du>, so a loop's phase is minus its flux.
+    return float(-np.sum(np.angle(loop)))
+
+
+def chern_number_from_links(Hamiltonian, bands, b1, b2, *, mesh=60, kz=0.0):
+    """
+    Chern number of a band or group of bands over the two-dimensional Brillouin
+    zone spanned by the reciprocal vectors ``b1``, ``b2`` (in the kx-ky plane,
+    at fixed ``kz``), from the link-variable flux on a ``mesh x mesh`` lattice.
+
+    Unlike ``compute_chern_number``, which integrates a saved curvature grid,
+    this evaluates the model and is an integer to rounding error already on
+    coarse meshes when ``H(k + b) = H(k)``.
+    """
+    b1 = np.asarray(b1, dtype=float)[:2]
+    b2 = np.asarray(b2, dtype=float)[:2]
+    s = np.linspace(0.0, 1.0, mesh + 1)
+    u, v = np.meshgrid(s, s, indexing="ij")
+    kxy = u[..., None] * b1 + v[..., None] * b2
+    k = np.concatenate([kxy, np.full(u.shape + (1,), float(kz))], axis=-1)
+    orientation = np.sign(b1[0] * b2[1] - b1[1] * b2[0])
+    return orientation * berry_flux_on_lattice(Hamiltonian, k, bands) / (2 * np.pi)
+
+
+def monopole_charge(Hamiltonian, bands, center, *, radius=1e-2, mesh=24):
+    """
+    Berry flux of a band or group of bands out of a sphere of ``radius`` around
+    ``center``, divided by 2 pi: the charge of a Weyl point (or any other band
+    touching) inside the sphere.
+    """
+    theta = np.linspace(0.0, np.pi, mesh + 1)
+    phi = np.linspace(0.0, 2 * np.pi, 2 * mesh + 1)
+    T, P = np.meshgrid(theta, phi, indexing="ij")
+    direction = np.stack([np.sin(T) * np.cos(P), np.sin(T) * np.sin(P), np.cos(T)], axis=-1)
+    k = np.asarray(center, dtype=float) + radius * direction
+    return berry_flux_on_lattice(Hamiltonian, k, bands) / (2 * np.pi)

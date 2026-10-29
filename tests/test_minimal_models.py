@@ -13,7 +13,7 @@ from qgt.hamiltonians.minimal_models import (
     MinimalHamSG194_2a,
 )
 from qgt.hamiltonians.evaluate import get_Hamiltonian
-from qgt.geometry.pointwise_2d import quantum_geometric_tensor_num
+from qgt.geometry.kubo import quantum_geometric_tensor
 from qgt.spectra.diagonalization import eigenvalues_and_vectors_eigenvalue_ordering
 from qgt.spectra.eigenvalues_1d import eigenvalues_along_path
 
@@ -184,16 +184,15 @@ def test_driven_fft_and_magnus_integration(polarization):
     np.testing.assert_allclose(effective, model.compute_static(kx, ky, kz) + perturbation)
 
 
-def test_numeric_qgt_matches_independent_matrix_derivative_formula():
+def test_kubo_qgt_matches_explicit_spectral_sum():
     model = MinimalHamSG194_2a(Jx=0.17, Jy=-0.13, Jz=0.29)
     k = MOMENTA[0]
     energies, eigenstates = eigenvalues_and_vectors_eigenvalue_ordering(model, *k)
     assert np.min(np.diff(energies.real)) > 1e-3
     step = 1e-5
-    actual = quantum_geometric_tensor_num(
-        model, k[0], k[1], step, energies, eigenstates, band_index=0, kz=k[2]
-    )
-    # Spectral expression is independent of eigenvector phase-fixing and derivatives.
+    Q = quantum_geometric_tensor(model, np.asarray(k, dtype=float), 0, delta_k=step)
+    actual = (Q[0, 0].real, Q[0, 1].real, Q[0, 1].imag, Q[1, 1].real)
+    # The spectral sum written out point by point, independent of the batched routine.
     derivatives = []
     for direction in np.eye(3)[:2]:
         derivatives.append(

@@ -16,13 +16,9 @@ from qgt.plotting.qgt_polar import (
 from qgt.io.setup_2d import setup_2D_QGT_results_directory
 from qgt.io.output import print_calculation_complete
 from qgt.io.runs import input_run, record_inputs
-from qgt.geometry.qgt_2d import QGT_grid_analytic, QGT_grid_num, QGT_grid_semi_num
+from qgt.geometry.qgt_2d import QGT_grid_analytic, QGT_grid_kubo, QGT_grid_semi_num
 from qgt.topology import berry_curvature_components_from_qgt, winding_numbers_vs_radius
 from qgt.kspace.paths import generate_2d_sym_lines
-from qgt.geometry.pointwise_3d import (
-    quantum_geometric_tensor_3d_num,
-    quantum_geometric_tensor_3d_num_phase_corrected,
-)
 from qgt.geometry.pointwise_2d import (
     quantum_geometric_tensor_analytic,
     quantum_geometric_tensor_semi_num,
@@ -185,16 +181,6 @@ def _sym_path_qgt_output_path(results_subdir, method_name, bands):
     return os.path.join(results_subdir, f"qgt_sym_path_{method_name}_{band_label}.npz")
 
 
-def _qgt_function_for_method(method_name):
-    if method_name == "numerical":
-        return quantum_geometric_tensor_3d_num
-    if method_name == "numerical_phase_corrected":
-        return quantum_geometric_tensor_3d_num_phase_corrected
-    if method_name == "analytic":
-        return quantum_geometric_tensor_analytic
-    raise ValueError(f"Symmetry-path QGT does not support method_name={method_name!r}.")
-
-
 def _calculate_qgt_on_sym_path(
     Hamiltonian_Obj,
     method_name,
@@ -216,7 +202,8 @@ def _calculate_qgt_on_sym_path(
     kj_path = k_path[:, 1].reshape(-1, 1)
     eigenvalues_grid = eigenvalues_path.reshape(-1, 1, Hamiltonian_Obj.dim)
     eigenfunctions_grid = eigenfunctions_path.reshape(-1, 1, Hamiltonian_Obj.dim, Hamiltonian_Obj.dim)
-    qgt_func = _qgt_function_for_method(method_name)
+    if method_name not in ("kubo", "analytic"):
+        raise ValueError(f"Symmetry-path QGT does not support method_name={method_name!r}.")
 
     components = {
         "g_xx": [],
@@ -232,20 +219,17 @@ def _calculate_qgt_on_sym_path(
     }
 
     for band in bands_to_compute:
-        if method_name in ("numerical", "numerical_phase_corrected"):
+        if method_name == "kubo":
             (g_xx, g_yy, g_zz,
              g_xy_real, g_xy_imag,
              g_xz_real, g_xz_imag,
-             g_yz_real, g_yz_imag) = QGT_grid_num(
+             g_yz_real, g_yz_imag) = QGT_grid_kubo(
                 ki_path,
                 kj_path,
-                eigenvalues_grid,
-                eigenfunctions_grid,
-                qgt_func,
                 Hamiltonian_Obj,
+                band,
+                eigenfunctions=eigenfunctions_grid,
                 delta_k=delta_k,
-                band_index=band,
-                progress_label=f"sym path band {band}",
                 kk=kk,
                 order=order,
             )
@@ -257,7 +241,7 @@ def _calculate_qgt_on_sym_path(
              g_yz_real, g_yz_imag) = QGT_grid_analytic(
                 ki_path,
                 kj_path,
-                qgt_func,
+                quantum_geometric_tensor_analytic,
                 Hamiltonian_Obj,
                 kk=kk,
                 z_cutoff=z_cutoff,
@@ -367,9 +351,8 @@ def calculate_2d(
         print("Eigenvalues or eigenfunctions files not found. Please ensure they are available at the specified paths.")
         sys.exit(1)
 
-    # Define method name for directory naming ("analytic", "numerical", etc.)
-    # method_name = "numerical"
-    method_name = "numerical_phase_corrected"
+    # Define method name for directory naming ("kubo", "analytic", etc.)
+    method_name = "kubo"
     # method_name = "analytic"
 
     Hamiltonian_name = getattr(Hamiltonian_Obj, "name", "Hamiltonian")
@@ -418,26 +401,13 @@ def calculate_2d(
 
     else:
         # Select QGT calculation method
-        if method_name == "numerical":            
+        if method_name == "kubo":
             (g_xx_array, g_yy_array, g_zz_array, 
              g_xy_real_array, g_xy_imag_array, 
              g_xz_real_array, g_xz_imag_array, 
-             g_yz_real_array, g_yz_imag_array) = QGT_grid_num(
-                ki, kj, eigenvalues, eigenfunctions, quantum_geometric_tensor_3d_num, 
-                Hamiltonian_Obj, delta_k=1e-5, band_index=band, kk=kk,
-                order=order,
-            )
-            trace_array = g_xx_array + g_yy_array + g_zz_array
-
-        
-        elif method_name == "numerical_phase_corrected":
-            (g_xx_array, g_yy_array, g_zz_array, 
-             g_xy_real_array, g_xy_imag_array, 
-             g_xz_real_array, g_xz_imag_array, 
-             g_yz_real_array, g_yz_imag_array) = QGT_grid_num(
-                ki, kj, eigenvalues, eigenfunctions, quantum_geometric_tensor_3d_num_phase_corrected, 
-                Hamiltonian_Obj, delta_k=1e-5, band_index=band, kk=kk,
-                order=order,
+             g_yz_real_array, g_yz_imag_array) = QGT_grid_kubo(
+                ki, kj, Hamiltonian_Obj, band, eigenfunctions=eigenfunctions,
+                delta_k=1e-5, kk=kk, order=order,
             )
             trace_array = g_xx_array + g_yy_array + g_zz_array
         
@@ -643,27 +613,17 @@ def _qgt_one_band_worker(payload: dict):
     H.A0 = 0.0
     H.omega = 5e3
 
-    if method_name == "numerical":
-        func_target = quantum_geometric_tensor_3d_num
-    elif method_name == "numerical_phase_corrected":
-        func_target = quantum_geometric_tensor_3d_num_phase_corrected
-    elif method_name == "analytic":
-        func_target = quantum_geometric_tensor_analytic
-    else:
-        raise ValueError(f"Method '{method_name}' not supported by _qgt_one_band_worker yet.")
-
     # --- compute band QGT ---
-    if method_name in ["numerical", "numerical_phase_corrected"]:
+    if method_name == "kubo":
         (g_xx, g_yy, g_zz,
          g_xy_r, g_xy_i,
          g_xz_r, g_xz_i,
-         g_yz_r, g_yz_i) = QGT_grid_num(
+         g_yz_r, g_yz_i) = QGT_grid_kubo(
             ki, kj,
-            eigenvalues, eigenfunctions,
-            func_target,
             H,
+            band,
+            eigenfunctions=eigenfunctions,
             delta_k=delta_k,
-            band_index=band,
             kk=kk, 
             order=order
         )
@@ -671,11 +631,13 @@ def _qgt_one_band_worker(payload: dict):
     elif method_name == "analytic":
         eigenvalues_band = eigenvalues[..., band]
         g_xx, g_yy, g_zz, g_xy_r, g_xy_i, g_xz_r, g_xz_i, g_yz_r, g_yz_i = QGT_grid_analytic(
-            ki, kj, func_target, 
+            ki, kj, quantum_geometric_tensor_analytic, 
             H, kk=kk, z_cutoff=z_cutoff, eigenvalues=eigenvalues_band,
             band_index=band, order=order
         )
         trace = g_xx + g_yy + g_zz
+    else:
+        raise ValueError(f"Method '{method_name}' not supported by _qgt_one_band_worker yet.")
 
     # return numpy arrays to parent (these are much smaller than the eigenfunctions)
     return {
@@ -694,7 +656,7 @@ def _qgt_one_band_worker(payload: dict):
 
 def calculate_2d_all_bands(
     Force_new=True,
-    method_name="numerical_phase_corrected",
+    method_name="kubo",
     include_sym_path_qgt=False,
     sym_path_bands=None,
     sym_path_points_per_segment=100,

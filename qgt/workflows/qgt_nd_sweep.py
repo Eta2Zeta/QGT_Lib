@@ -19,7 +19,7 @@ from qgt.kspace.grids import (
     map_k_by_order,
     normalize_coordinate_order,
 )
-from qgt.geometry.qgt_2d import QGT_grid_num
+from qgt.geometry.qgt_2d import QGT_grid_kubo
 from qgt.topology import (
     berry_curvature_components_from_qgt,
     compute_chern_number,
@@ -27,7 +27,6 @@ from qgt.topology import (
     winding_numbers_vs_radius,
 )
 from qgt.spectra.eigenvalues import grid_eigenvalues_eigenfunctions
-from qgt.geometry.pointwise_3d import quantum_geometric_tensor_3d_num_phase_corrected
 
 
 def _metric_trace_on_sampled_plane(g_xx, g_yy, g_zz, order):
@@ -118,10 +117,10 @@ def _worker_qgt_point(
     (g_xx, g_yy, g_zz,
      g_xy_r, g_xy_i,
      g_xz_r, g_xz_i,
-     g_yz_r, g_yz_i) = QGT_grid_num(
-        ki, kj, eigenvalues, eigenfunctions, quantum_geometric_tensor_3d_num_phase_corrected,
-        H, delta_k, band_index=band,
-        progress_label=progress_label,
+     g_yz_r, g_yz_i) = QGT_grid_kubo(
+        ki, kj, H, band,
+        eigenfunctions=eigenfunctions,
+        delta_k=delta_k,
         kk=kk,
         order=order,
     )

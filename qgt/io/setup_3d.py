@@ -67,7 +67,7 @@ def setup_3D_QGT_results_directory(
     kvals_mode: str = "endpoints",
     *,
     # NEW: include these in meta-matching so ALL-bands runs don't collide with single-band runs
-    method_name: str = "numerical",
+    method_name: str = "kubo",
     band_index="ALL",          # int or "ALL"
     n_bands=None,              # required if band_index == "ALL"
 ):

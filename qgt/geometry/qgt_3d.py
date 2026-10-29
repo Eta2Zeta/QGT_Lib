@@ -2,77 +2,28 @@ import numpy as np
 from qgt.utils import sign_check
 from qgt.kspace.grids import map_k_by_order
 from tqdm import tqdm
+from qgt.geometry.kubo import qgt_components, quantum_geometric_tensor
 
-def QGT_3d_num(
-    kx_vals, ky_vals, kz_vals, eigenvalues_3d, eigenfunctions_3d, quantum_geometric_tensor_func, 
-    hamiltonian, delta_k, band_index
-):
+def QGT_3d_kubo(kx_vals, ky_vals, kz_vals, hamiltonian, band_index, *, eigenfunctions_3d=None, delta_k=1e-5):
     """
-    Calculate the 3D quantum geometric tensor (QGT) components for a kx-ky-kz grid.
-    
+    Calculate the 3D quantum geometric tensor (QGT) components for a kx-ky-kz grid,
+    by the Kubo formula (``qgt.geometry.kubo``).
+
     Parameters:
     - kx_vals, ky_vals, kz_vals: 1D arrays defining the grid.
-    - eigenvalues_3d: 3D array of eigenvalues [nkx, nky, nkz].
-    - eigenfunctions_3d: 3D array of eigenfunctions [nkx, nky, nkz].
-    - quantum_geometric_tensor_func: Function to calculate 3D QGT components.
-    - hamiltonian: The Hamiltonian function.
-    - delta_k: Small step for numerical differentiation.
-    - band_index: Band index for which QGT is calculated.
-    - z_cutoff: Optional maximum value for clipping.
-    
+    - hamiltonian: The Hamiltonian object.
+    - band_index: Band index (or a sequence of bands treated as one group).
+    - eigenfunctions_3d: Optional eigenfunctions of an eigen run, shape [nkx, nky, nkz, dim, dim];
+      bands are then numbered as in that run.
+    - delta_k: Step of the central difference of H.
+
     Returns:
     - 9 arrays of shape [nkx, nky, nkz] for metric components.
     """
-    nkx = len(kx_vals)
-    nky = len(ky_vals)
-    nkz = len(kz_vals)
-    
-    # Initialize arrays
-    g_xx_arr = np.zeros((nkx, nky, nkz))
-    g_yy_arr = np.zeros((nkx, nky, nkz))
-    g_zz_arr = np.zeros((nkx, nky, nkz))
-    
-    g_xy_real_arr = np.zeros((nkx, nky, nkz))
-    g_xy_imag_arr = np.zeros((nkx, nky, nkz))
-    
-    g_xz_real_arr = np.zeros((nkx, nky, nkz))
-    g_xz_imag_arr = np.zeros((nkx, nky, nkz))
-    
-    g_yz_real_arr = np.zeros((nkx, nky, nkz))
-    g_yz_imag_arr = np.zeros((nkx, nky, nkz))
-    
-    total_points = nkx * nky * nkz
-    
-    with tqdm(total=total_points, desc="Computing 3D QGT Grid", unit="kpt") as pbar:
-        for i, kx in enumerate(kx_vals):
-            for j, ky in enumerate(ky_vals):
-                for k, kz in enumerate(kz_vals):
-                    eigenfunction = eigenfunctions_3d[i, j, k]
-                    eigenvalue = eigenvalues_3d[i, j, k]
-                    
-                    g_xx, g_yy, g_zz, g_xy_real, g_xy_imag, g_xz_real, g_xz_imag, g_yz_real, g_yz_imag = quantum_geometric_tensor_func(
-                        hamiltonian, kx, ky, kz, delta_k, eigenvalue, eigenfunction, band_index
-                    )
-                    
-                    g_xx_arr[i, j, k] = g_xx
-                    g_yy_arr[i, j, k] = g_yy
-                    g_zz_arr[i, j, k] = g_zz
-                    
-                    g_xy_real_arr[i, j, k] = g_xy_real
-                    g_xy_imag_arr[i, j, k] = g_xy_imag
-                    
-                    g_xz_real_arr[i, j, k] = g_xz_real
-                    g_xz_imag_arr[i, j, k] = g_xz_imag
-                    
-                    g_yz_real_arr[i, j, k] = g_yz_real
-                    g_yz_imag_arr[i, j, k] = g_yz_imag
-                    
-                    pbar.update(1)
-                    
-    return (g_xx_arr, g_yy_arr, g_zz_arr, 
-            g_xy_real_arr, g_xy_imag_arr, 
-            g_xz_real_arr, g_xz_imag_arr, 
-            g_yz_real_arr, g_yz_imag_arr)
+    k = np.stack(np.meshgrid(kx_vals, ky_vals, kz_vals, indexing="ij"), axis=-1)
+    Q = quantum_geometric_tensor(hamiltonian, k, band_index, delta_k=delta_k, eigenvectors=eigenfunctions_3d)
+    return qgt_components(Q)
+
 
 def QGT_grid_3d_analytic(
     kx_vals, ky_vals, kz_vals, eigenvalues_3d,

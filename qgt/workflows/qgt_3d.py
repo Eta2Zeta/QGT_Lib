@@ -8,12 +8,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from qgt.io.setup_3d import setup_3D_QGT_results_directory
 from qgt.io.output import print_calculation_complete
 from qgt.io.runs import input_run, record_inputs
-from qgt.geometry.qgt_3d import QGT_3d_num, QGT_grid_3d_analytic
-from qgt.geometry.pointwise_3d import (
-    quantum_geometric_tensor_3d_analytic,
-    quantum_geometric_tensor_3d_num_eigenvector_ordered,
-    quantum_geometric_tensor_3d_num_phase_corrected,
-)
+from qgt.geometry.qgt_3d import QGT_3d_kubo, QGT_grid_3d_analytic
+from qgt.geometry.pointwise_3d import quantum_geometric_tensor_3d_analytic
 
 
 
@@ -45,13 +41,13 @@ def calculate_3d(eigen_run=None):
             include_endpoints = eigen_info["include_endpoints"]
             eigenvalues_3d = np.load(eig_path)
             eigenvectors_3d = np.load(vec_path)
-            print(f"Successfully loaded the eigenvalue run. Hamiltonian: {hamiltonian.name}, Mesh: {mesh_size}")
+            print(f"Successfully loaded the eigenvalue run. Hamiltonian: {hamiltonian.name}, Mesh: {mesh_shape}")
             
         except Exception as e:
             print(f"Failed to load {eigen_dir}: {e}. Falling back to standard calculation.")
 
 
-    delta_k = 1e-5 # Use small step for numerical derivative, matching 2D calculation
+    delta_k = 1e-5 # Step of the central difference of H, matching the 2D calculation
     
     qgt_file_paths, qgt_use_existing, qgt_results_dir, qgt_meta_target = setup_3D_QGT_results_directory(
         hamiltonian,
@@ -78,12 +74,10 @@ def calculate_3d(eigen_run=None):
          g_yz_real_arr = np.load(qgt_file_paths["g_yz_real"])
          g_yz_imag_arr = np.load(qgt_file_paths["g_yz_imag"])
     else:
-        # We use QGT_grid_3d_num
         print("Computing 3D QGT Grid...")
-        results = QGT_grid_3d_num(
-            kx_vals, ky_vals, kz_vals, eigenvalues_3d, eigenvectors_3d, 
-            quantum_geometric_tensor_3d_num_eigenvector_ordered, # Use ordered version
-            hamiltonian, delta_k=delta_k, band_index=band, z_cutoff=z_cutoff
+        results = QGT_3d_kubo(
+            kx_vals, ky_vals, kz_vals, hamiltonian, band,
+            eigenfunctions_3d=eigenvectors_3d, delta_k=delta_k,
         )
         
         (g_xx_arr, g_yy_arr, g_zz_arr, 
@@ -151,20 +145,15 @@ def _qgt3d_one_band_worker(payload: dict):
     eigenvectors_3d = np.load(vec_path, mmap_mode="r")
 
     
-    if method == "numerical":
+    if method == "kubo":
         # compute for one band
         (g_xx, g_yy, g_zz,
          g_xy_r, g_xy_i,
          g_xz_r, g_xz_i,
-         g_yz_r, g_yz_i) = QGT_3d_num(
-            kx_vals, ky_vals, kz_vals,
-        eigenvalues_3d, eigenvectors_3d,
-        # quantum_geometric_tensor_3d_num_eigenvector_ordered,
-        quantum_geometric_tensor_3d_num_phase_corrected,
-        H,
-        delta_k=delta_k,
-        band_index=band
-    )
+         g_yz_r, g_yz_i) = QGT_3d_kubo(
+            kx_vals, ky_vals, kz_vals, H, band,
+            eigenfunctions_3d=eigenvectors_3d, delta_k=delta_k,
+        )
     elif method == "analytic":
         # compute for one band
         (g_xx, g_yy, g_zz,
@@ -195,7 +184,7 @@ def _qgt3d_one_band_worker(payload: dict):
         "trace": np.array(trace),
     }
 
-def calculate_3d_all_bands_parallel(force_new=True, method = "numerical", eigen_run=None):
+def calculate_3d_all_bands_parallel(force_new=True, method = "kubo", eigen_run=None):
     print("Starting PARALLEL 3D QGT (one core per band)...")
 
     # Input: the given 3D eigenvalue run, else the one most recently created or reused
@@ -244,7 +233,7 @@ def calculate_3d_all_bands_parallel(force_new=True, method = "numerical", eigen_
         # IMPORTANT: ideally your setup function should incorporate these into the meta match:
         band_index="ALL",
         n_bands=int(n_bands),
-        method_name="numerical"
+        method_name=method
     )
     if not use_existing:
         record_inputs(qgt_results_dir, eigen_run=eigen_dir)
@@ -300,7 +289,7 @@ def calculate_3d_all_bands_parallel(force_new=True, method = "numerical", eigen_
         "dk": delta_k,
         "band_index": "ALL",
         "n_bands": int(n_bands),
-        "method_name": "numerical",
+        "method_name": method,
         "include_endpoints": include_endpoints,
         "kvals_mode": kvals_mode,
         "mesh_shape": mesh_shape,
@@ -318,7 +307,7 @@ def calculate_3d_all_bands_parallel(force_new=True, method = "numerical", eigen_
         "n_bands": int(n_bands),
         "include_endpoints": include_endpoints,
         "kvals_mode": kvals_mode,
-        "method_name": "numerical",
+        "method_name": method,
     }
     with open(qgt_file_paths["meta_pkl"], "wb") as f:
         pickle.dump(meta_pkl, f)
