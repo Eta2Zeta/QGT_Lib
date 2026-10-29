@@ -78,12 +78,12 @@ The two MinimalModels tools take command-line options instead of a config, e.g.
 
 ## Data
 
-Results live outside the repository, in `Results/` next to it
-(`~/Documents/Quantum_Geometric_Tensor/Results`, backed up by iCloud). Set
+Results live outside the repository, in
+`~/Documents/Education/Research/QGT_Results` (backed up by iCloud). Set
 `QGT_DATA` to use another folder.
 
 ```
-Results/
+QGT_Results/
   legacy/        everything from the old QGT_Lib/results/, unchanged (see its README.md)
   runs/<kind>/<model>/<YYYYMMDD-HHMMSS>[_tag]/
   runs/index.csv one row per run (python scripts/index_runs.py)

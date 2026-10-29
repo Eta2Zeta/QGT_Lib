@@ -22,7 +22,8 @@ def test_other_paths_are_unchanged():
     assert data_paths.relocate_legacy_path("/tmp/some/dataset_1") == "/tmp/some/dataset_1"
 
 
-def test_default_data_root_is_next_to_the_repository(monkeypatch):
+def test_default_data_root_is_in_research_folder(monkeypatch, tmp_path):
     monkeypatch.delenv("QGT_DATA", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
     assert (data_paths.REPO_ROOT / "pyproject.toml").is_file()
-    assert data_paths.data_root() == str(data_paths.REPO_ROOT.parent / "Results")
+    assert data_paths.data_root() == str(tmp_path / "Documents" / "Education" / "Research" / "QGT_Results")
